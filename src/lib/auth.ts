@@ -28,7 +28,7 @@ export interface RegisterInput {
 
 export async function registerUser(data: RegisterInput): Promise<boolean> {
   try {
-    const response = await api.post<{ token: string; role: string; name: string; email: string }>('/api/auth/register', {
+    const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/register', {
       name: data.name,
       email: data.email.toLowerCase(),
       password: data.password,
@@ -38,7 +38,7 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
     setAuthToken(response.token);
 
     const safeUser = {
-      id: response.email,
+      id: String(response.id),
       name: response.name,
       email: response.email,
       role: response.role as Role,
@@ -63,11 +63,11 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
 
 export async function loginUser(email: string, password: string): Promise<boolean> {
   try {
-    const response = await api.post<{ token: string; role: string; name: string; email: string }>('/api/auth/login', { email, password });
+    const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/login', { email, password });
     setAuthToken(response.token);
 
     const safeUser = {
-      id: response.email,
+      id: String(response.id),
       name: response.name,
       email: response.email,
       role: response.role as Role,
