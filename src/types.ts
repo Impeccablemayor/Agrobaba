@@ -1,4 +1,27 @@
-export type Role = 'farmer' | 'buyer' | 'agro-dealer' | 'service-provider';
+export type Role = 'farmer' | 'buyer' | 'agro-dealer' | 'service-provider' | 'admin';
+
+export type VerificationStatus = 'unsubmitted' | 'pending' | 'approved' | 'rejected';
+
+export interface VerificationStatusInfo {
+  status: VerificationStatus;
+  businessName: string | null;
+  idNumber: string | null;
+  note: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  verified: boolean;
+}
+
+export interface PendingVerification {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  businessName: string | null;
+  idNumber: string | null;
+  document: string | null;
+  submittedAt: string;
+}
 
 export interface User {
   id: string;
@@ -67,6 +90,7 @@ export interface Demand {
   deadline: string;
   buyerId: string;
   buyerName: string;
+  buyerRole: Role;
   responses: DemandResponse[];
   status: 'open' | 'closed';
   createdAt: string;

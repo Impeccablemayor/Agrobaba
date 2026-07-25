@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCurrentUser } from '../../lib/auth';
+import { showToast } from '../../lib/toastBus';
 import type { RegisterInput } from '../../lib/auth';
 
 interface LocationState {
@@ -27,7 +29,7 @@ const QUICK_LOGIN_USERS: Record<string, RegisterInput> = {
 };
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, register, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -40,9 +42,15 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const ok = await login(email, password);
-    if (ok) {
-      navigate(redirectTo, { replace: true });
+    if (!ok) return;
+
+    if (getCurrentUser()?.role === 'admin') {
+      logout();
+      showToast('Admin accounts must sign in through the admin portal.', 'error');
+      return;
     }
+
+    navigate(redirectTo, { replace: true });
   }
 
   async function quickLogin(role: string) {

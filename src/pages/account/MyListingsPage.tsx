@@ -10,6 +10,7 @@ const LABELS: Record<Role, { title: string; sub: string; add: string; crumb: str
   'agro-dealer': { title: 'My Product Listings', sub: 'Manage all your agro inputs and products.', add: 'Post New Product', crumb: 'My Listings' },
   'service-provider': { title: 'My Services', sub: 'Manage all the services you offer.', add: 'Post New Service', crumb: 'My Services' },
   buyer: { title: 'My Listings', sub: 'You are registered as a buyer.', add: 'Switch to Selling', crumb: 'My Listings' },
+  admin: { title: 'My Listings', sub: 'Admin accounts do not have listings.', add: 'Post New Listing', crumb: 'My Listings' },
 };
 
 const CATEGORY_ICONS: Record<string, string> = {

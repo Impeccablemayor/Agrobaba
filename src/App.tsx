@@ -5,6 +5,7 @@ import { GuestOnlyRoute } from './components/routing/GuestOnlyRoute';
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/auth/LoginPage';
+import AdminLoginPage from './pages/auth/AdminLoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import AboutPage from './pages/info/AboutPage';
 import ContactPage from './pages/info/ContactPage';
@@ -30,6 +31,8 @@ import MyListingsPage from './pages/account/MyListingsPage';
 import PostListingPage from './pages/account/PostListingPage';
 import MyOrdersPage from './pages/account/MyOrdersPage';
 import MySalesPage from './pages/account/MySalesPage';
+import VerifyAccountPage from './pages/account/VerifyAccountPage';
+import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 
 function App() {
   return (
@@ -39,6 +42,7 @@ function App() {
 
         <Route path="login" element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
         <Route path="register" element={<GuestOnlyRoute><RegisterPage /></GuestOnlyRoute>} />
+        <Route path="portal-77x-admin" element={<GuestOnlyRoute><AdminLoginPage /></GuestOnlyRoute>} />
 
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
@@ -69,6 +73,9 @@ function App() {
         <Route path="account/post-listing" element={<ProtectedRoute><PostListingPage /></ProtectedRoute>} />
         <Route path="account/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
+        <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
+
+        <Route path="admin/verifications" element={<ProtectedRoute><AdminVerificationsPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

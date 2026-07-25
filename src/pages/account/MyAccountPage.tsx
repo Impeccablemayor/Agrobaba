@@ -6,6 +6,7 @@ import { getMyOrders, getMySales } from '../../lib/orders';
 import { getMyDemands } from '../../lib/demands';
 import { getMyConversations } from '../../lib/messages';
 import { getCartCount } from '../../lib/cart';
+import { getMyVerificationStatus } from '../../lib/verification';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
 import type { Demand, Order, Product, Role, Conversation } from '../../types';
 
@@ -26,6 +27,9 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
+    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
+    { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
+    { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
   ],
   'agro-dealer': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Product' },
@@ -33,6 +37,9 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
+    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
+    { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
+    { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
   ],
   'service-provider': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Service' },
@@ -40,6 +47,9 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-orders', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Earnings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
+    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
+    { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
+    { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
   ],
   buyer: [
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand' },
@@ -48,6 +58,9 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/cart', icon: 'fa-cart-shopping', label: 'My Cart' },
     { href: '/shop', icon: 'fa-store', label: 'Browse Shop' },
   ],
+  admin: [
+    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Review Verifications' },
+  ],
 };
 
 const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; style: string }[]> = {
@@ -55,18 +68,21 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
     { href: '/account/post-listing', icon: 'fa-plus', label: 'Post Produce', style: 'btn-primary' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings', style: 'btn-outline' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands', style: 'btn-outline' },
+    { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-outline' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'View Sales', style: 'btn-outline' },
   ],
   'agro-dealer': [
     { href: '/account/post-listing', icon: 'fa-plus', label: 'Post Product', style: 'btn-primary' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings', style: 'btn-outline' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands', style: 'btn-outline' },
+    { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-outline' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'View Sales', style: 'btn-outline' },
   ],
   'service-provider': [
     { href: '/account/post-listing', icon: 'fa-plus', label: 'Post Service', style: 'btn-primary' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Services', style: 'btn-outline' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands', style: 'btn-outline' },
+    { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-outline' },
     { href: '/account/my-orders', icon: 'fa-calendar-check', label: 'My Bookings', style: 'btn-outline' },
   ],
   buyer: [
@@ -74,6 +90,9 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
     { href: '/shop', icon: 'fa-store', label: 'Browse Shop', style: 'btn-outline' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders', style: 'btn-outline' },
     { href: '/cart', icon: 'fa-cart-shopping', label: 'View Cart', style: 'btn-outline' },
+  ],
+  admin: [
+    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Review Verifications', style: 'btn-primary' },
   ],
 };
 
@@ -84,6 +103,7 @@ export default function MyAccountPage() {
   const [mySales, setMySales] = useState<Order[]>([]);
   const [myDemands, setMyDemands] = useState<Demand[]>([]);
   const [myConvs, setMyConvs] = useState<Conversation[]>([]);
+  const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,12 +112,13 @@ export default function MyAccountPage() {
     async function loadData() {
       if (!user) return;
       setLoading(true);
-      const [products, orders, sales, demands, conversations] = await Promise.all([
+      const [products, orders, sales, demands, conversations, verification] = await Promise.all([
         getMyProducts(),
         getMyOrders(),
         getMySales(),
         getMyDemands(),
         getMyConversations(),
+        getMyVerificationStatus(),
       ]);
 
       if (!active) return;
@@ -106,6 +127,7 @@ export default function MyAccountPage() {
       setMySales(sales);
       setMyDemands(demands);
       setMyConvs(conversations);
+      setVerified(verification?.verified ?? user.verified);
       setLoading(false);
     }
 
@@ -126,18 +148,18 @@ export default function MyAccountPage() {
       { icon: 'fa-list', label: 'Listings', value: myProducts.length, color: 'var(--primary)' },
       { icon: 'fa-coins', label: 'Total Sales', value: mySales.length, color: 'var(--accent)' },
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--primary)' },
-      { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
+      { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
     ],
     'agro-dealer': [
       { icon: 'fa-list', label: 'Products', value: myProducts.length, color: 'var(--primary)' },
       { icon: 'fa-coins', label: 'Total Sales', value: mySales.length, color: 'var(--accent)' },
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--primary)' },
-      { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
+      { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
     ],
     'service-provider': [
       { icon: 'fa-list', label: 'Services', value: myProducts.length, color: 'var(--primary)' },
       { icon: 'fa-calendar-check', label: 'Bookings', value: mySales.length, color: 'var(--accent)' },
-      { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
+      { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
       { icon: 'fa-naira-sign', label: 'Revenue', value: formatPrice(totalRevenue), color: 'var(--primary)' },
     ],
     buyer: [
@@ -145,6 +167,9 @@ export default function MyAccountPage() {
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--accent)' },
       { icon: 'fa-cart-shopping', label: 'Cart Items', value: getCartCount(), color: 'var(--primary)' },
       { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
+    ],
+    admin: [
+      { icon: 'fa-user-check', label: 'Role', value: 'Administrator', color: 'var(--primary)' },
     ],
   };
   const stats = statsConfig[user.role];
@@ -258,7 +283,7 @@ export default function MyAccountPage() {
             <div className="account-detail-item">
               <div className="label">Verification</div>
               <div className="value">
-                {user.verified ? (
+                {verified ? (
                   <span className="verified-chip"><i className="fa-solid fa-circle-check"></i> Verified</span>
                 ) : (
                   <span style={{ color: 'var(--muted)', fontSize: 13 }}>Not verified yet</span>

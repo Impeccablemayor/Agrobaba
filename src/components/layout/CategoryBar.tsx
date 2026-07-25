@@ -46,6 +46,9 @@ const roleLinks: Record<Role, CatLink[]> = {
     { href: '/cart', icon: 'fa-cart-shopping', label: 'Cart', match: (p) => p === '/cart' },
     { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
   ],
+  admin: [
+    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', match: (p) => p === '/admin/verifications' },
+  ],
 };
 
 export function CategoryBar() {

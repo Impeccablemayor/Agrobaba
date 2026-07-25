@@ -26,3 +26,16 @@ export function starString(rating: number): string {
   const rounded = Math.round(rating || 0);
   return '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  farmer: 'Farmer',
+  buyer: 'Buyer',
+  'agro-dealer': 'Dealer',
+  'service-provider': 'Service Provider',
+  admin: 'Admin',
+};
+
+export function roleLabel(role?: string | null): string {
+  if (!role) return '';
+  return ROLE_LABELS[role] || role;
+}
