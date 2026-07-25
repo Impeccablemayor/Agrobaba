@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addDemand } from '../../lib/demands';
 import { showToast } from '../../lib/toastBus';
@@ -12,7 +12,6 @@ const CATEGORIES = [
 
 export default function PostDemandPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Grains');
   const [quantity, setQuantity] = useState('');
@@ -30,7 +29,13 @@ export default function PostDemandPage() {
 
     const result = await addDemand({ title, category, quantity, budget, location, deadline, description });
     if (result) {
-      navigate('/demands/mine');
+      setTitle('');
+      setCategory('Grains');
+      setQuantity('');
+      setBudget('');
+      setLocation(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
+      setDeadline('');
+      setDescription('');
     }
   }
 

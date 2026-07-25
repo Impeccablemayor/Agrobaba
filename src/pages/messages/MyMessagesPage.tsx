@@ -10,11 +10,15 @@ export default function MyMessagesPage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+
+    async function loadConversations() {
       const data = await getMyConversations();
       if (active) setConversations(data);
-    })();
-    return () => { active = false; };
+    }
+
+    void loadConversations();
+    const interval = setInterval(loadConversations, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   return (

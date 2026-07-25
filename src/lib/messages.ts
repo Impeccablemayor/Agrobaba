@@ -1,5 +1,5 @@
-import { KEYS, getStore, setStore } from './storage';
-import { uid } from './format';
+import { showToast } from './toastBus';
+import { api } from './api';
 import { getCurrentUser } from './auth';
 import type { Conversation, Message } from '../types';
 
@@ -13,90 +13,114 @@ export interface SendMessageInput {
   demandTitle?: string | null;
 }
 
-export function sendMessage(data: SendMessageInput): Message | false {
-  const user = getCurrentUser();
-  if (!user) return false;
+interface ApiMessage {
+  id: number;
+  senderId: number;
+  receiverId: number;
+  senderName: string;
+  receiverName: string;
+  content: string;
+  productId: number | null;
+  productName: string | null;
+  demandId: number | null;
+  demandTitle: string | null;
+  read: boolean;
+  createdAt: string;
+}
 
-  const messages = getStore<Message>(KEYS.messages);
-
-  const message: Message = {
-    id: uid(),
-    senderId: user.id,
-    senderName: user.name,
-    receiverId: data.receiverId,
-    receiverName: data.receiverName,
-    content: data.content,
-    productId: data.productId || null,
-    productName: data.productName || null,
-    demandId: data.demandId || null,
-    demandTitle: data.demandTitle || null,
-    read: false,
-    createdAt: new Date().toISOString(),
+function mapMessage(m: ApiMessage): Message {
+  return {
+    id: String(m.id),
+    senderId: String(m.senderId),
+    senderName: m.senderName,
+    receiverId: String(m.receiverId),
+    receiverName: m.receiverName,
+    content: m.content,
+    productId: m.productId != null ? String(m.productId) : null,
+    productName: m.productName,
+    demandId: m.demandId != null ? String(m.demandId) : null,
+    demandTitle: m.demandTitle,
+    read: m.read,
+    createdAt: m.createdAt,
   };
-
-  messages.push(message);
-  setStore(KEYS.messages, messages);
-  return message;
 }
 
-export function getMyConversations(): Conversation[] {
+export async function sendMessage(data: SendMessageInput): Promise<Message | false> {
+  try {
+    const message = await api.post<ApiMessage>('/api/messages', {
+      receiverId: Number(data.receiverId),
+      receiverName: data.receiverName,
+      content: data.content,
+      productId: data.productId ? Number(data.productId) : null,
+      productName: data.productName || null,
+      demandId: data.demandId ? Number(data.demandId) : null,
+      demandTitle: data.demandTitle || null,
+    });
+    return mapMessage(message);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to send message';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+export async function getMyConversations(): Promise<Conversation[]> {
   const user = getCurrentUser();
   if (!user) return [];
 
-  const messages = getStore<Message>(KEYS.messages);
-  const mine = messages.filter((m) => m.senderId === user.id || m.receiverId === user.id);
+  try {
+    const messages = (await api.get<ApiMessage[]>('/api/messages/me')).map(mapMessage);
 
-  const convMap: Record<string, Conversation> = {};
-  mine.forEach((m) => {
-    const partnerId = m.senderId === user.id ? m.receiverId : m.senderId;
-    const partnerName = m.senderId === user.id ? m.receiverName : m.senderName;
+    const convMap: Record<string, Conversation> = {};
+    messages.forEach((m) => {
+      const partnerId = m.senderId === user.id ? m.receiverId : m.senderId;
+      const partnerName = m.senderId === user.id ? m.receiverName : m.senderName;
 
-    if (!convMap[partnerId]) {
-      convMap[partnerId] = { partnerId, partnerName, messages: [], unread: 0, lastMessage: m };
-    }
-    convMap[partnerId].messages.push(m);
-    if (m.receiverId === user.id && !m.read) {
-      convMap[partnerId].unread++;
-    }
-  });
+      if (!convMap[partnerId]) {
+        convMap[partnerId] = { partnerId, partnerName, messages: [], unread: 0, lastMessage: m };
+      }
+      convMap[partnerId].messages.push(m);
+      if (m.receiverId === user.id && !m.read) {
+        convMap[partnerId].unread++;
+      }
+    });
 
-  return Object.values(convMap)
-    .map((conv) => {
-      conv.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      conv.lastMessage = conv.messages[conv.messages.length - 1];
-      return conv;
-    })
-    .sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
+    return Object.values(convMap)
+      .map((conv) => {
+        conv.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        conv.lastMessage = conv.messages[conv.messages.length - 1];
+        return conv;
+      })
+      .sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load conversations';
+    showToast(message, 'error');
+    return [];
+  }
 }
 
-export function getConversation(partnerId: string): Message[] {
-  const user = getCurrentUser();
-  if (!user) return [];
-
-  return getStore<Message>(KEYS.messages)
-    .filter(
-      (m) =>
-        (m.senderId === user.id && m.receiverId === partnerId) ||
-        (m.senderId === partnerId && m.receiverId === user.id)
-    )
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+export async function getConversation(partnerId: string): Promise<Message[]> {
+  try {
+    return (await api.get<ApiMessage[]>(`/api/messages/conversation/${partnerId}`)).map(mapMessage);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load conversation';
+    showToast(message, 'error');
+    return [];
+  }
 }
 
-export function markAsRead(partnerId: string): void {
-  const user = getCurrentUser();
-  if (!user) return;
-
-  const messages = getStore<Message>(KEYS.messages);
-  messages.forEach((m) => {
-    if (m.senderId === partnerId && m.receiverId === user.id) {
-      m.read = true;
-    }
-  });
-  setStore(KEYS.messages, messages);
+export async function markAsRead(partnerId: string): Promise<void> {
+  try {
+    await api.put(`/api/messages/read/${partnerId}`);
+  } catch {
+    // best-effort; a failed read-receipt shouldn't block viewing the conversation
+  }
 }
 
-export function getUnreadCount(): number {
-  const user = getCurrentUser();
-  if (!user) return 0;
-  return getStore<Message>(KEYS.messages).filter((m) => m.receiverId === user.id && !m.read).length;
+export async function getUnreadCount(): Promise<number> {
+  try {
+    return await api.get<number>('/api/messages/unread');
+  } catch {
+    return 0;
+  }
 }

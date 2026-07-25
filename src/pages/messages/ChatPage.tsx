@@ -24,14 +24,17 @@ export default function ChatPage() {
     let active = true;
     if (!partnerId) return undefined;
 
-    (async () => {
-      const conversation = await getConversation(partnerId);
-      if (active) setMessages(conversation);
-      await markAsRead(partnerId);
+    async function loadConversation() {
+      const conversation = await getConversation(partnerId!);
+      if (!active) return;
+      setMessages((prev) => (prev.length === conversation.length ? prev : conversation));
+      await markAsRead(partnerId!);
       await refreshUnread();
-    })();
+    }
 
-    return () => { active = false; };
+    void loadConversation();
+    const interval = setInterval(loadConversation, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, [partnerId, refreshUnread]);
 
   useEffect(() => {
@@ -90,14 +93,16 @@ export default function ChatPage() {
             {messages.length === 0 ? (
               <p className="text-muted text-center" style={{ padding: 24 }}>No messages yet. Say hello!</p>
             ) : (
-              messages.map((m) => (
-                <div key={m.id}>
-                  <div className={`chat-bubble ${m.senderId === user?.id ? 'sent' : 'received'}`}>
+              messages.map((m) => {
+                const isSent = m.senderId === user?.id;
+                const buyerClass = isSent && user?.role === 'buyer' ? ' buyer' : '';
+                return (
+                  <div key={m.id} className={`chat-bubble ${isSent ? 'sent' : 'received'}${buyerClass}`}>
                     {m.content}
                     <span className="bubble-time">{timeAgo(m.createdAt)}</span>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             <div ref={messagesEndRef}></div>
           </div>
