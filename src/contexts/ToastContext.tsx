@@ -43,11 +43,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast: emitToast }}>
       {children}
-      <div className="toast-container">
+      <div className="app-toast-container">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`toast ${t.type}`}
+            className={`app-toast ${t.type}`}
             style={t.leaving ? { opacity: 0, transform: 'translateX(120px)', transition: 'all 0.3s ease' } : undefined}
           >
             <i className={`fa-solid ${ICONS[t.type]}`}></i>
