@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getDemandById, respondToDemand } from '../../lib/demands';
-import { isLoggedIn } from '../../lib/auth';
-import { showToast } from '../../lib/toastBus';
-import { formatPrice, timeAgo } from '../../lib/format';
+import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function DemandDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('');
   const [demand, setDemand] = useState<Awaited<ReturnType<typeof getDemandById>>>(null);
@@ -60,11 +60,6 @@ export default function DemandDetailPage() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!isLoggedIn()) {
-      showToast('Please login to respond.', 'warning');
-      navigate('/login');
-      return;
-    }
     if (!message) return;
 
     respondToDemand(demand!.id, { message, price });
@@ -91,6 +86,7 @@ export default function DemandDetailPage() {
               <h1>{demand.title}</h1>
 
               <div className="detail-meta">
+                {demand.buyerRole && <span><i className="fa-solid fa-user"></i> Demand by {roleLabel(demand.buyerRole)}</span>}
                 <span><i className="fa-solid fa-location-dot"></i> {demand.location}</span>
                 <span><i className="fa-regular fa-clock"></i> Posted {timeAgo(demand.createdAt)}</span>
                 <span><i className="fa-solid fa-reply"></i> {demand.responses ? demand.responses.length : 0} responses</span>
@@ -116,32 +112,47 @@ export default function DemandDetailPage() {
 
           <div className="col-lg-4">
             <div className="respond-card">
-              <h3>Respond to this demand</h3>
-              <p className="sub">Send the buyer your offer. This opens a direct conversation with them.</p>
+              {!user ? (
+                <>
+                  <h3>Respond to this demand</h3>
+                  <p className="sub">Log in to send the buyer your offer.</p>
+                  <Link to="/login" className="btn-primary btn-inline btn-sm"><i className="fa-solid fa-right-to-bracket"></i> Log In</Link>
+                </>
+              ) : user.role === 'buyer' ? (
+                <>
+                  <h3>Respond to this demand</h3>
+                  <p className="sub">Buyers can't respond to demands — only farmers, dealers, and service-providers can. You can post your own demand instead.</p>
+                  <Link to="/demands/new" className="btn-primary btn-inline btn-sm"><i className="fa-solid fa-pen"></i> Post a Demand</Link>
+                </>
+              ) : user.id === demand.buyerId ? (
+                <>
+                  <h3>Respond to this demand</h3>
+                  <p className="sub">This is your own demand — you can't respond to it. You'll see offers from sellers here as they come in.</p>
+                </>
+              ) : (
+                <>
+                  <h3>Respond to this demand</h3>
+                  <p className="sub">Send the buyer your offer. This opens a direct conversation with them.</p>
 
-              <form onSubmit={handleSubmit}>
-                <label htmlFor="respond-price">Your Offer Price (₦)</label>
-                <input
-                  type="number" id="respond-price" min="0" placeholder="e.g. 850000"
-                  value={price} onChange={(e) => setPrice(e.target.value)}
-                />
+                  <form onSubmit={handleSubmit}>
+                    <label htmlFor="respond-price">Your Offer Price (₦)</label>
+                    <input
+                      type="number" id="respond-price" min="0" placeholder="e.g. 850000"
+                      value={price} onChange={(e) => setPrice(e.target.value)}
+                    />
 
-                <label htmlFor="respond-message">Message <span style={{ color: '#e74c3c' }}>*</span></label>
-                <textarea
-                  id="respond-message" required
-                  placeholder="Introduce yourself, your price, quality, and delivery terms..."
-                  value={message} onChange={(e) => setMessage(e.target.value)}
-                />
+                    <label htmlFor="respond-message">Message <span style={{ color: '#e74c3c' }}>*</span></label>
+                    <textarea
+                      id="respond-message" required
+                      placeholder="Introduce yourself, your price, quality, and delivery terms..."
+                      value={message} onChange={(e) => setMessage(e.target.value)}
+                    />
 
-                <button type="submit" className="btn-primary btn-inline">
-                  <i className="fa-solid fa-paper-plane"></i> Send Response
-                </button>
-              </form>
-
-              {!isLoggedIn() && (
-                <p className="login-hint">
-                  <i className="fa-solid fa-lock"></i> You'll need to <Link to="/login">log in</Link> to send a response.
-                </p>
+                    <button type="submit" className="btn-primary btn-inline">
+                      <i className="fa-solid fa-paper-plane"></i> Send Response
+                    </button>
+                  </form>
+                </>
               )}
             </div>
           </div>

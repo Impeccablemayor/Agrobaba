@@ -87,7 +87,7 @@ export default function PostListingPage() {
 
   if (!user) return null;
 
-  if (user.role === 'buyer') {
+  if (!CONFIG[user.role]) {
     return (
       <div className="section">
         <div className="container" style={{ maxWidth: 760 }}>

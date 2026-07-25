@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { formatPrice, timeAgo } from '../lib/format';
-import { isLoggedIn } from '../lib/auth';
-import { showToast } from '../lib/toastBus';
+import { formatPrice, timeAgo, roleLabel } from '../lib/format';
+import { useAuth } from '../contexts/AuthContext';
 import type { Demand } from '../types';
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -17,15 +16,12 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export function DemandCard({ demand }: { demand: Demand }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const icon = CATEGORY_ICONS[demand.category] || CATEGORY_ICONS.default;
+  const canRespond = !!user && user.role !== 'buyer' && user.id !== demand.buyerId;
 
   function handleRespond(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!isLoggedIn()) {
-      showToast('Please login to respond to a demand.', 'warning');
-      navigate('/login');
-      return;
-    }
     navigate(`/demands/${demand.id}`);
   }
 
@@ -34,6 +30,7 @@ export function DemandCard({ demand }: { demand: Demand }) {
       <div className="demand-tag">
         <i className={`fa-solid ${icon}`}></i> {demand.category}
       </div>
+      {demand.buyerRole && <div className="demand-poster">Demand by {roleLabel(demand.buyerRole)}</div>}
       <h4>{demand.title}</h4>
       <p>
         {demand.description.substring(0, 100)}
@@ -47,9 +44,11 @@ export function DemandCard({ demand }: { demand: Demand }) {
             {timeAgo(demand.createdAt)}
           </div>
         </div>
-        <button className="respond-btn" onClick={handleRespond}>
-          <i className="fa-solid fa-reply"></i> Respond
-        </button>
+        {canRespond && (
+          <button className="respond-btn" onClick={handleRespond}>
+            <i className="fa-solid fa-reply"></i> Respond
+          </button>
+        )}
       </div>
     </div>
   );
