@@ -8,7 +8,7 @@ import { formatPrice } from '../../lib/format';
 
 export default function CheckoutPage() {
   const { user } = useAuth();
-  const { cart, total, refresh } = useCart();
+  const { cart, total } = useCart();
   const navigate = useNavigate();
   const orderPlaced = useRef(false);
 
@@ -30,16 +30,13 @@ export default function CheckoutPage() {
       showToast('Please fill in your name, phone number and delivery address.', 'error');
       return;
     }
-    void city;
-    void state;
-    void note;
-
-    const order = await placeOrder({ address: address.trim(), phone: phone.trim() });
+    const addr = [address.trim(), city.trim(), state.trim()].filter(Boolean).join(', ');
+    const order = await placeOrder({ address: addr, phone: phone.trim() });
     if (order) {
       orderPlaced.current = true;
       showToast('Order placed! Complete payment to confirm.', 'success');
       navigate(`/pay-offline?orderId=${encodeURIComponent(order.id)}`);
-      refresh();
+      window.location.reload();
     }
   }
 

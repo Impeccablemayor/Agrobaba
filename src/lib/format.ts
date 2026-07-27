@@ -3,7 +3,7 @@ export function uid(): string {
 }
 
 export function formatPrice(amount: number): string {
-  return '₦' + Number(amount).toLocaleString('en-NG');
+  return '₦' + amount.toLocaleString('en-NG');
 }
 
 export function formatDate(dateStr?: string | null): string {

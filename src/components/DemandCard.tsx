@@ -1,23 +1,14 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, timeAgo, roleLabel } from '../lib/format';
 import { useAuth } from '../contexts/AuthContext';
+import { DEMAND_CATEGORY_ICONS } from '../lib/constants';
 import type { Demand } from '../types';
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Grains: 'fa-wheat-awn',
-  Vegetables: 'fa-apple-whole',
-  Fertilizers: 'fa-flask',
-  Pesticides: 'fa-spray-can-sparkles',
-  Consultancy: 'fa-user-tie',
-  Veterinary: 'fa-stethoscope',
-  'Equipment Hire': 'fa-tractor',
-  default: 'fa-clipboard-list',
-};
-
-export function DemandCard({ demand }: { demand: Demand }) {
+export const DemandCard = memo(function DemandCard({ demand }: { demand: Demand }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const icon = CATEGORY_ICONS[demand.category] || CATEGORY_ICONS.default;
+  const icon = DEMAND_CATEGORY_ICONS[demand.category] || DEMAND_CATEGORY_ICONS.default;
   const canRespond = !!user && user.role !== 'buyer' && user.id !== demand.buyerId;
 
   function handleRespond(e: React.MouseEvent) {
@@ -52,4 +43,4 @@ export function DemandCard({ demand }: { demand: Demand }) {
       </div>
     </div>
   );
-}
+});

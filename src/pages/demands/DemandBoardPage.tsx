@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getDemands } from '../../lib/demands';
 import { DemandCard } from '../../components/DemandCard';
@@ -21,6 +21,8 @@ export default function DemandBoardPage() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('newest');
   const [demands, setDemands] = useState<Demand[]>([]);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     void (async () => {
@@ -70,7 +72,11 @@ export default function DemandBoardPage() {
               <i className="fa-solid fa-magnifying-glass"></i>
               <input
                 type="text" placeholder="Search demands by title, category, location..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
+                value={search} onChange={(e) => {
+                const value = e.target.value;
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                debounceRef.current = setTimeout(() => setSearch(value), 300);
+              }}
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

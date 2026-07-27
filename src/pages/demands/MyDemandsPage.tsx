@@ -2,13 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { deleteDemand, getMyDemands } from '../../lib/demands';
 import { formatPrice, timeAgo } from '../../lib/format';
+import { DEMAND_CATEGORY_ICONS } from '../../lib/constants';
+import { Breadcrumb } from '../../components/Breadcrumb';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Demand } from '../../types';
-
-const CATEGORY_ICONS: Record<string, string> = {
-  Grains: 'fa-wheat-awn', Vegetables: 'fa-apple-whole', Tubers: 'fa-leaf',
-  Fish: 'fa-fish', Fertilizers: 'fa-flask', Consultancy: 'fa-user-tie',
-  Veterinary: 'fa-stethoscope', 'Equipment Hire': 'fa-tractor', default: 'fa-clipboard-list',
-};
 
 export default function MyDemandsPage() {
   const navigate = useNavigate();
@@ -58,13 +55,7 @@ export default function MyDemandsPage() {
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-            <li className="breadcrumb-item active">My Demands</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'My Account', href: '/account' }, { label: 'My Demands' }]} />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -77,10 +68,7 @@ export default function MyDemandsPage() {
         </div>
 
         {loading ? (
-          <div className="empty-cart" style={{ marginBottom: 28 }}>
-            <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-            <p>Loading your demands…</p>
-          </div>
+          <PageLoadingSpinner message="Loading your demands…" />
         ) : (
           <>
           <div className="stats-grid" style={{ marginBottom: 28 }}>
@@ -104,7 +92,7 @@ export default function MyDemandsPage() {
           ) : (
             <div className="demand-grid">
               {demands.map((d) => {
-                const icon = CATEGORY_ICONS[d.category] || CATEGORY_ICONS.default;
+                const icon = DEMAND_CATEGORY_ICONS[d.category] || DEMAND_CATEGORY_ICONS.default;
                 const respCount = d.responses ? d.responses.length : 0;
                 return (
                   <div className="demand-card" key={d.id}>

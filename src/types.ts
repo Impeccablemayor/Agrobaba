@@ -58,7 +58,7 @@ export interface Product {
   image: string | null;
   sellerId: string;
   sellerName: string;
-  sellerRole: Role | 'seed';
+  sellerRole: Role | 'seed' | string;
   verified: boolean;
   rating: number;
   reviews: number;

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMySales, updateOrderStatus } from '../../lib/orders';
 import { formatDate, formatPrice } from '../../lib/format';
+
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order, OrderStatus } from '../../types';
 
 type Filter = 'all' | 'unpaid' | 'paid' | 'processing';
@@ -10,7 +12,7 @@ type Filter = 'all' | 'unpaid' | 'paid' | 'processing';
 export default function MySalesPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
-  const [, setTick] = useState(0);
+
   const [sales, setSales] = useState<Awaited<ReturnType<typeof getMySales>>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,9 +83,11 @@ export default function MySalesPage() {
   else if (filter === 'paid') filtered = sales.filter((o) => o.paid);
   else if (filter === 'processing') filtered = sales.filter((o) => o.paid && o.status !== 'delivered');
 
-  function handleStatusChange(orderId: string, status: OrderStatus) {
-    updateOrderStatus(orderId, status);
-    setTick((t) => t + 1);
+  async function handleStatusChange(orderId: string, status: OrderStatus) {
+    const ok = await updateOrderStatus(orderId, status);
+    if (ok) {
+      setSales((prev) => prev.map((o) => o.id === orderId ? { ...o, status } : o));
+    }
   }
 
   return (
@@ -103,10 +107,7 @@ export default function MySalesPage() {
         </div>
 
         {loading ? (
-          <div className="empty-cart" style={{ marginBottom: 28 }}>
-            <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-            <p>Loading your sales…</p>
-          </div>
+          <PageLoadingSpinner message="Loading your sales…" />
         ) : (
           <>
           <div className="stats-grid" style={{ marginBottom: 28 }}>

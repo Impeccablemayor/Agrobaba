@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyOrders } from '../../lib/orders';
 import { formatDate, formatPrice } from '../../lib/format';
+
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order } from '../../types';
 
 type Filter = 'all' | 'unpaid' | 'paid' | 'delivered';
@@ -71,10 +73,7 @@ export default function MyOrdersPage() {
         </div>
 
         {loading ? (
-          <div className="empty-cart" style={{ marginBottom: 28 }}>
-            <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-            <p>Loading your orders…</p>
-          </div>
+          <PageLoadingSpinner message="Loading your orders…" />
         ) : (
           <>
           <div className="stats-grid" style={{ marginBottom: 28 }}>

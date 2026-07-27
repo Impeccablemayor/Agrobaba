@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getOrderById } from '../../lib/orders';
 import { formatPrice } from '../../lib/format';
+import { BANK_DETAILS } from '../../lib/constants';
+import { Breadcrumb } from '../../components/Breadcrumb';
 
 export default function PayOfflinePage() {
   const [searchParams] = useSearchParams();
@@ -12,7 +14,7 @@ export default function PayOfflinePage() {
   const total = order ? order.total : 0;
 
   function handleCopy() {
-    const num = '9901234567';
+    const num = BANK_DETAILS.accountNumber;
     const done = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
@@ -27,13 +29,7 @@ export default function PayOfflinePage() {
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/cart">Cart</Link></li>
-            <li className="breadcrumb-item active">Payment</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Cart', href: '/cart' }, { label: 'Payment' }]} />
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Complete Your Payment</h1>
@@ -56,16 +52,16 @@ export default function PayOfflinePage() {
               <div>
                 <div className="bank-row">
                   <span className="k">Bank Name</span>
-                  <span className="v">Providus Bank</span>
+                  <span className="v">{BANK_DETAILS.bankName}</span>
                 </div>
                 <div className="bank-row">
                   <span className="k">Account Name</span>
-                  <span className="v">Agrobaba Escrow Ltd</span>
+                  <span className="v">{BANK_DETAILS.accountName}</span>
                 </div>
                 <div className="bank-row">
                   <span className="k">Account Number</span>
                   <span className="v">
-                    <span>9901234567</span>
+                    <span>{BANK_DETAILS.accountNumber}</span>
                     <button className="copy-btn" onClick={handleCopy}>
                       {copied ? <><i className="fa-solid fa-check"></i> Copied</> : <><i className="fa-regular fa-copy"></i> Copy</>}
                     </button>

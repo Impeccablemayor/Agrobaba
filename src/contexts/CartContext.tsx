@@ -13,7 +13,6 @@ interface CartContextValue {
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
-  refresh: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -55,7 +54,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, count, total, addToCart, removeFromCart, updateQuantity, clearCart, refresh }}>
+    <CartContext.Provider value={{ cart, count, total, addToCart, removeFromCart, updateQuantity, clearCart }}>
       {children}
     </CartContext.Provider>
   );

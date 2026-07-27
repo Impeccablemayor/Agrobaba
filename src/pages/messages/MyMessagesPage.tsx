@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getMyConversations } from '../../lib/messages';
 import { timeAgo } from '../../lib/format';
 import type { Conversation } from '../../types';
+import { Breadcrumb } from '../../components/Breadcrumb';
 
 export default function MyMessagesPage() {
   const navigate = useNavigate();
@@ -24,13 +25,7 @@ export default function MyMessagesPage() {
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-            <li className="breadcrumb-item active">Messages</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'My Account', href: '/account' }, { label: 'Messages' }]} />
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Messages</h1>

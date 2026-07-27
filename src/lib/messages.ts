@@ -113,7 +113,7 @@ export async function markAsRead(partnerId: string): Promise<void> {
   try {
     await api.put(`/api/messages/read/${partnerId}`);
   } catch {
-    // best-effort; a failed read-receipt shouldn't block viewing the conversation
+    console.warn('Failed to mark messages as read');
   }
 }
 

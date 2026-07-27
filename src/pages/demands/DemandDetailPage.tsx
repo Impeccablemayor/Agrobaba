@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getDemandById, respondToDemand } from '../../lib/demands';
 import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
+import { Breadcrumb } from '../../components/Breadcrumb';
 
 export default function DemandDetailPage() {
   const { id } = useParams();
@@ -58,26 +59,25 @@ export default function DemandDetailPage() {
     );
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!message) return;
-
-    respondToDemand(demand!.id, { message, price });
-    setPrice('');
-    setMessage('');
-    navigate('/messages');
+    const ok = await respondToDemand(demand!.id, { message, price });
+    if (ok) {
+      setPrice('');
+      setMessage('');
+      navigate('/messages');
+    }
   }
 
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/demands">Demand Board</Link></li>
-            <li className="breadcrumb-item active">Demand Details</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[
+          { label: 'Home', href: '/' },
+          { label: 'Demand Board', href: '/demands' },
+          { label: 'Demand Details' },
+        ]} />
 
         <div className="row g-4">
           <div className="col-lg-8">

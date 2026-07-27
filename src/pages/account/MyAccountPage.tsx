@@ -9,6 +9,7 @@ import { getCartCount } from '../../lib/cart';
 import { getMyVerificationStatus } from '../../lib/verification';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
 import type { Demand, Order, Product, Role, Conversation } from '../../types';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 interface MenuLink { href: string; icon: string; label: string; active?: boolean; danger?: boolean; }
 
@@ -182,10 +183,7 @@ export default function MyAccountPage() {
           <div className="menu-header"><i className="fa-solid fa-circle-user"></i> My Account</div>
         </div>
         <div id="account-summary">
-          <div className="empty-cart">
-            <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-            <p>Loading your account overview…</p>
-          </div>
+          <PageLoadingSpinner message="Loading your account overview…" />
         </div>
       </div>
     );

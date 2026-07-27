@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice, timeAgo } from '../../lib/format';
+import { Breadcrumb } from '../../components/Breadcrumb';
 
 export default function ServiceDetailPage() {
   const { id } = useParams();
@@ -68,11 +69,13 @@ export default function ServiceDetailPage() {
 
   function handleBook(e: FormEvent) {
     e.preventDefault();
-    void date;
-    void bookLocation;
-    void bookMessage;
-    addToCart(product!, 1, 'Booking');
+    addToCart(product!, 1, `Booking: ${date} @ ${bookLocation || 'TBD'}`);
     showToast('Booking request added to cart!', 'success');
+    setDate(() => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.toISOString().split('T')[0];
+    });
     setBookLocation('');
     setBookMessage('');
   }
@@ -87,7 +90,13 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    <div className="service-detail-layout">
+    <>
+      <Breadcrumb items={[
+        { label: 'Home', href: '/' },
+        { label: 'Shop', href: '/shop' },
+        { label: 'Service Details' },
+      ]} />
+      <div className="service-detail-layout">
       <div className="service-detail-main">
         <div className="sd-header">
           <div className="sd-category">
@@ -197,5 +206,6 @@ export default function ServiceDetailPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

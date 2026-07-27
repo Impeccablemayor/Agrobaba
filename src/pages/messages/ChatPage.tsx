@@ -27,7 +27,11 @@ export default function ChatPage() {
     async function loadConversation() {
       const conversation = await getConversation(partnerId!);
       if (!active) return;
-      setMessages((prev) => (prev.length === conversation.length ? prev : conversation));
+      setMessages((prev) => {
+        const lastId = conversation.length > 0 ? conversation[conversation.length - 1].id : null;
+        const prevLastId = prev.length > 0 ? prev[prev.length - 1].id : null;
+        return lastId === prevLastId && prev.length === conversation.length ? prev : conversation;
+      });
       await markAsRead(partnerId!);
       await refreshUnread();
     }

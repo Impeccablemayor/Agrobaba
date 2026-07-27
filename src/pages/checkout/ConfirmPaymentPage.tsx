@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmPayment, getOrderById } from '../../lib/orders';
+import { showToast } from '../../lib/toastBus';
 
 export default function ConfirmPaymentPage() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,8 @@ export default function ConfirmPaymentPage() {
     });
     if (success) {
       navigate('/account/my-orders');
+    } else {
+      showToast('Payment confirmation failed. Please check your order ID and try again.', 'error');
     }
   }
 

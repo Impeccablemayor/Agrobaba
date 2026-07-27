@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { deleteProduct, getMyProducts } from '../../lib/products';
 import { formatPrice } from '../../lib/format';
+import { CATEGORY_ICONS } from '../../lib/constants';
+import { Breadcrumb } from '../../components/Breadcrumb';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Role } from '../../types';
 
 const LABELS: Record<Role, { title: string; sub: string; add: string; crumb: string }> = {
@@ -13,18 +16,10 @@ const LABELS: Record<Role, { title: string; sub: string; add: string; crumb: str
   admin: { title: 'My Listings', sub: 'Admin accounts do not have listings.', add: 'Post New Listing', crumb: 'My Listings' },
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Vegetables: 'fa-apple-whole', Grains: 'fa-wheat-awn', Tubers: 'fa-leaf',
-  Fish: 'fa-fish', Poultry: 'fa-egg', Fertilizers: 'fa-flask',
-  Pesticides: 'fa-spray-can-sparkles', Irrigation: 'fa-droplet',
-  'Animal Feed': 'fa-bone', 'Equipment Hire': 'fa-tractor',
-  Veterinary: 'fa-stethoscope', Consultancy: 'fa-user-tie', default: 'fa-box',
-};
-
 export default function MyListingsPage() {
   const { user } = useAuth();
   const [status, setStatus] = useState<'all' | 'active' | 'discount'>('all');
-  const [, setTick] = useState(0);
+
   const [products, setProducts] = useState<Awaited<ReturnType<typeof getMyProducts>>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,13 +47,7 @@ export default function MyListingsPage() {
     return (
       <div className="section">
         <div className="container">
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb">
-              <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-              <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-              <li className="breadcrumb-item active">{l.crumb}</li>
-            </ol>
-          </nav>
+          <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'My Account', href: '/account' }, { label: l.crumb }]} />
           <div className="empty-cart">
             <i className="fa-solid fa-box-open"></i>
             <p>As a buyer, you post demands instead of listings.</p>
@@ -87,23 +76,17 @@ export default function MyListingsPage() {
   if (status === 'active') filteredProducts = filteredProducts.filter((p) => p.status === 'active');
   else if (status === 'discount') filteredProducts = filteredProducts.filter((p) => p.discount > 0);
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (confirm('Are you sure you want to delete this listing? This cannot be undone.')) {
-      deleteProduct(id);
-      setTick((t) => t + 1);
+      const ok = await deleteProduct(id);
+      if (ok) setProducts((prev) => prev.filter((p) => p.id !== id));
     }
   }
 
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-            <li className="breadcrumb-item active">{l.crumb}</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'My Account', href: '/account' }, { label: l.crumb }]} />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -116,10 +99,7 @@ export default function MyListingsPage() {
         </div>
 
         {loading ? (
-          <div className="empty-cart" style={{ marginBottom: 28 }}>
-            <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-            <p>Loading your listings…</p>
-          </div>
+          <PageLoadingSpinner message="Loading your listings…" />
         ) : (
           <>
           <div className="stats-grid" style={{ marginBottom: 28 }}>

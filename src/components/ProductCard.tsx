@@ -1,25 +1,11 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, starString } from '../lib/format';
 import { useCart } from '../contexts/CartContext';
+import { CATEGORY_ICONS } from '../lib/constants';
 import type { Product } from '../types';
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Vegetables: 'fa-apple-whole',
-  Grains: 'fa-wheat-awn',
-  Tubers: 'fa-leaf',
-  Fish: 'fa-fish',
-  Poultry: 'fa-egg',
-  Fertilizers: 'fa-flask',
-  Pesticides: 'fa-spray-can-sparkles',
-  Irrigation: 'fa-droplet',
-  'Animal Feed': 'fa-bone',
-  'Equipment Hire': 'fa-tractor',
-  Veterinary: 'fa-stethoscope',
-  Consultancy: 'fa-user-tie',
-  default: 'fa-box',
-};
-
-export function ProductCard({ product }: { product: Product }) {
+export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const icon = CATEGORY_ICONS[product.category] || CATEGORY_ICONS.default;
@@ -75,4 +61,4 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
     </div>
   );
-}
+});

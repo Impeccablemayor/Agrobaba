@@ -27,12 +27,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     data = text;
   }
 
+  function parseJsonResponse<T>(data: unknown): T {
+  if (data !== null && typeof data === 'object') return data as T;
+  if (Array.isArray(data)) return data as T;
+  return data as T;
+}
+
   if (!response.ok) {
-    const message = (data as ApiErrorShape)?.message || (data as ApiErrorShape)?.error || 'Request failed';
+    const errData = data as ApiErrorShape;
+const message = (typeof errData === 'object' && errData !== null)
+  ? (errData.message || errData.error || 'Request failed')
+  : 'Request failed';
     throw new Error(message);
   }
 
-  return data as T;
+  return parseJsonResponse<T>(data);
 }
 
 export const api = {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getProducts } from '../../lib/products';
 import { ProductCard } from '../../components/ProductCard';
@@ -42,6 +42,13 @@ export default function ShopPage() {
   const [search, setSearch] = useState(urlSearch);
   const [sort, setSort] = useState('newest');
   const [products, setProducts] = useState<Product[]>([]);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function handleSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(value), 300);
+  }
 
   useEffect(() => {
     void (async () => {
@@ -111,7 +118,7 @@ export default function ShopPage() {
             type="text"
             placeholder="🔍 Search by name, category, location, seller..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
 

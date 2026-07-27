@@ -7,6 +7,8 @@ import { showToast } from '../../lib/toastBus';
 import { formatPrice, starString } from '../../lib/format';
 import { ProductCard } from '../../components/ProductCard';
 import type { Product } from '../../types';
+import { Breadcrumb } from '../../components/Breadcrumb';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 const TYPE_LABELS: Record<string, string> = { produce: 'Fresh Produce', product: 'Agro Input', service: 'Service' };
 
@@ -51,14 +53,7 @@ export default function ProductDetailPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="section"><div className="container">
-        <div className="empty-cart">
-          <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
-          <p>Loading product details…</p>
-        </div>
-      </div></div>
-    );
+    return <PageLoadingSpinner message="Loading product details…" />;
   }
 
   if (!product) {
@@ -92,13 +87,7 @@ export default function ProductDetailPage() {
   return (
     <div className="section">
       <div className="container">
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/shop">Shop</Link></li>
-            <li className="breadcrumb-item active">{product.name.length > 40 ? product.name.substring(0, 40) + '...' : product.name}</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: product.name.length > 40 ? product.name.substring(0, 40) + '...' : product.name }]} />
 
         <div className="product-detail-layout">
           <div className="product-detail-images">

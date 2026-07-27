@@ -1,32 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCurrentUser } from '../../lib/auth';
 import { showToast } from '../../lib/toastBus';
-import type { RegisterInput } from '../../lib/auth';
+import { QUICK_LOGIN_USERS } from '../../lib/constants';
 
 interface LocationState {
   from?: { pathname: string; search: string };
 }
-
-const QUICK_LOGIN_USERS: Record<string, RegisterInput> = {
-  farmer: {
-    name: 'John Oluwaseun', email: 'farmer@agrobaba.test', password: 'test1234',
-    role: 'farmer', city: 'Kaduna', country: 'Nigeria', contact: '+2348012345678', address: 'Farm Road, Kaduna State',
-  },
-  buyer: {
-    name: 'Grace Okafor', email: 'buyer@agrobaba.test', password: 'test1234',
-    role: 'buyer', city: 'Lagos', country: 'Nigeria', contact: '+2348098765432', address: 'Victoria Island, Lagos',
-  },
-  'agro-dealer': {
-    name: 'Ahmed Hassan', email: 'dealer@agrobaba.test', password: 'test1234',
-    role: 'agro-dealer', city: 'Kano', country: 'Nigeria', contact: '+2348055544433', address: 'Sabon Gari, Kano',
-  },
-  'service-provider': {
-    name: 'Dr. Adaobi Nwachukwu', email: 'service@agrobaba.test', password: 'test1234',
-    role: 'service-provider', city: 'Lagos', country: 'Nigeria', contact: '+2348011122233', address: 'Lekki, Lagos',
-  },
-};
 
 export default function LoginPage() {
   const { login, register, logout } = useAuth();
@@ -74,7 +55,7 @@ export default function LoginPage() {
     <div className="container" style={{ padding: '40px 24px' }}>
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
-          <li className="breadcrumb-item"><RouterLink to="/">Home</RouterLink></li>
+          <li className="breadcrumb-item"><Link to="/">Home</Link></li>
           <li className="breadcrumb-item active">Login</li>
         </ol>
       </nav>

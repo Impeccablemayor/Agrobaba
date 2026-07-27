@@ -175,7 +175,10 @@ export function confirmPayment(orderId: string, paymentData: PaymentInput): bool
 export function updateOrderStatus(orderId: string, status: OrderStatus): boolean {
   const orders = getStore<Order>(KEYS.orders);
   const idx = orders.findIndex((o) => o.id === orderId);
-  if (idx === -1) return false;
+  if (idx === -1) {
+    showToast('Order not found.', 'error');
+    return false;
+  }
 
   orders[idx].status = status;
   orders[idx].updatedAt = new Date().toISOString();

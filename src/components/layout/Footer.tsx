@@ -12,10 +12,10 @@ export function Footer() {
             </div>
             <p>Connecting verified farmers, buyers, agro-dealers and service providers across Nigeria and Africa. Every deal escrow protected.</p>
             <div className="footer-socials">
-              <a href="#" title="Facebook"><i className="fa-brands fa-facebook-f"></i></a>
-              <a href="#" title="Twitter"><i className="fa-brands fa-twitter"></i></a>
-              <a href="#" title="Instagram"><i className="fa-brands fa-instagram"></i></a>
-              <a href="#" title="WhatsApp"><i className="fa-brands fa-whatsapp"></i></a>
+              <a href="https://facebook.com/agrobaba" title="Facebook"><i className="fa-brands fa-facebook-f"></i></a>
+              <a href="https://twitter.com/agrobaba" title="Twitter"><i className="fa-brands fa-twitter"></i></a>
+              <a href="https://instagram.com/agrobaba" title="Instagram"><i className="fa-brands fa-instagram"></i></a>
+              <a href="https://wa.me/2347041512742" title="WhatsApp"><i className="fa-brands fa-whatsapp"></i></a>
             </div>
           </div>
           <div className="footer-col">
@@ -50,7 +50,7 @@ export function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2025 Agrobaba. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Agrobaba. All rights reserved.</p>
           <p>Built for African farmers 🌱</p>
         </div>
       </div>
