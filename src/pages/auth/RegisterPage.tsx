@@ -43,12 +43,6 @@ export default function RegisterPage() {
 
   return (
     <div className="container" style={{ padding: '40px 24px' }}>
-      <nav aria-label="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-          <li className="breadcrumb-item active">Register</li>
-        </ol>
-      </nav>
 
       <div className="auth-wrapper">
         <div className="auth-panel">

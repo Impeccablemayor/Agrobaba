@@ -35,6 +35,7 @@ export default function LoginPage() {
   }
 
   async function quickLogin(role: string) {
+    if (!QUICK_LOGIN_USERS) return;
     const data = QUICK_LOGIN_USERS[role];
     if (!data) return;
 
@@ -53,12 +54,12 @@ export default function LoginPage() {
 
   return (
     <div className="container" style={{ padding: '40px 24px' }}>
-      <nav aria-label="breadcrumb">
+      {/* <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item"><Link to="/">Home</Link></li>
           <li className="breadcrumb-item active">Login</li>
         </ol>
-      </nav>
+      </nav> */}
 
       <div className="auth-wrapper">
         <div className="auth-panel">
@@ -130,28 +131,30 @@ export default function LoginPage() {
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
           </div>
 
-          <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-              <i className="fa-solid fa-flask"></i> Quick Test Login
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.5 }}>
-              Don't have an account yet? Use a test account to explore the platform.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button onClick={() => quickLogin('farmer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                <i className="fa-solid fa-tractor" style={{ color: 'var(--primary)' }}></i> Login as Farmer
-              </button>
-              <button onClick={() => quickLogin('buyer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                <i className="fa-solid fa-basket-shopping" style={{ color: 'var(--accent)' }}></i> Login as Buyer
-              </button>
-              <button onClick={() => quickLogin('agro-dealer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                <i className="fa-solid fa-store" style={{ color: 'var(--primary)' }}></i> Login as Agro-Dealer
-              </button>
-              <button onClick={() => quickLogin('service-provider')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                <i className="fa-solid fa-stethoscope" style={{ color: 'var(--primary)' }}></i> Login as Service Provider
-              </button>
+          {QUICK_LOGIN_USERS && (
+            <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <i className="fa-solid fa-flask"></i> Quick Test Login
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.5 }}>
+                Don't have an account yet? Use a test account to explore the platform.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={() => quickLogin('farmer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                  <i className="fa-solid fa-tractor" style={{ color: 'var(--primary)' }}></i> Login as Farmer
+                </button>
+                <button onClick={() => quickLogin('buyer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                  <i className="fa-solid fa-basket-shopping" style={{ color: 'var(--accent)' }}></i> Login as Buyer
+                </button>
+                <button onClick={() => quickLogin('agro-dealer')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                  <i className="fa-solid fa-store" style={{ color: 'var(--primary)' }}></i> Login as Agro-Dealer
+                </button>
+                <button onClick={() => quickLogin('service-provider')} className="btn-outline btn-sm btn-inline" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                  <i className="fa-solid fa-stethoscope" style={{ color: 'var(--primary)' }}></i> Login as Service Provider
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
