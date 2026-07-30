@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProductById } from '../../lib/products';
+import { createBooking } from '../../lib/bookings';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { Breadcrumb } from '../../components/Breadcrumb';
@@ -11,7 +11,7 @@ export default function ServiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const [submitting, setSubmitting] = useState(false);
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -67,17 +67,20 @@ export default function ServiceDetailPage() {
     );
   }
 
-  function handleBook(e: FormEvent) {
+  async function handleBook(e: FormEvent) {
     e.preventDefault();
-    addToCart(product!, 1, `Booking: ${date} @ ${bookLocation || 'TBD'}`);
-    showToast('Booking request added to cart!', 'success');
-    setDate(() => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      return tomorrow.toISOString().split('T')[0];
+    if (submitting) return;
+    setSubmitting(true);
+    const booking = await createBooking({
+      serviceId: product!.id,
+      scheduledDate: date,
+      serviceLocation: bookLocation,
+      customerNotes: bookMessage,
     });
-    setBookLocation('');
-    setBookMessage('');
+    setSubmitting(false);
+    if (booking) {
+      navigate(`/messages/${product!.sellerId}?partnerName=${encodeURIComponent(product!.sellerName)}&bookingId=${booking.id}`);
+    }
   }
 
   function handleMessageProvider() {
@@ -188,8 +191,8 @@ export default function ServiceDetailPage() {
                   value={bookMessage} onChange={(e) => setBookMessage(e.target.value)}
                 />
               </div>
-              <button type="submit" className="btn-secondary btn-inline w-100">
-                <i className="fa-solid fa-paper-plane"></i> Request Booking
+              <button type="submit" className="btn-secondary btn-inline w-100" disabled={submitting}>
+                <i className="fa-solid fa-paper-plane"></i> {submitting ? 'Sending Request…' : 'Request Booking'}
               </button>
             </form>
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12, textAlign: 'center' }}>

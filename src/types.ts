@@ -112,6 +112,29 @@ export interface CartItem {
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed';
 
+export type BookingStatus = 'requested' | 'accepted' | 'declined' | 'paid' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface ServiceBooking {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  providerId: string;
+  providerName: string;
+  customerId: string;
+  customerName: string;
+  scheduledDate: string;
+  serviceLocation: string | null;
+  customerNotes: string | null;
+  quotedAmount: number;
+  status: BookingStatus;
+  declineReason: string | null;
+  paymentMode: string | null;
+  transactionRef: string | null;
+  paymentDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Order {
   id: string;
   invoiceNumber: string;

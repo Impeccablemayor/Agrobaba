@@ -7,8 +7,9 @@ import { getMyDemands } from '../../lib/demands';
 import { getMyConversations } from '../../lib/messages';
 import { getCartCount } from '../../lib/cart';
 import { getMyVerificationStatus } from '../../lib/verification';
+import { getMyProviderBookings } from '../../lib/bookings';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
-import type { Demand, Order, Product, Role, Conversation } from '../../types';
+import type { Demand, Order, Product, Role, Conversation, ServiceBooking } from '../../types';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 interface MenuLink { href: string; icon: string; label: string; active?: boolean; danger?: boolean; }
@@ -27,6 +28,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
@@ -37,6 +39,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
@@ -45,8 +48,8 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
   'service-provider': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Service' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Services' },
-    { href: '/account/my-orders', icon: 'fa-calendar-check', label: 'My Bookings' },
-    { href: '/account/my-sales', icon: 'fa-coins', label: 'My Earnings' },
+    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
@@ -56,6 +59,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-list', label: 'My Demands' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/cart', icon: 'fa-cart-shopping', label: 'My Cart' },
     { href: '/shop', icon: 'fa-store', label: 'Browse Shop' },
   ],
@@ -64,6 +68,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
@@ -94,7 +99,7 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Services', style: 'btn-outline' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands', style: 'btn-outline' },
     { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-outline' },
-    { href: '/account/my-orders', icon: 'fa-calendar-check', label: 'My Bookings', style: 'btn-outline' },
+    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings', style: 'btn-outline' },
   ],
   buyer: [
     { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-primary' },
@@ -119,6 +124,7 @@ export default function MyAccountPage() {
   const [mySales, setMySales] = useState<Order[]>([]);
   const [myDemands, setMyDemands] = useState<Demand[]>([]);
   const [myConvs, setMyConvs] = useState<Conversation[]>([]);
+  const [myBookings, setMyBookings] = useState<ServiceBooking[]>([]);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -128,13 +134,14 @@ export default function MyAccountPage() {
     async function loadData() {
       if (!user) return;
       setLoading(true);
-      const [products, orders, sales, demands, conversations, verification] = await Promise.all([
+      const [products, orders, sales, demands, conversations, verification, bookings] = await Promise.all([
         getMyProducts(),
         getMyOrders(),
         getMySales(),
         getMyDemands(),
         getMyConversations(),
         getMyVerificationStatus(),
+        user.role === 'service-provider' ? getMyProviderBookings() : Promise.resolve([]),
       ]);
 
       if (!active) return;
@@ -144,6 +151,7 @@ export default function MyAccountPage() {
       setMyDemands(demands);
       setMyConvs(conversations);
       setVerified(verification?.verified ?? user.verified);
+      setMyBookings(bookings);
       setLoading(false);
     }
 
@@ -153,9 +161,9 @@ export default function MyAccountPage() {
 
   if (!user) return null;
   const unread = myConvs.reduce((s, c) => s + c.unread, 0);
-  const totalRevenue = mySales
-    .filter((o) => o.paid)
-    .reduce((s, o) => s + o.items.filter((i) => i.sellerId === user.id).reduce((ss, i) => ss + i.price * i.quantity, 0), 0);
+  const bookingRevenue = myBookings
+    .filter((b) => ['paid', 'in_progress', 'completed'].includes(b.status))
+    .reduce((s, b) => s + b.quotedAmount, 0);
 
   const menuLinks = [...ROLE_LINKS[user.role], ...COMMON_LINKS(unread)];
 
@@ -174,9 +182,9 @@ export default function MyAccountPage() {
     ],
     'service-provider': [
       { icon: 'fa-list', label: 'Services', value: myProducts.length, color: 'var(--primary)' },
-      { icon: 'fa-calendar-check', label: 'Bookings', value: mySales.length, color: 'var(--accent)' },
+      { icon: 'fa-calendar-check', label: 'Bookings', value: myBookings.length, color: 'var(--accent)' },
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
-      { icon: 'fa-naira-sign', label: 'Revenue', value: formatPrice(totalRevenue), color: 'var(--primary)' },
+      { icon: 'fa-naira-sign', label: 'Revenue', value: formatPrice(bookingRevenue), color: 'var(--primary)' },
     ],
     buyer: [
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--primary)' },

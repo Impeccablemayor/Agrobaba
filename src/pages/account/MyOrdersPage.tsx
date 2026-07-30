@@ -34,7 +34,6 @@ export default function MyOrdersPage() {
   }, [user]);
 
   if (!user) return null;
-  const isServiceProvider = user.role === 'service-provider';
 
   const paid = orders.filter((o) => o.paid).length;
   const unpaid = orders.filter((o) => !o.paid).length;
@@ -59,17 +58,13 @@ export default function MyOrdersPage() {
           <ol className="breadcrumb">
             <li className="breadcrumb-item"><Link to="/">Home</Link></li>
             <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-            <li className="breadcrumb-item active">{isServiceProvider ? 'My Bookings' : 'My Orders'}</li>
+            <li className="breadcrumb-item active">My Orders</li>
           </ol>
         </nav>
 
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>
-            {isServiceProvider ? 'My Bookings' : 'My Orders'}
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-            {isServiceProvider ? 'Track services you have booked from others.' : "Track all orders you've placed and their delivery status."}
-          </p>
+          <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>My Orders</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>Track all orders you've placed and their delivery status.</p>
         </div>
 
         {loading ? (

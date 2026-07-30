@@ -10,10 +10,16 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
   const { addToCart } = useCart();
   const icon = CATEGORY_ICONS[product.category] || CATEGORY_ICONS.default;
 
-  const detailPath = product.type === 'service' ? `/shop/service/${product.id}` : `/shop/product/${product.id}`;
+  const isService = product.type === 'service';
+  const detailPath = isService ? `/shop/service/${product.id}` : `/shop/product/${product.id}`;
 
   function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (isService) {
+      // Booking a service needs a date/location/notes — there's no valid "quick add", so go to the real booking form.
+      navigate(detailPath);
+      return;
+    }
     addToCart(product, 1, 'Standard');
   }
 
@@ -29,9 +35,11 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             <span className="cat-label">{product.category}</span>
           </div>
         )}
-        <button className="quick-add" onClick={handleQuickAdd}>
-          <i className="fa-solid fa-cart-plus"></i>
-        </button>
+        {!isService && (
+          <button className="quick-add" onClick={handleQuickAdd}>
+            <i className="fa-solid fa-cart-plus"></i>
+          </button>
+        )}
       </div>
       <div className="card-body">
         <div className="card-stars">
