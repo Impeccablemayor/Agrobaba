@@ -1,6 +1,5 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import { KEYS, getStore } from './storage';
 import type { Product, ProductType } from '../types';
 
 export interface ProductFilters {
@@ -76,8 +75,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load products';
     showToast(message, 'error');
-    return getStore<Product>(KEYS.products)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [];
   }
 }
 

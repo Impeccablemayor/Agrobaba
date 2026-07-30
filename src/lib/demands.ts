@@ -1,6 +1,5 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import { KEYS, getStore } from './storage';
 import type { Demand } from '../types';
 
 export interface DemandFilters {
@@ -52,8 +51,7 @@ export async function getDemands(filters: DemandFilters = {}): Promise<Demand[]>
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load demands';
     showToast(message, 'error');
-    return getStore<Demand>(KEYS.demands)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [];
   }
 }
 

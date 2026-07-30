@@ -5,6 +5,24 @@ interface ApiErrorShape {
   error?: string;
 }
 
+const MAX_RETRIES = 2;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      // Only retry a genuine network failure (server unreachable) — never a real HTTP error response.
+      if (attempt >= MAX_RETRIES) throw error;
+      await sleep(300 * 2 ** attempt);
+    }
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('agrobaba_token');
   const headers = new Headers(init.headers || {});
@@ -14,7 +32,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const normalizedBase = `${API_BASE_URL}/`;
   const url = new URL(path.replace(/^\/+/, ''), normalizedBase);
 
-  const response = await fetch(url.toString(), {
+  const response = await fetchWithRetry(url.toString(), {
     ...init,
     headers,
   });
