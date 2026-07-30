@@ -126,8 +126,51 @@ export interface Order {
   paymentMode: string | null;
   paymentDate: string | null;
   transactionRef: string | null;
+  couponCode: string | null;
+  discountAmount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FlashSaleItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  category: string;
+  originalPrice: number;
+  salePrice: number;
+  discountPercent: number;
+}
+
+export interface FlashSale {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  items: FlashSaleItem[];
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface Message {

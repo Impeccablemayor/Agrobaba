@@ -60,6 +60,16 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/shop', icon: 'fa-store', label: 'Browse Shop' },
   ],
   admin: [
+    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Listing' },
+    { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
+    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
+    { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
+    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
+    { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
+    { href: '/admin/orders', icon: 'fa-receipt', label: 'Review Orders' },
+    { href: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales' },
+    { href: '/admin/coupons', icon: 'fa-tag', label: 'Coupons' },
     { href: '/admin/verifications', icon: 'fa-user-check', label: 'Review Verifications' },
   ],
 };
@@ -93,7 +103,12 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
     { href: '/cart', icon: 'fa-cart-shopping', label: 'View Cart', style: 'btn-outline' },
   ],
   admin: [
-    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Review Verifications', style: 'btn-primary' },
+    { href: '/account/post-listing', icon: 'fa-plus', label: 'Post Listing', style: 'btn-primary' },
+    { href: '/demands/new', icon: 'fa-pen', label: 'Post a Demand', style: 'btn-outline' },
+    { href: '/admin/orders', icon: 'fa-receipt', label: 'Review Orders', style: 'btn-outline' },
+    { href: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', style: 'btn-outline' },
+    { href: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', style: 'btn-outline' },
+    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Review Verifications', style: 'btn-outline' },
   ],
 };
 
@@ -170,6 +185,9 @@ export default function MyAccountPage() {
       { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
     ],
     admin: [
+      { icon: 'fa-list', label: 'My Listings', value: myProducts.length, color: 'var(--primary)' },
+      { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
+      { icon: 'fa-box', label: 'My Orders', value: myOrders.length, color: 'var(--accent)' },
       { icon: 'fa-user-check', label: 'Role', value: 'Administrator', color: 'var(--primary)' },
     ],
   };

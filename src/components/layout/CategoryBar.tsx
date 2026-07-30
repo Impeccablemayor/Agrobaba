@@ -47,7 +47,13 @@ const roleLinks: Record<Role, CatLink[]> = {
     { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
   ],
   admin: [
+    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Listing', match: (p) => p === '/account/post-listing' },
+    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand', match: (p) => p === '/demands/new' },
+    { href: '/admin/orders', icon: 'fa-receipt', label: 'Orders', match: (p) => p === '/admin/orders' },
+    { href: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', match: (p) => p === '/admin/flash-sales' },
+    { href: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', match: (p) => p === '/admin/coupons' },
     { href: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', match: (p) => p === '/admin/verifications' },
+    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
   ],
 };
 

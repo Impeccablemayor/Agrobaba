@@ -124,7 +124,13 @@ export default function DemandBoardPage() {
             </div>
           ) : (
             <div className="demand-grid">
-              {sortedDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
+              {sortedDemands.map((d) => (
+                <DemandCard
+                  key={d.id}
+                  demand={d}
+                  onDeleted={(id) => setDemands((prev) => prev.filter((x) => x.id !== id))}
+                />
+              ))}
             </div>
           )}
         </div>

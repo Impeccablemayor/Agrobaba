@@ -67,6 +67,21 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
     units: ['session', 'hour', 'day', 'acre', 'visit', 'project'],
     showSize: false,
   },
+  admin: {
+    type: 'product',
+    pageTitle: 'Post a Listing',
+    subtitle: 'Posted under the Agrobaba Official store — your admin account stays private, buyers won’t see it’s you.',
+    breadcrumb: 'Post Listing',
+    nameLabel: 'Listing Name',
+    namePlaceholder: 'e.g. NPK Fertilizer UREA 50kg — Premium Grade',
+    priceLabel: 'Price (₦)',
+    descLabel: 'Description',
+    descPlaceholder: 'Describe the listing — variety, specifications, usage, delivery options...',
+    submitLabel: 'Post Listing',
+    categories: ['Vegetables', 'Grains', 'Tubers', 'Fruits', 'Fish', 'Poultry', 'Livestock', 'Dairy', 'Fertilizers', 'Pesticides', 'Seeds', 'Animal Feed', 'Farm Equipment', 'Irrigation', 'Tools', 'Packaging', 'Veterinary', 'Consultancy', 'Equipment Hire', 'Logistics', 'Training', 'Soil Testing', 'Land Preparation', 'Storage', 'Other'],
+    units: ['bag', 'bottle', 'litre', 'kg', 'piece', 'unit', 'carton', 'set', 'tonne', 'crate', 'basket', 'bundle', 'session', 'hour', 'day', 'acre', 'visit', 'project'],
+    showSize: true,
+  },
 };
 
 export default function PostListingPage() {

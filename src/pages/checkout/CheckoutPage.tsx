@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { placeOrder } from '../../lib/orders';
+import { previewCoupon } from '../../lib/coupons';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice } from '../../lib/format';
+import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -18,6 +20,9 @@ export default function CheckoutPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [note, setNote] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
 
   useEffect(() => {
     if (cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
@@ -25,18 +30,35 @@ export default function CheckoutPage() {
 
   if (cart.length === 0 && !orderPlaced.current) return null;
 
+  const discountAmount = appliedCoupon
+    ? appliedCoupon.discountType === 'percent'
+      ? total * (appliedCoupon.discountValue / 100)
+      : Math.min(appliedCoupon.discountValue, total)
+    : 0;
+  const finalTotal = total - discountAmount;
+
+  async function handleApplyCoupon() {
+    if (!couponInput.trim()) return;
+    setCheckingCoupon(true);
+    const coupon = await previewCoupon(couponInput.trim());
+    setCheckingCoupon(false);
+    if (coupon) {
+      setAppliedCoupon(coupon);
+      showToast(`Coupon "${coupon.code}" applied!`, 'success');
+    }
+  }
+
   async function handlePlaceOrder() {
     if (!name.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in your name, phone number and delivery address.', 'error');
       return;
     }
     const addr = [address.trim(), city.trim(), state.trim()].filter(Boolean).join(', ');
-    const order = await placeOrder({ address: addr, phone: phone.trim() });
+    const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
       showToast('Order placed! Complete payment to confirm.', 'success');
       navigate(`/pay-offline?orderId=${encodeURIComponent(order.id)}`);
-      window.location.reload();
     }
   }
 
@@ -122,9 +144,36 @@ export default function CheckoutPage() {
                 <span>Delivery</span>
                 <span style={{ fontSize: 13 }}>Arranged with seller</span>
               </div>
+
+              {appliedCoupon ? (
+                <div className="summary-row" style={{ color: 'var(--primary)' }}>
+                  <span>
+                    <i className="fa-solid fa-tag"></i> {appliedCoupon.code}{' '}
+                    <button
+                      onClick={() => { setAppliedCoupon(null); setCouponInput(''); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
+                    >
+                      Remove
+                    </button>
+                  </span>
+                  <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
+                  <input
+                    type="text" placeholder="Coupon code" value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    style={{ flex: 1, border: '1.5px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 12 }}
+                  />
+                  <button onClick={handleApplyCoupon} disabled={checkingCoupon} className="btn-outline btn-sm btn-inline">
+                    {checkingCoupon ? 'Checking…' : 'Apply'}
+                  </button>
+                </div>
+              )}
+
               <div className="summary-row total">
                 <span>Total</span>
-                <span>{formatPrice(total)}</span>
+                <span>{formatPrice(finalTotal)}</span>
               </div>
 
               <button onClick={handlePlaceOrder} className="btn-primary btn-inline" style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}>

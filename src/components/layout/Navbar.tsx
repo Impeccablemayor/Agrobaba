@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useMessagesBadge } from '../../contexts/MessagesContext';
+import { NotificationBell } from './NotificationBell';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -66,6 +67,9 @@ export function Navbar() {
                   <span>Messages</span>
                   {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
                 </Link>
+              </li>
+              <li>
+                <NotificationBell />
               </li>
               <li>
                 <Link to="/cart" className="nav-icon-btn" title="Cart">

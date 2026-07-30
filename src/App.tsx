@@ -33,6 +33,9 @@ import MyOrdersPage from './pages/account/MyOrdersPage';
 import MySalesPage from './pages/account/MySalesPage';
 import VerifyAccountPage from './pages/account/VerifyAccountPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
+import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 
 function App() {
   return (
@@ -76,6 +79,9 @@ function App() {
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
 
         <Route path="admin/verifications" element={<ProtectedRoute><AdminVerificationsPage /></ProtectedRoute>} />
+        <Route path="admin/orders" element={<ProtectedRoute><AdminOrdersPage /></ProtectedRoute>} />
+        <Route path="admin/flash-sales" element={<ProtectedRoute><AdminFlashSalesPage /></ProtectedRoute>} />
+        <Route path="admin/coupons" element={<ProtectedRoute><AdminCouponsPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

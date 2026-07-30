@@ -2,62 +2,51 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '../lib/products';
 import { getDemands } from '../lib/demands';
+import { getActiveFlashSale } from '../lib/flashSales';
 import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
-import { KEYS } from '../lib/storage';
-import type { Demand, Product } from '../types';
+import { FlashSaleCard } from '../components/FlashSaleCard';
+import type { Demand, FlashSale, Product } from '../types';
 
-const SIX_HOURS = 6 * 60 * 60 * 1000;
-
-function useCountdown() {
+function useCountdown(endAt: string | null) {
   const [remaining, setRemaining] = useState(0);
   const endRef = useRef<number>(0);
 
   useEffect(() => {
-    let stored = Number(localStorage.getItem(KEYS.flashEnd));
-    if (!stored) {
-      stored = Date.now() + SIX_HOURS;
-      localStorage.setItem(KEYS.flashEnd, String(stored));
-    }
-    endRef.current = stored;
+    endRef.current = endAt ? new Date(endAt).getTime() : 0;
 
     function tick() {
-      let left = Math.max(0, endRef.current - Date.now());
-      if (left === 0) {
-        endRef.current = Date.now() + SIX_HOURS;
-        localStorage.setItem(KEYS.flashEnd, String(endRef.current));
-        left = SIX_HOURS;
-      }
-      setRemaining(left);
+      setRemaining(endRef.current ? Math.max(0, endRef.current - Date.now()) : 0);
     }
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [endAt]);
 
   const hours = String(Math.floor(remaining / (1000 * 60 * 60))).padStart(2, '0');
   const mins = String(Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
   const secs = String(Math.floor((remaining % (1000 * 60)) / 1000)).padStart(2, '0');
-  return { hours, mins, secs };
+  return { hours, mins, secs, expired: endAt !== null && remaining === 0 };
 }
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [heroQuery, setHeroQuery] = useState('');
-  const { hours, mins, secs } = useCountdown();
   const [products, setProducts] = useState<Product[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
+  const [flashSale, setFlashSale] = useState<FlashSale | null>(null);
+  const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
   useEffect(() => {
     void (async () => {
-      const [allProducts, allDemands] = await Promise.all([getProducts(), getDemands()]);
+      const [allProducts, allDemands, activeFlashSale] = await Promise.all([getProducts(), getDemands(), getActiveFlashSale()]);
       setProducts(allProducts);
       setDemands(allDemands);
+      setFlashSale(activeFlashSale);
     })();
   }, []);
 
-  const flashProducts = products.filter((p) => p.discount > 0).slice(0, 6);
   const inputsProducts = products.filter((p) => p.type === 'product').slice(0, 4);
   const serviceProducts = products.filter((p) => p.type === 'service').slice(0, 4);
   const featuredProducts = products.slice(0, 8);
@@ -118,24 +107,28 @@ export default function HomePage() {
       </div>
 
       {/* FLASH DEALS */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2>
-            <i className="fa-solid fa-fire" style={{ color: '#dc2626' }}></i>
-            Flash Deals
-            <span className="flash-badge">
-              <i className="fa-regular fa-clock"></i>
-              <span>{hours}</span>h : <span>{mins}</span>m : <span>{secs}</span>s
-            </span>
-          </h2>
-          <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        <div className="scroll-row">
-          {flashProducts.map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
-      </div>
+      {flashSale && !expired && flashSale.items.length > 0 && (
+        <>
+          <div className="section">
+            <div className="section-hdr">
+              <h2>
+                <i className="fa-solid fa-fire" style={{ color: '#dc2626' }}></i>
+                {flashSale.title}
+                <span className="flash-badge">
+                  <i className="fa-regular fa-clock"></i>
+                  <span>{hours}</span>h : <span>{mins}</span>m : <span>{secs}</span>s
+                </span>
+              </h2>
+              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
+            </div>
+            <div className="scroll-row">
+              {flashSale.items.map((item) => <FlashSaleCard key={item.id} item={item} />)}
+            </div>
+          </div>
 
-      <div className="divider"></div>
+          <div className="divider"></div>
+        </>
+      )}
 
       {/* FRESH PRODUCE */}
       <div className="section">

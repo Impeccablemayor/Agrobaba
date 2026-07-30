@@ -5,6 +5,7 @@ import './styles/style.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { MessagesProvider } from './contexts/MessagesContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { seedData } from './lib/seed';
 import App from './App.tsx';
@@ -18,7 +19,9 @@ createRoot(document.getElementById('root')!).render(
         <ToastProvider>
           <CartProvider>
             <MessagesProvider>
-              <App />
+              <NotificationsProvider>
+                <App />
+              </NotificationsProvider>
             </MessagesProvider>
           </CartProvider>
         </ToastProvider>
