@@ -8,10 +8,7 @@ import { MessagesProvider } from './contexts/MessagesContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { seedData } from './lib/seed';
 import App from './App.tsx';
-
-seedData();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,24 +1,26 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addDemand } from '../../lib/demands';
+import { getCategories, findCategory, hasChildren } from '../../lib/categories';
 import { showToast } from '../../lib/toastBus';
-
-const CATEGORIES = [
-  'Grains', 'Vegetables', 'Tubers', 'Fruits', 'Fish', 'Poultry', 'Livestock', 'Fertilizers',
-  'Pesticides', 'Seeds', 'Animal Feed', 'Farm Equipment', 'Equipment Hire', 'Irrigation',
-  'Veterinary', 'Consultancy', 'Logistics', 'Other',
-];
+import { CategoryPicker } from '../../components/CategoryPicker';
+import type { Category } from '../../types';
 
 export default function PostDemandPage() {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Grains');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [quantity, setQuantity] = useState('');
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,11 +28,23 @@ export default function PostDemandPage() {
       showToast('Please enter a valid budget.', 'error');
       return;
     }
+    if (!categoryId) {
+      showToast('Please select a category.', 'error');
+      return;
+    }
+    const selected = findCategory(categories, categoryId);
+    if (!selected || hasChildren(categories, categoryId)) {
+      showToast('Please pick a specific subcategory, not a broader category.', 'error');
+      return;
+    }
 
-    const result = await addDemand({ title, category, quantity, budget, location, deadline, description });
+    const result = await addDemand({
+      title, categoryId, requestedListingKind: selected.allowedListingKinds[0],
+      quantity, budget, location, deadline, description,
+    });
     if (result) {
       setTitle('');
-      setCategory('Grains');
+      setCategoryId(null);
       setQuantity('');
       setBudget('');
       setLocation(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
@@ -63,15 +77,9 @@ export default function PostDemandPage() {
             <input type="text" placeholder="e.g. 50 bags of dried maize for delivery to Lagos" required value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
+          <CategoryPicker value={categoryId} onChange={setCategoryId} />
+
           <div className="row g-3">
-            <div className="col-md-6">
-              <div className="form-group">
-                <label>Category <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <select required value={category} onChange={(e) => setCategory(e.target.value)}>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c === 'Fish' ? 'Fish & Aquaculture' : c === 'Veterinary' ? 'Veterinary Services' : c}</option>)}
-                </select>
-              </div>
-            </div>
             <div className="col-md-6">
               <div className="form-group">
                 <label>Quantity Needed</label>

@@ -1,5 +1,18 @@
 export type Role = 'farmer' | 'buyer' | 'agro-dealer' | 'service-provider' | 'admin';
 
+export type ListingKind = 'product_sale' | 'service_booking' | 'equipment_sale' | 'equipment_hire' | 'land_lease';
+
+export interface Category {
+  id: string;
+  code: string;
+  name: string;
+  parentId: string | null;
+  section: string;
+  level: 1 | 2 | 3;
+  allowedListingKinds: ListingKind[];
+  sortOrder: number;
+}
+
 export type VerificationStatus = 'unsubmitted' | 'pending' | 'approved' | 'rejected';
 
 export interface VerificationStatusInfo {
@@ -50,6 +63,9 @@ export interface Product {
   description: string;
   price: number;
   category: string;
+  categoryId: string | null;
+  categoryCode: string | null;
+  listingKind: ListingKind | null;
   type: ProductType;
   size: string;
   quantity: number;
@@ -84,6 +100,8 @@ export interface Demand {
   title: string;
   description: string;
   category: string;
+  categoryId: string | null;
+  categoryCode: string | null;
   quantity: string;
   budget: number;
   location: string;
