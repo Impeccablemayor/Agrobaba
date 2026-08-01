@@ -16,6 +16,8 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
     try {
       return await fetch(url, init);
     } catch (error) {
+      // An intentional abort (e.g. a newer search superseding this one) is not a failure - never retry it.
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
       // Only retry a genuine network failure (server unreachable) — never a real HTTP error response.
       if (attempt >= MAX_RETRIES) throw error;
       await sleep(300 * 2 ** attempt);
@@ -63,8 +65,8 @@ const message = (typeof errData === 'object' && errData !== null)
 }
 
 export const api = {
-  get<T>(path: string) {
-    return request<T>(path, { method: 'GET' });
+  get<T>(path: string, signal?: AbortSignal) {
+    return request<T>(path, { method: 'GET', signal });
   },
   post<T>(path: string, body?: unknown) {
     return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });

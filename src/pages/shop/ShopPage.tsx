@@ -1,70 +1,111 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getProducts } from '../../lib/products';
+import { getCategories, getSections, getChildren } from '../../lib/categories';
+import { CATEGORY_ICONS } from '../../lib/constants';
 import { ProductCard } from '../../components/ProductCard';
-import type { Product, ProductType } from '../../types';
+import { SearchSuggest } from '../../components/SearchSuggest';
+import { getSearchSuggestions, type Suggestion, type SuggestGroup } from '../../lib/search';
+import type { Category, Product } from '../../types';
 
-const TABS = [
-  { key: 'all', label: 'All Listings', icon: 'fa-border-all' },
-  { key: 'produce', label: 'Fresh Produce', icon: 'fa-wheat-awn' },
-  { key: 'inputs', label: 'Agro Inputs', icon: 'fa-flask' },
-  { key: 'equipment', label: 'Equipment', icon: 'fa-tractor' },
-  { key: 'services', label: 'Services', icon: 'fa-hand-holding-medical' },
-];
-
-const TYPE_MAP: Record<string, ProductType | 'all'> = {
-  all: 'all', produce: 'produce', inputs: 'product', equipment: 'product', services: 'service',
+const SECTION_ICONS: Record<string, string> = {
+  produce: 'fa-wheat-awn',
+  value_added: 'fa-jar',
+  livestock: 'fa-cow',
+  inputs: 'fa-flask',
+  equipment: 'fa-tractor',
+  services: 'fa-hand-holding-medical',
+  land: 'fa-map',
+  waste: 'fa-recycle',
+  uncategorized: 'fa-box',
 };
-const CATEGORY_MAP: Record<string, string> = { equipment: 'Equipment Hire' };
-
-const FILTER_PILLS = [
-  { key: 'all', label: 'All', icon: 'fa-border-all' },
-  { key: 'Vegetables', label: 'Vegetables', icon: 'fa-apple-whole' },
-  { key: 'Grains', label: 'Grains', icon: 'fa-wheat-awn' },
-  { key: 'Tubers', label: 'Tubers', icon: 'fa-leaf' },
-  { key: 'Fish', label: 'Fish', icon: 'fa-fish' },
-  { key: 'Poultry', label: 'Poultry', icon: 'fa-egg' },
-  { key: 'Fertilizers', label: 'Fertilizers', icon: 'fa-flask' },
-  { key: 'Pesticides', label: 'Pesticides', icon: 'fa-spray-can-sparkles' },
-  { key: 'Animal Feed', label: 'Animal Feed', icon: 'fa-bone' },
-  { key: 'Irrigation', label: 'Irrigation', icon: 'fa-droplet' },
-  { key: 'Veterinary', label: 'Veterinary', icon: 'fa-stethoscope' },
-  { key: 'Consultancy', label: 'Consultancy', icon: 'fa-user-tie' },
-];
 
 export default function ShopPage() {
-  const [searchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab') || 'all';
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
 
-  const [tab, setTab] = useState(urlTab);
-  const [category, setCategory] = useState('all');
-  const [search, setSearch] = useState(urlSearch);
+  const [sectionId, setSectionId] = useState('all');
+  const [categoryId, setCategoryId] = useState('all');
+  const [inputValue, setInputValue] = useState(urlSearch);
+  const [submittedQuery, setSubmittedQuery] = useState(urlSearch);
   const [sort, setSort] = useState('newest');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [noResultsHints, setNoResultsHints] = useState<SuggestGroup[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abortRef = useRef<AbortController | undefined>(undefined);
+
+  useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
+
+  // Picks up a search triggered from elsewhere (navbar/hero) while already on this page -
+  // useSearchParams doesn't remount the page, so the initial-state read above only fires once.
+  useEffect(() => {
+    if (urlSearch !== submittedQuery) {
+      setInputValue(urlSearch);
+      setSubmittedQuery(urlSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSearch]);
+
+  const sectionTabs = useMemo(() => [
+    { key: 'all', label: 'All Listings', icon: 'fa-border-all' },
+    ...getSections(categories).map((s) => ({ key: s.id, label: s.name, icon: SECTION_ICONS[s.section] || 'fa-box' })),
+  ], [categories]);
+
+  const filterPills = useMemo(() => {
+    const options = sectionId === 'all' ? [] : getChildren(categories, sectionId);
+    return [
+      { key: 'all', label: 'All', icon: 'fa-border-all' },
+      ...options.map((c) => ({ key: c.id, label: c.name, icon: CATEGORY_ICONS[c.name] || CATEGORY_ICONS.default })),
+    ];
+  }, [categories, sectionId]);
 
   function handleSearch(value: string) {
+    setInputValue(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setSearch(value), 300);
+    debounceRef.current = setTimeout(() => submitSearch(value), 300);
+  }
+
+  function submitSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setInputValue(value);
+    setSubmittedQuery(value);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set('search', value); else next.delete('search');
+      return next;
+    }, { replace: true });
+  }
+
+  function goToProduct(item: Suggestion) {
+    navigate(`/shop/product/${item.value}`);
   }
 
   useEffect(() => {
+    const activeId = categoryId !== 'all' ? categoryId : (sectionId !== 'all' ? sectionId : undefined);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsLoading(true);
     void (async () => {
-      const filters: { type?: ProductType | 'all'; category?: string; search?: string } = { search };
-      if (tab !== 'all') {
-        filters.type = TYPE_MAP[tab];
-        if (CATEGORY_MAP[tab]) filters.category = CATEGORY_MAP[tab];
+      const list = await getProducts({ categoryId: activeId, search: submittedQuery }, controller.signal);
+      if (!controller.signal.aborted) {
+        setProducts(list);
+        setIsLoading(false);
+        if (list.length === 0 && submittedQuery.trim()) {
+          const hints = await getSearchSuggestions(submittedQuery.trim(), 'products');
+          if (!controller.signal.aborted) setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
+        } else {
+          setNoResultsHints([]);
+        }
       }
-      if (category !== 'all') {
-        filters.category = category;
-        filters.type = 'all';
-      }
-      const list = await getProducts(filters);
-      setProducts(list);
     })();
-  }, [tab, category, search]);
+  }, [sectionId, categoryId, submittedQuery]);
 
   const sortedProducts = useMemo(() => {
     let list = [...products];
@@ -76,9 +117,9 @@ export default function ShopPage() {
   }, [products, sort]);
 
   function resetFilters() {
-    setTab('all');
-    setCategory('all');
-    setSearch('');
+    setSectionId('all');
+    setCategoryId('all');
+    submitSearch('');
     setSort('newest');
   }
 
@@ -102,37 +143,44 @@ export default function ShopPage() {
         </div>
 
         <div className="shop-tabs">
-          {TABS.map((t) => (
+          {sectionTabs.map((t) => (
             <button
               key={t.key}
-              className={`shop-tab ${tab === t.key ? 'active' : ''}`}
-              onClick={() => { setTab(t.key); setCategory('all'); }}
+              className={`shop-tab ${sectionId === t.key ? 'active' : ''}`}
+              onClick={() => { setSectionId(t.key); setCategoryId('all'); }}
             >
               <i className={`fa-solid ${t.icon}`}></i> {t.label}
             </button>
           ))}
         </div>
 
-        <div className="shop-search">
-          <input
-            type="text"
+        <div className="shop-search" style={{ position: 'relative', display: 'flex' }}>
+          <SearchSuggest
+            value={inputValue}
+            onChange={handleSearch}
+            onSubmit={submitSearch}
+            onSelectResult={goToProduct}
+            scope="products"
             placeholder="🔍 Search by name, category, location, seller..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
           />
+          {isLoading && (
+            <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: 14, color: 'var(--muted)' }}></i>
+          )}
         </div>
 
-        <div className="filter-pills">
-          {FILTER_PILLS.map((p) => (
-            <button
-              key={p.key}
-              className={`filter-pill ${category === p.key ? 'active' : ''}`}
-              onClick={() => { setCategory(p.key); if (p.key !== 'all') setTab('all'); }}
-            >
-              <i className={`fa-solid ${p.icon}`}></i> {p.label}
-            </button>
-          ))}
-        </div>
+        {sectionId !== 'all' && (
+          <div className="filter-pills">
+            {filterPills.map((p) => (
+              <button
+                key={p.key}
+                className={`filter-pill ${categoryId === p.key ? 'active' : ''}`}
+                onClick={() => setCategoryId(p.key)}
+              >
+                <i className={`fa-solid ${p.icon}`}></i> {p.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
@@ -158,6 +206,15 @@ export default function ShopPage() {
           <div className="empty-cart" style={{ gridColumn: '1/-1', margin: '24px 0' }}>
             <i className="fa-solid fa-store-slash"></i>
             <p>No listings found. Try a different search or category.</p>
+            {noResultsHints.some((g) => g.items.length > 0) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
+                {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
+                  <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
+                    <i className="fa-solid fa-magnifying-glass"></i> {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
               <i className="fa-solid fa-rotate"></i> Clear filters
             </button>

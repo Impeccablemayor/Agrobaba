@@ -6,6 +6,8 @@ import { getActiveFlashSale } from '../lib/flashSales';
 import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
+import { SearchSuggest } from '../components/SearchSuggest';
+import type { Suggestion } from '../lib/search';
 import type { Demand, FlashSale, Product } from '../types';
 
 function useCountdown(endAt: string | null) {
@@ -52,9 +54,14 @@ export default function HomePage() {
   const featuredProducts = products.slice(0, 8);
   const previewDemands = demands.slice(0, 4);
 
-  function doHeroSearch() {
-    if (!heroQuery.trim()) return;
-    navigate(`/shop?search=${encodeURIComponent(heroQuery.trim())}`);
+  function doHeroSearch(value: string = heroQuery) {
+    if (!value.trim()) return;
+    navigate(`/shop?search=${encodeURIComponent(value.trim())}`);
+  }
+
+  function goToProduct(item: Suggestion) {
+    setHeroQuery('');
+    navigate(`/shop/product/${item.value}`);
   }
 
   return (
@@ -74,14 +81,15 @@ export default function HomePage() {
             Verified farmers, buyers, agro-dealers and service providers — all in one place. Every deal escrow protected.
           </p>
           <div className="hero-search">
-            <input
-              type="text"
-              placeholder='Try "maize Kaduna", "farm consultant", "NPK fertilizer Lagos"'
+            <SearchSuggest
               value={heroQuery}
-              onChange={(e) => setHeroQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && doHeroSearch()}
+              onChange={setHeroQuery}
+              onSubmit={doHeroSearch}
+              onSelectResult={goToProduct}
+              scope="products"
+              placeholder='Try "maize Kaduna", "farm consultant", "NPK fertilizer Lagos"'
             />
-            <button onClick={doHeroSearch}>
+            <button onClick={() => doHeroSearch()}>
               <i className="fa-solid fa-magnifying-glass"></i> Search
             </button>
           </div>
@@ -90,7 +98,7 @@ export default function HomePage() {
             <Link to="/shop?search=tomatoes">Tomatoes</Link>
             <Link to="/shop?search=fertilizer">Fertilizer</Link>
             <Link to="/shop?search=maize">Maize</Link>
-            <Link to="/shop?tab=services">Vet Services</Link>
+            <Link to="/shop?search=veterinary">Vet Services</Link>
             <Link to="/shop?search=irrigation">Irrigation</Link>
             <Link to="/shop?search=cassava">Cassava</Link>
           </div>
