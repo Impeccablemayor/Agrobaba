@@ -8,6 +8,7 @@ import type { CartItem, Order, OrderStatus } from '../types';
 export interface DeliveryInput {
   address?: string;
   phone?: string;
+  couponCode?: string;
 }
 
 interface BackendOrderItem {
@@ -36,6 +37,8 @@ interface BackendOrderResponse {
   paymentMode: string | null;
   paymentDate: string | null;
   transactionRef: string | null;
+  couponCode: string | null;
+  discountAmount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +72,8 @@ function mapOrder(response: BackendOrderResponse): Order {
     paymentMode: response.paymentMode,
     paymentDate: response.paymentDate,
     transactionRef: response.transactionRef,
+    couponCode: response.couponCode,
+    discountAmount: response.discountAmount,
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
   };
@@ -92,6 +97,7 @@ export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Orde
       items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity, size: item.size })),
       address: deliveryData.address || user.address || '',
       phone: deliveryData.phone || user.contact || '',
+      couponCode: deliveryData.couponCode || null,
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);
@@ -142,47 +148,60 @@ export async function getMySales(): Promise<Order[]> {
   }
 }
 
-export function getOrderById(id: string): Order | null {
-  return getStore<Order>(KEYS.orders).find((o) => o.id === id || o.invoiceNumber === id) || null;
+export async function getAllOrdersAdmin(): Promise<Order[]> {
+  try {
+    const response = await api.get<BackendOrderResponse[]>('/api/admin/orders');
+    return (response || []).map(mapOrder).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load orders';
+    showToast(message, 'error');
+    return [];
+  }
+}
+
+export async function getOrderById(id: string): Promise<Order | null> {
+  try {
+    const response = await api.get<BackendOrderResponse>(`/api/orders/${id}`);
+    return mapOrder(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load order';
+    showToast(message, 'error');
+    return null;
+  }
 }
 
 export interface PaymentInput {
   paymentMode: string;
   paymentDate: string;
   transactionNumber: string;
+  amount: number;
 }
 
-export function confirmPayment(orderId: string, paymentData: PaymentInput): boolean {
-  const orders = getStore<Order>(KEYS.orders);
-  const idx = orders.findIndex((o) => o.id === orderId || o.invoiceNumber === orderId);
-  if (idx === -1) {
-    showToast('Order not found.', 'error');
+export async function confirmPayment(orderId: string, paymentData: PaymentInput): Promise<boolean> {
+  try {
+    await api.put(`/api/orders/${orderId}/confirm-payment`, {
+      paymentMode: paymentData.paymentMode,
+      paymentDate: paymentData.paymentDate,
+      transactionNumber: paymentData.transactionNumber,
+      amount: paymentData.amount,
+    });
+    showToast('Payment confirmed! Your order is being processed.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to confirm payment';
+    showToast(message, 'error');
     return false;
   }
-
-  orders[idx].paid = true;
-  orders[idx].status = 'confirmed';
-  orders[idx].paymentMode = paymentData.paymentMode;
-  orders[idx].paymentDate = paymentData.paymentDate;
-  orders[idx].transactionRef = paymentData.transactionNumber;
-  orders[idx].updatedAt = new Date().toISOString();
-
-  setStore(KEYS.orders, orders);
-  showToast('Payment confirmed! Your order is being processed.', 'success');
-  return true;
 }
 
-export function updateOrderStatus(orderId: string, status: OrderStatus): boolean {
-  const orders = getStore<Order>(KEYS.orders);
-  const idx = orders.findIndex((o) => o.id === orderId);
-  if (idx === -1) {
-    showToast('Order not found.', 'error');
+export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<boolean> {
+  try {
+    await api.put(`/api/orders/${orderId}/status`, { status });
+    showToast(`Order status updated to "${status}".`, 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to update order status';
+    showToast(message, 'error');
     return false;
   }
-
-  orders[idx].status = status;
-  orders[idx].updatedAt = new Date().toISOString();
-  setStore(KEYS.orders, orders);
-  showToast(`Order status updated to "${status}".`, 'success');
-  return true;
 }

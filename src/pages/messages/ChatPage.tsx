@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getConversation, markAsRead, sendMessage } from '../../lib/messages';
-import type { Message } from '../../types';
+import { getBookingById } from '../../lib/bookings';
+import type { Message, ServiceBooking } from '../../types';
 import { useMessagesBadge } from '../../contexts/MessagesContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { timeAgo } from '../../lib/format';
+import { BookingSummaryCard } from '../../components/BookingSummaryCard';
 
 export default function ChatPage() {
   const { partnerId } = useParams();
@@ -16,9 +18,23 @@ export default function ChatPage() {
   const partnerName = searchParams.get('partnerName') || 'User';
   const productId = searchParams.get('productId');
   const productName = searchParams.get('productName') || '';
+  const bookingId = searchParams.get('bookingId');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(productName ? `Hi! I'm interested in your listing: "${productName}". Is it still available?` : '');
+  const [booking, setBooking] = useState<ServiceBooking | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!bookingId) { setBooking(null); return undefined; }
+    async function loadBooking() {
+      const data = await getBookingById(bookingId!);
+      if (active) setBooking(data);
+    }
+    void loadBooking();
+    const interval = setInterval(loadBooking, 5000);
+    return () => { active = false; clearInterval(interval); };
+  }, [bookingId]);
 
   useEffect(() => {
     let active = true;
@@ -86,7 +102,11 @@ export default function ChatPage() {
             <span>{partnerName}</span>
           </div>
 
-          {productName && (
+          {booking && (
+            <BookingSummaryCard booking={booking} currentUserId={user?.id || ''} onUpdated={setBooking} />
+          )}
+
+          {!booking && productName && (
             <div className="chat-context">
               <i className="fa-solid fa-tag"></i>
               <span>Regarding: <strong>{productName}</strong></span>

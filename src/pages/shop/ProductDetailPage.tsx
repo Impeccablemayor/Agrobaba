@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { getProductById, getProducts } from '../../lib/products';
 import { useCart } from '../../contexts/CartContext';
 import { isLoggedIn } from '../../lib/auth';
@@ -66,6 +66,11 @@ export default function ProductDetailPage() {
         </div>
       </div></div>
     );
+  }
+
+  // Services are bookable, not addable-to-cart — send them to the real booking page instead.
+  if (product.type === 'service') {
+    return <Navigate to={`/shop/service/${product.id}`} replace />;
   }
 
   const oldPrice = product.discount > 0 ? Math.round(product.price / (1 - product.discount / 100)) : null;

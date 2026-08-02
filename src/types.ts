@@ -1,5 +1,18 @@
 export type Role = 'farmer' | 'buyer' | 'agro-dealer' | 'service-provider' | 'admin';
 
+export type ListingKind = 'product_sale' | 'service_booking' | 'equipment_sale' | 'equipment_hire' | 'land_lease';
+
+export interface Category {
+  id: string;
+  code: string;
+  name: string;
+  parentId: string | null;
+  section: string;
+  level: 1 | 2 | 3;
+  allowedListingKinds: ListingKind[];
+  sortOrder: number;
+}
+
 export type VerificationStatus = 'unsubmitted' | 'pending' | 'approved' | 'rejected';
 
 export interface VerificationStatusInfo {
@@ -50,6 +63,9 @@ export interface Product {
   description: string;
   price: number;
   category: string;
+  categoryId: string | null;
+  categoryCode: string | null;
+  listingKind: ListingKind | null;
   type: ProductType;
   size: string;
   quantity: number;
@@ -84,6 +100,8 @@ export interface Demand {
   title: string;
   description: string;
   category: string;
+  categoryId: string | null;
+  categoryCode: string | null;
   quantity: string;
   budget: number;
   location: string;
@@ -112,6 +130,29 @@ export interface CartItem {
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed';
 
+export type BookingStatus = 'requested' | 'accepted' | 'declined' | 'paid' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface ServiceBooking {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  providerId: string;
+  providerName: string;
+  customerId: string;
+  customerName: string;
+  scheduledDate: string;
+  serviceLocation: string | null;
+  customerNotes: string | null;
+  quotedAmount: number;
+  status: BookingStatus;
+  declineReason: string | null;
+  paymentMode: string | null;
+  transactionRef: string | null;
+  paymentDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Order {
   id: string;
   invoiceNumber: string;
@@ -126,8 +167,51 @@ export interface Order {
   paymentMode: string | null;
   paymentDate: string | null;
   transactionRef: string | null;
+  couponCode: string | null;
+  discountAmount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FlashSaleItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  category: string;
+  originalPrice: number;
+  salePrice: number;
+  discountPercent: number;
+}
+
+export interface FlashSale {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  items: FlashSaleItem[];
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface Message {

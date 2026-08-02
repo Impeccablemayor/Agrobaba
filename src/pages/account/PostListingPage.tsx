@@ -1,9 +1,11 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addProduct } from '../../lib/products';
+import { getAllowedSectionCodesForRole, getCategories, findCategory, hasChildren } from '../../lib/categories';
 import { showToast } from '../../lib/toastBus';
-import type { ProductType, Role } from '../../types';
+import { CategoryPicker } from '../../components/CategoryPicker';
+import type { Category, ProductType, Role } from '../../types';
 
 interface RoleConfig {
   type: ProductType;
@@ -16,7 +18,6 @@ interface RoleConfig {
   descLabel: string;
   descPlaceholder: string;
   submitLabel: string;
-  categories: string[];
   units: string[];
   showSize: boolean;
 }
@@ -33,7 +34,6 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
     descLabel: 'Description',
     descPlaceholder: 'Describe your produce — variety, grade, harvest date, freshness, delivery options...',
     submitLabel: 'Post Produce',
-    categories: ['Vegetables', 'Grains', 'Tubers', 'Fruits', 'Fish', 'Poultry', 'Livestock', 'Dairy', 'Other'],
     units: ['bag', 'kg', 'tonne', 'crate', 'basket', 'bundle', 'piece', 'litre'],
     showSize: true,
   },
@@ -48,7 +48,6 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
     descLabel: 'Product Description',
     descPlaceholder: 'Describe your product — brand, specifications, usage, certification...',
     submitLabel: 'Post Product',
-    categories: ['Fertilizers', 'Pesticides', 'Seeds', 'Animal Feed', 'Farm Equipment', 'Irrigation', 'Tools', 'Packaging', 'Other'],
     units: ['bag', 'bottle', 'litre', 'kg', 'piece', 'unit', 'carton', 'set'],
     showSize: true,
   },
@@ -63,9 +62,22 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
     descLabel: 'Service Description',
     descPlaceholder: 'Describe your service — what you offer, experience, coverage area, availability...',
     submitLabel: 'Post Service',
-    categories: ['Veterinary', 'Consultancy', 'Equipment Hire', 'Logistics', 'Training', 'Soil Testing', 'Land Preparation', 'Storage', 'Other'],
     units: ['session', 'hour', 'day', 'acre', 'visit', 'project'],
     showSize: false,
+  },
+  admin: {
+    type: 'product',
+    pageTitle: 'Post a Listing',
+    subtitle: 'Posted under the Agrobaba Official store — your admin account stays private, buyers won’t see it’s you.',
+    breadcrumb: 'Post Listing',
+    nameLabel: 'Listing Name',
+    namePlaceholder: 'e.g. NPK Fertilizer UREA 50kg — Premium Grade',
+    priceLabel: 'Price (₦)',
+    descLabel: 'Description',
+    descPlaceholder: 'Describe the listing — variety, specifications, usage, delivery options...',
+    submitLabel: 'Post Listing',
+    units: ['bag', 'bottle', 'litre', 'kg', 'piece', 'unit', 'carton', 'set', 'tonne', 'crate', 'basket', 'bundle', 'session', 'hour', 'day', 'acre', 'visit', 'project'],
+    showSize: true,
   },
 };
 
@@ -75,7 +87,8 @@ export default function PostListingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('');
@@ -84,6 +97,10 @@ export default function PostListingPage() {
   const [discount, setDiscount] = useState('0');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
 
   if (!user) return null;
 
@@ -115,8 +132,8 @@ export default function PostListingPage() {
   }
 
   const c = CONFIG[user.role]!;
-  const effectiveCategory = category || c.categories[0];
   const effectiveUnit = unit || c.units[0];
+  const allowedSections = getAllowedSectionCodesForRole(user.role);
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,8 +149,18 @@ export default function PostListingPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!categoryId) {
+      showToast('Please select a category.', 'error');
+      return;
+    }
+    const selected = findCategory(categories, categoryId);
+    if (!selected || hasChildren(categories, categoryId)) {
+      showToast('Please pick a specific subcategory, not a broader category.', 'error');
+      return;
+    }
+    const listingKind = selected.allowedListingKinds[0];
     const result = await addProduct({
-      name, category: effectiveCategory, price, quantity, unit: effectiveUnit,
+      name, categoryId, listingKind, price, quantity, unit: effectiveUnit,
       size: c.showSize ? size : 'Standard', location, discount, description,
       type: c.type, image,
     });
@@ -183,15 +210,9 @@ export default function PostListingPage() {
             <input type="text" placeholder={c.namePlaceholder} required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
+          <CategoryPicker allowedSections={allowedSections} value={categoryId} onChange={setCategoryId} />
+
           <div className="row g-3">
-            <div className="col-md-6">
-              <div className="form-group">
-                <label>Category <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <select required value={effectiveCategory} onChange={(e) => setCategory(e.target.value)}>
-                  {c.categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-            </div>
             <div className="col-md-6">
               <div className="form-group">
                 <label>{c.priceLabel} <span style={{ color: 'var(--danger)' }}>*</span></label>

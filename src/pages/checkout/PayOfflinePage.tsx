@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getOrderById } from '../../lib/orders';
 import { formatPrice } from '../../lib/format';
 import { BANK_DETAILS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import type { Order } from '../../types';
 
 export default function PayOfflinePage() {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId') || '';
   const [copied, setCopied] = useState(false);
+  const [order, setOrder] = useState<Order | null>(null);
 
-  const order = orderId ? getOrderById(orderId) : null;
+  useEffect(() => {
+    let active = true;
+    if (!orderId) return undefined;
+    void getOrderById(orderId).then((data) => { if (active) setOrder(data); });
+    return () => { active = false; };
+  }, [orderId]);
+
   const total = order ? order.total : 0;
 
   function handleCopy() {

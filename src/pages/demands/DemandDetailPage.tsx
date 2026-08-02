@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getDemandById, respondToDemand } from '../../lib/demands';
+import { getDemandById, respondToDemand, deleteDemand } from '../../lib/demands';
 import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { Breadcrumb } from '../../components/Breadcrumb';
@@ -70,6 +70,12 @@ export default function DemandDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!confirm('Delete this demand? This cannot be undone.')) return;
+    const ok = await deleteDemand(demand!.id);
+    if (ok) navigate('/demands');
+  }
+
   return (
     <div className="section">
       <div className="container">
@@ -82,7 +88,14 @@ export default function DemandDetailPage() {
         <div className="row g-4">
           <div className="col-lg-8">
             <div className="detail-card">
-              <span className="demand-chip"><i className="fa-solid fa-clipboard-list"></i> {demand.category}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span className="demand-chip"><i className="fa-solid fa-clipboard-list"></i> {demand.category}</span>
+                {user?.role === 'admin' && (
+                  <button onClick={handleDelete} className="btn-danger btn-sm btn-inline">
+                    <i className="fa-solid fa-trash"></i> Delete (Admin)
+                  </button>
+                )}
+              </div>
               <h1>{demand.title}</h1>
 
               <div className="detail-meta">

@@ -30,9 +30,13 @@ import DeleteAccountPage from './pages/account/DeleteAccountPage';
 import MyListingsPage from './pages/account/MyListingsPage';
 import PostListingPage from './pages/account/PostListingPage';
 import MyOrdersPage from './pages/account/MyOrdersPage';
+import MyBookingsPage from './pages/account/MyBookingsPage';
 import MySalesPage from './pages/account/MySalesPage';
 import VerifyAccountPage from './pages/account/VerifyAccountPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
+import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 
 function App() {
   return (
@@ -72,10 +76,14 @@ function App() {
         <Route path="account/my-listings" element={<ProtectedRoute><MyListingsPage /></ProtectedRoute>} />
         <Route path="account/post-listing" element={<ProtectedRoute><PostListingPage /></ProtectedRoute>} />
         <Route path="account/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
+        <Route path="account/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
 
         <Route path="admin/verifications" element={<ProtectedRoute><AdminVerificationsPage /></ProtectedRoute>} />
+        <Route path="admin/orders" element={<ProtectedRoute><AdminOrdersPage /></ProtectedRoute>} />
+        <Route path="admin/flash-sales" element={<ProtectedRoute><AdminFlashSalesPage /></ProtectedRoute>} />
+        <Route path="admin/coupons" element={<ProtectedRoute><AdminCouponsPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

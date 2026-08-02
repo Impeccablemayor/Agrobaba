@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useMessagesBadge } from '../../contexts/MessagesContext';
+import { NotificationBell } from './NotificationBell';
+import { SearchSuggest } from '../SearchSuggest';
+import type { Suggestion } from '../../lib/search';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -11,9 +14,14 @@ export function Navbar() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
-  function doSearch() {
-    if (!query.trim()) return;
-    navigate(`/shop?search=${encodeURIComponent(query.trim())}`);
+  function doSearch(value: string = query) {
+    if (!value.trim()) return;
+    navigate(`/shop?search=${encodeURIComponent(value.trim())}`);
+  }
+
+  function goToProduct(item: Suggestion) {
+    setQuery('');
+    navigate(`/shop/product/${item.value}`);
   }
 
   function handleLogout() {
@@ -32,15 +40,16 @@ export function Navbar() {
 
         <div className="search-wrap">
           <i className="fa-solid fa-magnifying-glass"></i>
-          <input
-            type="text"
-            placeholder='Search "tomatoes Ibadan", "NPK fertilizer", "poultry vet Lagos"'
+          <SearchSuggest
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && doSearch()}
+            onChange={setQuery}
+            onSubmit={doSearch}
+            onSelectResult={goToProduct}
+            scope="products"
+            placeholder='Search "tomatoes Ibadan", "NPK fertilizer", "poultry vet Lagos"'
           />
         </div>
-        <button className="search-btn" onClick={doSearch}>
+        <button className="search-btn" onClick={() => doSearch()}>
           <i className="fa-solid fa-magnifying-glass"></i> Search
         </button>
 
@@ -66,6 +75,9 @@ export function Navbar() {
                   <span>Messages</span>
                   {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
                 </Link>
+              </li>
+              <li>
+                <NotificationBell />
               </li>
               <li>
                 <Link to="/cart" className="nav-icon-btn" title="Cart">

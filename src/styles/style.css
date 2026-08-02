@@ -156,7 +156,7 @@ h1, h2, h3, h4, h5 { letter-spacing: -0.02em; line-height: 1.2; font-weight: 700
 .banner-btn:hover { background: rgba(255,255,255,0.32); color: #fff; }
 /* ===== DEMAND CARDS ===== */
 .demand-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.demand-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; transition: var(--transition); }
+.demand-card { position: relative; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; transition: var(--transition); }
 .demand-card:hover { box-shadow: var(--shadow); border-color: var(--border-mid); }
 .demand-tag { display: inline-flex; align-items: center; gap: 5px; background: var(--primary-light); color: var(--primary); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin-bottom: 8px; }
 .demand-tag i { font-size: 10px; }

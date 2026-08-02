@@ -1,35 +1,74 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getDemands } from '../../lib/demands';
+import { getCategories } from '../../lib/categories';
+import { DEMAND_CATEGORY_ICONS } from '../../lib/constants';
 import { DemandCard } from '../../components/DemandCard';
-import type { Demand } from '../../types';
-
-const CATEGORY_PILLS = [
-  { key: 'all', label: 'All', icon: 'fa-border-all' },
-  { key: 'Grains', label: 'Grains', icon: 'fa-wheat-awn' },
-  { key: 'Vegetables', label: 'Vegetables', icon: 'fa-apple-whole' },
-  { key: 'Tubers', label: 'Tubers', icon: 'fa-leaf' },
-  { key: 'Fish', label: 'Fish & Aquaculture', icon: 'fa-fish' },
-  { key: 'Fertilizers', label: 'Fertilizers', icon: 'fa-flask' },
-  { key: 'Equipment Hire', label: 'Equipment', icon: 'fa-tractor' },
-  { key: 'Consultancy', label: 'Consultancy', icon: 'fa-user-tie' },
-  { key: 'Veterinary', label: 'Veterinary', icon: 'fa-stethoscope' },
-];
+import { SearchSuggest } from '../../components/SearchSuggest';
+import { getSearchSuggestions, type Suggestion, type SuggestGroup } from '../../lib/search';
+import type { Category, Demand } from '../../types';
 
 export default function DemandBoardPage() {
-  const [category, setCategory] = useState('all');
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const [categoryId, setCategoryId] = useState('all');
+  const [inputValue, setInputValue] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [sort, setSort] = useState('newest');
   const [demands, setDemands] = useState<Demand[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [noResultsHints, setNoResultsHints] = useState<SuggestGroup[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abortRef = useRef<AbortController | undefined>(undefined);
 
   useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
+
+  const categoryPills = useMemo(() => {
+    const level2 = categories.filter((c) => c.level === 2);
+    return [
+      { key: 'all', label: 'All', icon: 'fa-border-all' },
+      ...level2.map((c) => ({ key: c.id, label: c.name, icon: DEMAND_CATEGORY_ICONS[c.name] || DEMAND_CATEGORY_ICONS.default })),
+    ];
+  }, [categories]);
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsLoading(true);
     void (async () => {
-      const list = await getDemands({ category: category === 'all' ? '' : category, search });
-      setDemands(list);
+      const list = await getDemands({ categoryId: categoryId === 'all' ? undefined : categoryId, search: submittedQuery }, controller.signal);
+      if (!controller.signal.aborted) {
+        setDemands(list);
+        setIsLoading(false);
+        if (list.length === 0 && submittedQuery.trim()) {
+          const hints = await getSearchSuggestions(submittedQuery.trim(), 'demands');
+          if (!controller.signal.aborted) setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
+        } else {
+          setNoResultsHints([]);
+        }
+      }
     })();
-  }, [category, search]);
+  }, [categoryId, submittedQuery]);
+
+  function handleSearch(value: string) {
+    setInputValue(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSubmittedQuery(value), 300);
+  }
+
+  function submitSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setInputValue(value);
+    setSubmittedQuery(value);
+  }
+
+  function goToDemand(item: Suggestion) {
+    navigate(`/demands/${item.value}`);
+  }
 
   const sortedDemands = useMemo(() => {
     let list = [...demands];
@@ -68,16 +107,19 @@ export default function DemandBoardPage() {
           </nav>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-            <div className="search-wrap" style={{ flex: 1, minWidth: 240 }}>
+            <div className="search-wrap" style={{ flex: 1, minWidth: 240, position: 'relative' }}>
               <i className="fa-solid fa-magnifying-glass"></i>
-              <input
-                type="text" placeholder="Search demands by title, category, location..."
-                value={search} onChange={(e) => {
-                const value = e.target.value;
-                if (debounceRef.current) clearTimeout(debounceRef.current);
-                debounceRef.current = setTimeout(() => setSearch(value), 300);
-              }}
+              <SearchSuggest
+                value={inputValue}
+                onChange={handleSearch}
+                onSubmit={submitSearch}
+                onSelectResult={goToDemand}
+                scope="demands"
+                placeholder="Search demands by title, category, location..."
               />
+              {isLoading && (
+                <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}></i>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Sort:</label>
@@ -94,11 +136,11 @@ export default function DemandBoardPage() {
           </div>
 
           <div className="filter-pills">
-            {CATEGORY_PILLS.map((p) => (
+            {categoryPills.map((p) => (
               <button
                 key={p.key}
-                className={`filter-pill ${category === p.key ? 'active' : ''}`}
-                onClick={() => setCategory(p.key)}
+                className={`filter-pill ${categoryId === p.key ? 'active' : ''}`}
+                onClick={() => setCategoryId(p.key)}
               >
                 <i className={`fa-solid ${p.icon}`}></i> {p.label}
               </button>
@@ -118,13 +160,28 @@ export default function DemandBoardPage() {
             <div className="empty-cart" style={{ gridColumn: '1/-1' }}>
               <i className="fa-solid fa-clipboard-list"></i>
               <p>No demands found. Try a different search or category.</p>
+              {noResultsHints.some((g) => g.items.length > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
+                  {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
+                    <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
+                      <i className="fa-solid fa-magnifying-glass"></i> {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <Link to="/demands/new" className="btn-primary btn-inline btn-sm">
                 <i className="fa-solid fa-plus"></i> Post a Demand
               </Link>
             </div>
           ) : (
             <div className="demand-grid">
-              {sortedDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
+              {sortedDemands.map((d) => (
+                <DemandCard
+                  key={d.id}
+                  demand={d}
+                  onDeleted={(id) => setDemands((prev) => prev.filter((x) => x.id !== id))}
+                />
+              ))}
             </div>
           )}
         </div>

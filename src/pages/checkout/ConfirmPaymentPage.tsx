@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmPayment, getOrderById } from '../../lib/orders';
 import { showToast } from '../../lib/toastBus';
@@ -7,23 +7,35 @@ export default function ConfirmPaymentPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const orderId = searchParams.get('orderId') || '';
-  const order = orderId ? getOrderById(orderId) : null;
 
-  const [invoiceNumber, setInvoiceNumber] = useState(order?.invoiceNumber || '');
-  const [amount, setAmount] = useState(order ? String(order.total) : '');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
 
-  function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    let active = true;
+    if (!orderId) return undefined;
+    void getOrderById(orderId).then((data) => {
+      if (!active || !data) return;
+      setInvoiceNumber(data.invoiceNumber);
+      setAmount(String(data.total));
+    });
+    return () => { active = false; };
+  }, [orderId]);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const success = confirmPayment(orderId || invoiceNumber, {
-      paymentMode, paymentDate, transactionNumber,
+    if (!orderId) {
+      showToast('Missing order reference. Please start again from your order.', 'error');
+      return;
+    }
+    const success = await confirmPayment(orderId, {
+      paymentMode, paymentDate, transactionNumber, amount: Number(amount),
     });
     if (success) {
       navigate('/account/my-orders');
-    } else {
-      showToast('Payment confirmation failed. Please check your order ID and try again.', 'error');
     }
   }
 

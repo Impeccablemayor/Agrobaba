@@ -5,11 +5,10 @@ import './styles/style.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { MessagesProvider } from './contexts/MessagesContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastProvider } from './contexts/ToastContext';
-import { seedData } from './lib/seed';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App.tsx';
-
-seedData();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -18,7 +17,11 @@ createRoot(document.getElementById('root')!).render(
         <ToastProvider>
           <CartProvider>
             <MessagesProvider>
-              <App />
+              <NotificationsProvider>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+              </NotificationsProvider>
             </MessagesProvider>
           </CartProvider>
         </ToastProvider>
