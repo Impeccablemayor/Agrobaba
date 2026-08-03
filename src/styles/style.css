@@ -314,6 +314,16 @@ select { cursor: pointer; }
 .app-toast.warning i { color: var(--accent); }
 .app-toast p { font-size: 13px; font-weight: 500; color: var(--text); }
 @keyframes slideInRight { from { transform: translateX(120px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+/* ===== CONFIRM DIALOG ===== */
+.confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
+.confirm-dialog { background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 100%; max-width: 380px; padding: 24px; animation: zoomIn 0.2s ease; }
+.confirm-dialog .confirm-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--danger-light, #fde8e8); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; }
+.confirm-dialog h3 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+.confirm-dialog p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-actions .btn { width: auto; flex: 1; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 /* ===== FOOTER ===== */
 #footer { background: var(--dark); color: rgba(255,255,255,0.6); padding: 48px 24px 24px; border-top: 3px solid var(--primary); }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 32px; }

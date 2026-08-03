@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useMessagesBadge } from '../../contexts/MessagesContext';
 import { NotificationBell } from './NotificationBell';
 import { SearchSuggest } from '../SearchSuggest';
+import { ConfirmDialog } from '../ConfirmDialog';
 import type { Suggestion } from '../../lib/search';
 
 export function Navbar() {
@@ -13,6 +14,7 @@ export function Navbar() {
   const { unreadCount } = useMessagesBadge();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   function doSearch(value: string = query) {
     if (!value.trim()) return;
@@ -25,10 +27,9 @@ export function Navbar() {
   }
 
   function handleLogout() {
-    if (confirm('Are you sure you want to logout?')) {
-      logout();
-      navigate('/');
-    }
+    setLogoutOpen(false);
+    logout();
+    navigate('/');
   }
 
   return (
@@ -93,7 +94,7 @@ export function Navbar() {
                 </Link>
               </li>
               <li>
-                <button className="btn-login" style={{ marginLeft: 4 }} onClick={handleLogout}>
+                <button className="btn-login" style={{ marginLeft: 4 }} onClick={() => setLogoutOpen(true)}>
                   <i className="fa-solid fa-right-from-bracket"></i> Logout
                 </button>
               </li>
@@ -101,6 +102,14 @@ export function Navbar() {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Log out?"
+        message="Are you sure you want to log out of your Agro-baba account?"
+        confirmLabel="Log out"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
     </nav>
   );
 }
