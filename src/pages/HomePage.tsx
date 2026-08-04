@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '../lib/products';
 import { getDemands } from '../lib/demands';
 import { getActiveFlashSale } from '../lib/flashSales';
+import { getCategories } from '../lib/categories';
 import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
+import { CategorySidebar } from '../components/CategorySidebar';
 import type { Suggestion } from '../lib/search';
-import type { Demand, FlashSale, Product } from '../types';
+import type { Category, Demand, FlashSale, Product } from '../types';
 
 function useCountdown(endAt: string | null) {
   const [remaining, setRemaining] = useState(0);
@@ -37,15 +39,19 @@ export default function HomePage() {
   const [heroQuery, setHeroQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [flashSale, setFlashSale] = useState<FlashSale | null>(null);
   const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
   useEffect(() => {
     void (async () => {
-      const [allProducts, allDemands, activeFlashSale] = await Promise.all([getProducts(), getDemands(), getActiveFlashSale()]);
+      const [allProducts, allDemands, activeFlashSale, allCategories] = await Promise.all([
+        getProducts(), getDemands(), getActiveFlashSale(), getCategories(),
+      ]);
       setProducts(allProducts);
       setDemands(allDemands);
       setFlashSale(activeFlashSale);
+      setCategories(allCategories);
     })();
   }, []);
 
@@ -140,17 +146,29 @@ export default function HomePage() {
 
       {/* FRESH PRODUCE */}
       <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-wheat-awn" style={{ color: 'var(--primary)' }}></i> Fresh Produce</h2>
-          <Link to="/shop?tab=produce" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {products.length === 0 ? (
-          <p className="text-muted text-center">No products yet.</p>
-        ) : (
-          <div className="grid-4">
-            {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+        <div className="shop-layout home-browse-layout">
+          <CategorySidebar
+            categories={categories}
+            sectionId="all"
+            categoryId="all"
+            onSelectSection={(id) => navigate(id === 'all' ? '/shop' : `/shop?categoryId=${encodeURIComponent(id)}`)}
+            onSelectCategory={(_sectionId, id) => navigate(`/shop?categoryId=${encodeURIComponent(id)}`)}
+          />
+
+          <div className="shop-content">
+            <div className="section-hdr">
+              <h2><i className="fa-solid fa-wheat-awn" style={{ color: 'var(--primary)' }}></i> Fresh Produce</h2>
+              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
+            </div>
+            {products.length === 0 ? (
+              <p className="text-muted text-center">No products yet.</p>
+            ) : (
+              <div className="grid-4">
+                {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="divider"></div>

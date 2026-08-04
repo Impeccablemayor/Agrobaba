@@ -1,29 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getProducts } from '../../lib/products';
-import { getCategories, getSections, getChildren } from '../../lib/categories';
-import { CATEGORY_ICONS } from '../../lib/constants';
+import { getCategories } from '../../lib/categories';
 import { ProductCard } from '../../components/ProductCard';
 import { SearchSuggest } from '../../components/SearchSuggest';
+import { CategorySidebar } from '../../components/CategorySidebar';
 import { getSearchSuggestions, type Suggestion, type SuggestGroup } from '../../lib/search';
 import type { Category, Product } from '../../types';
-
-const SECTION_ICONS: Record<string, string> = {
-  produce: 'fa-wheat-awn',
-  value_added: 'fa-jar',
-  livestock: 'fa-cow',
-  inputs: 'fa-flask',
-  equipment: 'fa-tractor',
-  services: 'fa-hand-holding-medical',
-  land: 'fa-map',
-  waste: 'fa-recycle',
-  uncategorized: 'fa-box',
-};
 
 export default function ShopPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
+  const urlCategoryId = searchParams.get('categoryId') || 'all';
 
   const [sectionId, setSectionId] = useState('all');
   const [categoryId, setCategoryId] = useState('all');
@@ -42,6 +31,27 @@ export default function ShopPage() {
     void getCategories().then(setCategories);
   }, []);
 
+  useEffect(() => {
+    if (urlCategoryId === 'all') {
+      setSectionId('all');
+      setCategoryId('all');
+      return;
+    }
+
+    const selected = categories.find((category) => category.id === urlCategoryId);
+    if (!selected) return;
+
+    const parent = selected.level === 1
+      ? selected
+      : categories.find((category) => category.id === selected.parentId);
+    const section = parent?.level === 1
+      ? parent
+      : categories.find((category) => category.id === parent?.parentId);
+
+    setSectionId(section?.id || 'all');
+    setCategoryId(selected.level === 1 ? 'all' : selected.id);
+  }, [categories, urlCategoryId]);
+
   // Picks up a search triggered from elsewhere (navbar/hero) while already on this page -
   // useSearchParams doesn't remount the page, so the initial-state read above only fires once.
   useEffect(() => {
@@ -52,18 +62,25 @@ export default function ShopPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlSearch]);
 
-  const sectionTabs = useMemo(() => [
-    { key: 'all', label: 'All Listings', icon: 'fa-border-all' },
-    ...getSections(categories).map((s) => ({ key: s.id, label: s.name, icon: SECTION_ICONS[s.section] || 'fa-box' })),
-  ], [categories]);
+  function handleSelectSection(id: string) {
+    setSectionId(id);
+    setCategoryId('all');
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id === 'all') next.delete('categoryId'); else next.set('categoryId', id);
+      return next;
+    });
+  }
 
-  const filterPills = useMemo(() => {
-    const options = sectionId === 'all' ? [] : getChildren(categories, sectionId);
-    return [
-      { key: 'all', label: 'All', icon: 'fa-border-all' },
-      ...options.map((c) => ({ key: c.id, label: c.name, icon: CATEGORY_ICONS[c.name] || CATEGORY_ICONS.default })),
-    ];
-  }, [categories, sectionId]);
+  function handleSelectCategory(newSectionId: string, newCategoryId: string) {
+    setSectionId(newSectionId);
+    setCategoryId(newCategoryId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('categoryId', newCategoryId);
+      return next;
+    });
+  }
 
   function handleSearch(value: string) {
     setInputValue(value);
@@ -119,8 +136,15 @@ export default function ShopPage() {
   function resetFilters() {
     setSectionId('all');
     setCategoryId('all');
-    submitSearch('');
+    setInputValue('');
+    setSubmittedQuery('');
     setSort('newest');
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('categoryId');
+      next.delete('search');
+      return next;
+    });
   }
 
   return (
@@ -142,88 +166,74 @@ export default function ShopPage() {
           </p>
         </div>
 
-        <div className="shop-tabs">
-          {sectionTabs.map((t) => (
-            <button
-              key={t.key}
-              className={`shop-tab ${sectionId === t.key ? 'active' : ''}`}
-              onClick={() => { setSectionId(t.key); setCategoryId('all'); }}
-            >
-              <i className={`fa-solid ${t.icon}`}></i> {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="shop-search" style={{ position: 'relative', display: 'flex' }}>
-          <SearchSuggest
-            value={inputValue}
-            onChange={handleSearch}
-            onSubmit={submitSearch}
-            onSelectResult={goToProduct}
-            scope="products"
-            placeholder="🔍 Search by name, category, location, seller..."
+        <div className="shop-layout">
+          <CategorySidebar
+            categories={categories}
+            sectionId={sectionId}
+            categoryId={categoryId}
+            onSelectSection={handleSelectSection}
+            onSelectCategory={handleSelectCategory}
           />
-          {isLoading && (
-            <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: 14, color: 'var(--muted)' }}></i>
-          )}
-        </div>
 
-        {sectionId !== 'all' && (
-          <div className="filter-pills">
-            {filterPills.map((p) => (
-              <button
-                key={p.key}
-                className={`filter-pill ${categoryId === p.key ? 'active' : ''}`}
-                onClick={() => setCategoryId(p.key)}
-              >
-                <i className={`fa-solid ${p.icon}`}></i> {p.label}
-              </button>
-            ))}
-          </div>
-        )}
+          <div className="shop-content">
+            <div className="shop-search" style={{ position: 'relative', display: 'flex' }}>
+              <SearchSuggest
+                value={inputValue}
+                onChange={handleSearch}
+                onSubmit={submitSearch}
+                onSelectResult={goToProduct}
+                scope="products"
+                placeholder="🔍 Search by name, category, location, seller..."
+              />
+              {isLoading && (
+                <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: 14, color: 'var(--muted)' }}></i>
+              )}
+            </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-            {sortedProducts.length} listing{sortedProducts.length !== 1 ? 's' : ''} found
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Sort by:</label>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              style={{ border: '1.5px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: 12, outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="newest">Newest First</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="rating">Highest Rated</option>
-              <option value="popular">Most Popular</option>
-            </select>
-          </div>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+                {sortedProducts.length} listing{sortedProducts.length !== 1 ? 's' : ''} found
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Sort by:</label>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  style={{ border: '1.5px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: 12, outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="popular">Most Popular</option>
+                </select>
+              </div>
+            </div>
 
-        {sortedProducts.length === 0 ? (
-          <div className="empty-cart" style={{ gridColumn: '1/-1', margin: '24px 0' }}>
-            <i className="fa-solid fa-store-slash"></i>
-            <p>No listings found. Try a different search or category.</p>
-            {noResultsHints.some((g) => g.items.length > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
-                {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
-                  <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
-                    <i className="fa-solid fa-magnifying-glass"></i> {item.label}
-                  </button>
-                ))}
+            {sortedProducts.length === 0 ? (
+              <div className="empty-cart" style={{ margin: '24px 0' }}>
+                <i className="fa-solid fa-store-slash"></i>
+                <p>No listings found. Try a different search or category.</p>
+                {noResultsHints.some((g) => g.items.length > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
+                    {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
+                      <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
+                        <i className="fa-solid fa-magnifying-glass"></i> {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
+                  <i className="fa-solid fa-rotate"></i> Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid-3">
+                {sortedProducts.map((p) => <ProductCard key={p.id} product={p} />)}
               </div>
             )}
-            <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
-              <i className="fa-solid fa-rotate"></i> Clear filters
-            </button>
           </div>
-        ) : (
-          <div className="grid-4">
-            {sortedProducts.map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
