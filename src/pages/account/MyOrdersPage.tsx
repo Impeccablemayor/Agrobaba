@@ -118,10 +118,14 @@ export default function MyOrdersPage() {
                         <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
                         <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
                         <td>{formatDate(order.createdAt)}</td>
-                        <td><span className={`status-${order.paid ? 'delivered' : 'pending'}`}>{order.paid ? 'Paid' : 'Unpaid'}</span></td>
+                        <td>
+                          <span className={`status-${order.paid ? 'delivered' : 'pending'}`}>
+                            {order.paid ? 'Paid' : order.paymentSubmitted ? 'Submitted' : 'Unpaid'}
+                          </span>
+                        </td>
                         <td><span className={`status-${statusClass}`} style={{ textTransform: 'capitalize' }}>{order.status}</span></td>
                         <td onClick={(e) => e.stopPropagation()}>
-                          {!order.paid ? (
+                          {!order.paid && !order.paymentSubmitted ? (
                             <Link to={`/pay-offline?orderId=${order.id}`} className="btn-secondary btn-sm btn-inline" style={{ padding: '5px 10px' }}>Pay Now</Link>
                           ) : (
                             <button onClick={() => setActiveOrder(order)} className="btn-outline btn-sm btn-inline" style={{ padding: '5px 10px' }}>View</button>
@@ -162,7 +166,9 @@ export default function MyOrdersPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, color: 'var(--muted)' }}>Payment Status</span>
-                  <span className={`status-${activeOrder.paid ? 'delivered' : 'pending'}`}>{activeOrder.paid ? 'Paid' : 'Unpaid'}</span>
+                  <span className={`status-${activeOrder.paid ? 'delivered' : 'pending'}`}>
+                    {activeOrder.paid ? 'Paid' : activeOrder.paymentSubmitted ? 'Submitted — awaiting seller confirmation' : 'Unpaid'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 12, color: 'var(--muted)' }}>Order Status</span>
@@ -186,14 +192,18 @@ export default function MyOrdersPage() {
                 <span style={{ fontSize: 18, fontWeight: 900, color: 'var(--primary)' }}>{formatPrice(activeOrder.total)}</span>
               </div>
 
-              {!activeOrder.paid ? (
-                <Link to={`/pay-offline?orderId=${activeOrder.id}`} className="btn-primary w-100" style={{ marginTop: 20 }}>
-                  <i className="fa-solid fa-credit-card"></i> Complete Payment
-                </Link>
-              ) : (
+              {activeOrder.paid ? (
                 <div style={{ marginTop: 20, padding: 14, background: 'var(--primary-light)', borderRadius: 'var(--radius-sm)', textAlign: 'center', fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>
                   <i className="fa-solid fa-circle-check"></i> Payment confirmed on {formatDate(activeOrder.paymentDate || activeOrder.updatedAt)}
                 </div>
+              ) : activeOrder.paymentSubmitted ? (
+                <div style={{ marginTop: 20, padding: 14, background: 'var(--accent-light, #fdf1de)', borderRadius: 'var(--radius-sm)', textAlign: 'center', fontSize: 12, color: 'var(--accent, #b5720b)', fontWeight: 600 }}>
+                  <i className="fa-solid fa-clock"></i> Payment submitted — awaiting seller confirmation
+                </div>
+              ) : (
+                <Link to={`/pay-offline?orderId=${activeOrder.id}`} className="btn-primary w-100" style={{ marginTop: 20 }}>
+                  <i className="fa-solid fa-credit-card"></i> Complete Payment
+                </Link>
               )}
             </div>
           </div>

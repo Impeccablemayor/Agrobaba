@@ -34,6 +34,7 @@ interface BackendOrderResponse {
   buyerPhone: string | null;
   status: string;
   paid: boolean;
+  paymentSubmitted: boolean;
   paymentMode: string | null;
   paymentDate: string | null;
   transactionRef: string | null;
@@ -69,6 +70,7 @@ function mapOrder(response: BackendOrderResponse): Order {
     buyerPhone: response.buyerPhone,
     status: (response.status as OrderStatus) || 'pending',
     paid: response.paid,
+    paymentSubmitted: response.paymentSubmitted,
     paymentMode: response.paymentMode,
     paymentDate: response.paymentDate,
     transactionRef: response.transactionRef,
@@ -185,10 +187,22 @@ export async function confirmPayment(orderId: string, paymentData: PaymentInput)
       transactionNumber: paymentData.transactionNumber,
       amount: paymentData.amount,
     });
-    showToast('Payment confirmed! Your order is being processed.', 'success');
+    showToast('Payment details submitted! The seller will verify and release your order.', 'success');
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to confirm payment';
+    const message = error instanceof Error ? error.message : 'Unable to submit payment details';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+export async function verifyOrderPayment(orderId: string): Promise<boolean> {
+  try {
+    await api.put(`/api/orders/${orderId}/verify-payment`);
+    showToast('Payment verified. You can now fulfill this order.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to verify payment';
     showToast(message, 'error');
     return false;
   }

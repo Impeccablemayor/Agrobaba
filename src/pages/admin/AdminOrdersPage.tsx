@@ -89,7 +89,11 @@ export default function AdminOrdersPage() {
                           <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                           <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
                           <td>{formatDate(order.createdAt)}</td>
-                          <td><span className={`status-${order.paid ? 'delivered' : 'pending'}`}>{order.paid ? 'Paid' : 'Unpaid'}</span></td>
+                          <td>
+                            <span className={`status-${order.paid ? 'delivered' : 'pending'}`}>
+                              {order.paid ? 'Paid' : order.paymentSubmitted ? 'Submitted' : 'Unpaid'}
+                            </span>
+                          </td>
                           <td style={{ fontSize: 12, textTransform: 'capitalize' }}>{order.status}</td>
                         </tr>
                       );

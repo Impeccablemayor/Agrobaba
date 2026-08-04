@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMySales, updateOrderStatus } from '../../lib/orders';
+import { getMySales, updateOrderStatus, verifyOrderPayment } from '../../lib/orders';
 import { formatDate, formatPrice } from '../../lib/format';
 
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -90,6 +90,13 @@ export default function MySalesPage() {
     }
   }
 
+  async function handleVerifyPayment(orderId: string) {
+    const ok = await verifyOrderPayment(orderId);
+    if (ok) {
+      setSales((prev) => prev.map((o) => o.id === orderId ? { ...o, paid: true, status: 'confirmed' } : o));
+    }
+  }
+
   return (
     <div className="section">
       <div className="container">
@@ -157,7 +164,24 @@ export default function MySalesPage() {
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                       <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(getMyEarnings(order))}</td>
                       <td>{formatDate(order.createdAt)}</td>
-                      <td><span className={`status-${order.paid ? 'delivered' : 'pending'}`}>{order.paid ? 'Paid' : 'Unpaid'}</span></td>
+                      <td>
+                        {order.paid ? (
+                          <span className="status-delivered">Paid</span>
+                        ) : order.paymentSubmitted ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            <span className="status-pending">Submitted — verify</span>
+                            <button
+                              onClick={() => handleVerifyPayment(order.id)}
+                              className="btn-primary btn-sm btn-inline"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                            >
+                              <i className="fa-solid fa-check"></i> Confirm Received
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="status-pending">Unpaid</span>
+                        )}
+                      </td>
                       <td>
                         {order.paid ? (
                           <select

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  acceptBooking, cancelBooking, confirmBookingPayment, declineBooking, updateBookingStatus,
+  acceptBooking, cancelBooking, confirmBookingPayment, declineBooking, updateBookingStatus, verifyBookingPayment,
 } from '../lib/bookings';
 import { formatPrice, formatDate } from '../lib/format';
 import type { ServiceBooking } from '../types';
@@ -14,6 +14,11 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
+
+function statusLabel(booking: ServiceBooking): string {
+  if (booking.status === 'accepted' && booking.paymentSubmitted) return 'Payment Submitted — Verifying';
+  return STATUS_LABELS[booking.status] || booking.status;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   requested: 'pending',
@@ -73,6 +78,13 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
     if (result) onUpdated(result);
   }
 
+  async function handleVerifyPayment() {
+    setBusy(true);
+    const result = await verifyBookingPayment(booking.id);
+    setBusy(false);
+    if (result) onUpdated(result);
+  }
+
   async function handleCancel() {
     if (!confirm('Cancel this booking?')) return;
     setBusy(true);
@@ -99,7 +111,7 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontWeight: 800, color: 'var(--primary)' }}>{formatPrice(booking.quotedAmount)}</div>
           <span className={`status-${STATUS_COLORS[booking.status]}`} style={{ fontSize: 11 }}>
-            {STATUS_LABELS[booking.status] || booking.status}
+            {statusLabel(booking)}
           </span>
         </div>
       </div>
@@ -151,13 +163,25 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
         </div>
       )}
 
-      {isCustomer && booking.status === 'accepted' && !showPayForm && (
+      {isCustomer && booking.status === 'accepted' && booking.paymentSubmitted && (
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+          <i className="fa-regular fa-clock"></i> Payment details submitted — waiting for the provider to verify and start work.
+        </p>
+      )}
+
+      {isCustomer && booking.status === 'accepted' && !booking.paymentSubmitted && !showPayForm && (
         <button onClick={() => setShowPayForm(true)} className="btn-primary btn-sm btn-inline">
           <i className="fa-solid fa-lock"></i> Pay for Booking
         </button>
       )}
 
-      {isCustomer && showPayForm && (
+      {isProvider && booking.status === 'accepted' && booking.paymentSubmitted && (
+        <button onClick={handleVerifyPayment} disabled={busy} className="btn-primary btn-sm btn-inline">
+          <i className="fa-solid fa-check"></i> Confirm Payment Received
+        </button>
+      )}
+
+      {isCustomer && !booking.paymentSubmitted && showPayForm && (
         <form onSubmit={handlePay} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
           <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} style={{ border: '1.5px solid var(--border-mid)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
             <option>Bank Transfer</option>

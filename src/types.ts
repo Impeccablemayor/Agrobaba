@@ -150,6 +150,7 @@ export interface ServiceBooking {
   quotedAmount: number;
   status: BookingStatus;
   declineReason: string | null;
+  paymentSubmitted: boolean;
   paymentMode: string | null;
   transactionRef: string | null;
   paymentDate: string | null;
@@ -168,6 +169,7 @@ export interface Order {
   buyerPhone: string | null;
   status: OrderStatus;
   paid: boolean;
+  paymentSubmitted: boolean;
   paymentMode: string | null;
   paymentDate: string | null;
   transactionRef: string | null;
