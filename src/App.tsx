@@ -7,6 +7,8 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import AdminLoginPage from './pages/auth/AdminLoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import AboutPage from './pages/info/AboutPage';
 import ContactPage from './pages/info/ContactPage';
 import ServicesPage from './pages/info/ServicesPage';
@@ -47,6 +49,8 @@ function App() {
 
         <Route path="login" element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
         <Route path="register" element={<GuestOnlyRoute><RegisterPage /></GuestOnlyRoute>} />
+        <Route path="forgot-password" element={<GuestOnlyRoute><ForgotPasswordPage /></GuestOnlyRoute>} />
+        <Route path="reset-password" element={<GuestOnlyRoute><ResetPasswordPage /></GuestOnlyRoute>} />
         <Route path="portal-77x-admin" element={<GuestOnlyRoute><AdminLoginPage /></GuestOnlyRoute>} />
 
         <Route path="about" element={<AboutPage />} />

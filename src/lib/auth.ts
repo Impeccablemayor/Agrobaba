@@ -170,6 +170,30 @@ export async function changePassword(oldPassword: string, newPassword: string): 
   }
 }
 
+export async function forgotPassword(email: string): Promise<boolean> {
+  try {
+    await api.post('/api/auth/forgot-password', { email });
+    showToast("If that email is registered, we've sent a reset link.", 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to send reset email';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<boolean> {
+  try {
+    await api.post('/api/auth/reset-password', { token, newPassword });
+    showToast('Password reset. You can now log in with your new password.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to reset password';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
 export async function deleteAccount(password: string): Promise<boolean> {
   const currentUser = getCurrentUser();
   if (!currentUser) return false;

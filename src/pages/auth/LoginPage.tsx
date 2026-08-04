@@ -95,7 +95,10 @@ export default function LoginPage() {
               <input type="email" placeholder="you@example.com" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="form-group">
-              <label>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <label>Password</label>
+                <Link to="/forgot-password" style={{ fontSize: 12.5 }}>Forgot password?</Link>
+              </div>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
