@@ -152,7 +152,7 @@ export default function MySalesPage() {
                       <td>#{i + 1}</td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{order.buyerName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerPhone || ''}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Message buyer for delivery details'}</div>
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                       <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(getMyEarnings(order))}</td>

@@ -161,7 +161,7 @@ export interface Order {
   buyerId: string;
   buyerName: string;
   buyerAddress: string;
-  buyerPhone: string;
+  buyerPhone: string | null;
   status: OrderStatus;
   paid: boolean;
   paymentMode: string | null;

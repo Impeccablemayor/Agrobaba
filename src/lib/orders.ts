@@ -31,7 +31,7 @@ interface BackendOrderResponse {
   buyerId: number;
   buyerName: string;
   buyerAddress: string;
-  buyerPhone: string;
+  buyerPhone: string | null;
   status: string;
   paid: boolean;
   paymentMode: string | null;
