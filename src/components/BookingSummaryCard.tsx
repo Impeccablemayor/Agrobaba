@@ -108,6 +108,26 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
         <p style={{ fontSize: 12, color: 'var(--danger)', margin: 0 }}>Reason: {booking.declineReason}</p>
       )}
 
+      {isCustomer && (booking.providerContact || booking.providerEmail) && (
+        <div style={{ background: 'var(--primary-light)', border: '1px solid #c8e6d4', borderRadius: 8, padding: '10px 12px', fontSize: 12 }}>
+          <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 4 }}>
+            <i className="fa-solid fa-circle-check"></i> Booking accepted — provider contact details
+          </div>
+          {booking.providerContact && <div><i className="fa-solid fa-phone" style={{ width: 14 }}></i> {booking.providerContact}</div>}
+          {booking.providerEmail && <div><i className="fa-solid fa-envelope" style={{ width: 14 }}></i> {booking.providerEmail}</div>}
+        </div>
+      )}
+
+      {isProvider && (booking.customerContact || booking.customerEmail) && (
+        <div style={{ background: 'var(--primary-light)', border: '1px solid #c8e6d4', borderRadius: 8, padding: '10px 12px', fontSize: 12 }}>
+          <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 4 }}>
+            <i className="fa-solid fa-circle-check"></i> Customer contact details
+          </div>
+          {booking.customerContact && <div><i className="fa-solid fa-phone" style={{ width: 14 }}></i> {booking.customerContact}</div>}
+          {booking.customerEmail && <div><i className="fa-solid fa-envelope" style={{ width: 14 }}></i> {booking.customerEmail}</div>}
+        </div>
+      )}
+
       {isProvider && booking.status === 'requested' && !showDeclineForm && (
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={handleAccept} disabled={busy} className="btn-primary btn-sm btn-inline">

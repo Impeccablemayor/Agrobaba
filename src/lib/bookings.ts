@@ -8,8 +8,12 @@ interface ApiBooking {
   serviceName: string;
   providerId: number;
   providerName: string;
+  providerContact: string | null;
+  providerEmail: string | null;
   customerId: number;
   customerName: string;
+  customerContact: string | null;
+  customerEmail: string | null;
   scheduledDate: string;
   serviceLocation: string | null;
   customerNotes: string | null;
@@ -30,8 +34,12 @@ function mapBooking(b: ApiBooking): ServiceBooking {
     serviceName: b.serviceName,
     providerId: String(b.providerId),
     providerName: b.providerName,
+    providerContact: b.providerContact,
+    providerEmail: b.providerEmail,
     customerId: String(b.customerId),
     customerName: b.customerName,
+    customerContact: b.customerContact,
+    customerEmail: b.customerEmail,
     scheduledDate: b.scheduledDate,
     serviceLocation: b.serviceLocation,
     customerNotes: b.customerNotes,

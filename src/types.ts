@@ -138,8 +138,12 @@ export interface ServiceBooking {
   serviceName: string;
   providerId: string;
   providerName: string;
+  providerContact: string | null;
+  providerEmail: string | null;
   customerId: string;
   customerName: string;
+  customerContact: string | null;
+  customerEmail: string | null;
   scheduledDate: string;
   serviceLocation: string | null;
   customerNotes: string | null;
