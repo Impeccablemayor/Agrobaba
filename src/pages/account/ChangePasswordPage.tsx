@@ -15,8 +15,8 @@ export default function ChangePasswordPage() {
       showToast('New passwords do not match.', 'error');
       return;
     }
-    if (newPassword.length < 6) {
-      showToast('Password must be at least 6 characters.', 'error');
+    if (newPassword.length < 8) {
+      showToast('Password must be at least 8 characters.', 'error');
       return;
     }
 
@@ -59,7 +59,7 @@ export default function ChangePasswordPage() {
           <div className="field">
             <label>New Password <span className="req">*</span></label>
             <input
-              type="password" placeholder="At least 6 characters" autoComplete="new-password"
+              type="password" placeholder="At least 8 characters" autoComplete="new-password"
               value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
             />
             <p className="hint">Use a mix of letters, numbers and symbols.</p>

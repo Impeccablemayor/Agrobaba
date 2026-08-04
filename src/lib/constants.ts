@@ -39,9 +39,14 @@ let quickLoginUsers: Record<string, {
   city: string; country: string; contact: string; address: string;
 }> | null = null;
 
-try {
-  const raw = import.meta.env.VITE_QUICK_LOGIN_USERS;
-  if (raw) quickLoginUsers = JSON.parse(raw);
-} catch { /* env var not set or malformed */ }
+// Demo credentials must never ship in a production bundle - import.meta.env.DEV is
+// statically known at build time, so Vite strips this whole branch (and the env var's
+// value) out of production builds entirely, not just hides it behind a runtime check.
+if (import.meta.env.DEV) {
+  try {
+    const raw = import.meta.env.VITE_QUICK_LOGIN_USERS;
+    if (raw) quickLoginUsers = JSON.parse(raw);
+  } catch { /* env var not set or malformed */ }
+}
 
 export { quickLoginUsers as QUICK_LOGIN_USERS };

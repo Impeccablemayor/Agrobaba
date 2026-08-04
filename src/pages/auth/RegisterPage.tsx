@@ -112,7 +112,7 @@ export default function RegisterPage() {
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Min. 6 characters"
+                      placeholder="Min. 8 characters"
                       required
                       autoComplete="new-password"
                       style={{ paddingRight: 44 }}

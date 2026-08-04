@@ -37,6 +37,7 @@ import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
+import NotFoundPage from './pages/info/NotFoundPage';
 
 function App() {
   return (
@@ -84,6 +85,8 @@ function App() {
         <Route path="admin/orders" element={<ProtectedRoute><AdminOrdersPage /></ProtectedRoute>} />
         <Route path="admin/flash-sales" element={<ProtectedRoute><AdminFlashSalesPage /></ProtectedRoute>} />
         <Route path="admin/coupons" element={<ProtectedRoute><AdminCouponsPage /></ProtectedRoute>} />
+
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );
