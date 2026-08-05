@@ -1,6 +1,6 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import type { Ticket } from '../types';
+import type { Ticket, TicketStatus } from '../types';
 
 export interface TicketInput {
   name: string;
@@ -21,6 +21,9 @@ interface BackendTicketResponse {
 }
 
 function mapTicket(response: BackendTicketResponse): Ticket {
+  const status: TicketStatus = response.status === 'in_progress' || response.status === 'resolved'
+    ? response.status
+    : 'open';
   return {
     id: String(response.id),
     name: response.name,
@@ -28,7 +31,7 @@ function mapTicket(response: BackendTicketResponse): Ticket {
     subject: response.subject,
     message: response.message,
     userId: response.userId ? String(response.userId) : null,
-    status: response.status === 'closed' ? 'closed' : 'open',
+    status,
     createdAt: response.createdAt,
   };
 }
@@ -47,5 +50,28 @@ export async function saveTicket(data: TicketInput): Promise<Ticket | null> {
     const message = error instanceof Error ? error.message : 'Unable to send message';
     showToast(message, 'error');
     return null;
+  }
+}
+
+export async function getAllTicketsAdmin(): Promise<Ticket[]> {
+  try {
+    const data = await api.get<BackendTicketResponse[]>('/api/admin/tickets');
+    return (data || []).map(mapTicket);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load tickets';
+    showToast(message, 'error');
+    return [];
+  }
+}
+
+export async function updateTicketStatus(id: string, status: TicketStatus): Promise<boolean> {
+  try {
+    await api.put(`/api/admin/tickets/${id}/status`, { status });
+    showToast('Ticket status updated.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to update ticket status';
+    showToast(message, 'error');
+    return false;
   }
 }

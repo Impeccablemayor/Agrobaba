@@ -230,6 +230,7 @@ export interface FlashSale {
   startAt: string;
   endAt: string;
   items: FlashSaleItem[];
+  createdAt: string;
 }
 
 export interface Coupon {
@@ -277,6 +278,8 @@ export interface Conversation {
   lastMessage: Message;
 }
 
+export type TicketStatus = 'open' | 'in_progress' | 'resolved';
+
 export interface Ticket {
   id: string;
   name: string;
@@ -284,7 +287,49 @@ export interface Ticket {
   subject: string;
   message: string;
   userId: string | null;
-  status: 'open' | 'closed';
+  status: TicketStatus;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  event: string;
+  actor: string;
+  detail: string;
+  createdAt: string;
+}
+
+export interface PaymentSubmission {
+  orderId: string;
+  invoiceNumber: string;
+  buyerName: string;
+  total: number;
+  paymentMode: string | null;
+  transactionRef: string | null;
+  paymentDate: string | null;
+}
+
+export interface FlashSaleSoon {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  phase: 'starting' | 'ending';
+}
+
+export interface AdminOverview {
+  pendingVerificationsCount: number;
+  paymentSubmissionsCount: number;
+  paymentSubmissions: PaymentSubmission[];
+  openTicketsCount: number;
+  flashSalesSoon: FlashSaleSoon[];
+  recentActions: AuditLogEntry[];
+}
+
+export interface VerificationHistoryEntry {
+  event: string;
+  actor: string;
+  detail: string;
   createdAt: string;
 }
 

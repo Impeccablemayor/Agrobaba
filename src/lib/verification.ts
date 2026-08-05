@@ -1,6 +1,6 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import type { PendingVerification, VerificationStatusInfo } from '../types';
+import type { PendingVerification, VerificationHistoryEntry, VerificationStatusInfo } from '../types';
 
 export interface SubmitVerificationInput {
   // Common
@@ -209,5 +209,15 @@ export async function rejectBusinessVerification(userId: string, note: string): 
     const message = error instanceof Error ? error.message : 'Unable to reject';
     showToast(message, 'error');
     return false;
+  }
+}
+
+export async function getVerificationHistory(userId: string): Promise<VerificationHistoryEntry[]> {
+  try {
+    return await api.get<VerificationHistoryEntry[]>(`/api/admin/verifications/${userId}/history`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load review history';
+    showToast(message, 'error');
+    return [];
   }
 }

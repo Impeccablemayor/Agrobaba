@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
+import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { RoleProtectedRoute } from './components/routing/RoleProtectedRoute';
 import { GuestOnlyRoute } from './components/routing/GuestOnlyRoute';
@@ -36,10 +37,13 @@ import MyOrdersPage from './pages/account/MyOrdersPage';
 import MyBookingsPage from './pages/account/MyBookingsPage';
 import MySalesPage from './pages/account/MySalesPage';
 import VerifyAccountPage from './pages/account/VerifyAccountPage';
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
+import AdminTicketsPage from './pages/admin/AdminTicketsPage';
+import AdminActivityPage from './pages/admin/AdminActivityPage';
 import NotFoundPage from './pages/info/NotFoundPage';
 
 function App() {
@@ -86,12 +90,17 @@ function App() {
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
 
-        <Route path="admin/verifications" element={<RoleProtectedRoute role="admin"><AdminVerificationsPage /></RoleProtectedRoute>} />
-        <Route path="admin/orders" element={<RoleProtectedRoute role="admin"><AdminOrdersPage /></RoleProtectedRoute>} />
-        <Route path="admin/flash-sales" element={<RoleProtectedRoute role="admin"><AdminFlashSalesPage /></RoleProtectedRoute>} />
-        <Route path="admin/coupons" element={<RoleProtectedRoute role="admin"><AdminCouponsPage /></RoleProtectedRoute>} />
-
         <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      <Route element={<RoleProtectedRoute role="admin"><AdminLayout /></RoleProtectedRoute>}>
+        <Route path="admin" element={<AdminOverviewPage />} />
+        <Route path="admin/orders" element={<AdminOrdersPage />} />
+        <Route path="admin/verifications" element={<AdminVerificationsPage />} />
+        <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
+        <Route path="admin/coupons" element={<AdminCouponsPage />} />
+        <Route path="admin/tickets" element={<AdminTicketsPage />} />
+        <Route path="admin/activity" element={<AdminActivityPage />} />
       </Route>
     </Routes>
   );

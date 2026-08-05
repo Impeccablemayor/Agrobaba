@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    navigate('/admin/verifications', { replace: true });
+    navigate('/admin', { replace: true });
   }
 
   return (
