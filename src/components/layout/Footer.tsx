@@ -1,6 +1,20 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getCategories, getSectionIdByCode } from '../../lib/categories';
+import type { Category } from '../../types';
 
 export function Footer() {
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
+
+  const sectionHref = (code: string) => {
+    const id = getSectionIdByCode(categories, code);
+    return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
+  };
+
   return (
     <footer id="footer">
       <div className="container">
@@ -32,10 +46,10 @@ export function Footer() {
           <div className="footer-col">
             <h4>Categories</h4>
             <ul>
-              <li><Link to="/shop?tab=produce"><i className="fa-solid fa-chevron-right"></i> Fresh Produce</Link></li>
-              <li><Link to="/shop?tab=inputs"><i className="fa-solid fa-chevron-right"></i> Agro Inputs</Link></li>
-              <li><Link to="/shop?tab=equipment"><i className="fa-solid fa-chevron-right"></i> Farm Equipment</Link></li>
-              <li><Link to="/shop?tab=services"><i className="fa-solid fa-chevron-right"></i> Agro Services</Link></li>
+              <li><Link to={sectionHref('produce')}><i className="fa-solid fa-chevron-right"></i> Fresh Produce</Link></li>
+              <li><Link to={sectionHref('inputs')}><i className="fa-solid fa-chevron-right"></i> Agro Inputs</Link></li>
+              <li><Link to={sectionHref('equipment')}><i className="fa-solid fa-chevron-right"></i> Farm Equipment</Link></li>
+              <li><Link to={sectionHref('services')}><i className="fa-solid fa-chevron-right"></i> Agro Services</Link></li>
               <li><Link to="/demands"><i className="fa-solid fa-chevron-right"></i> Demand Board</Link></li>
             </ul>
           </div>

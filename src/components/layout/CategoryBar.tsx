@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import type { Role } from '../../types';
+import { getCategories, getSectionIdByCode } from '../../lib/categories';
+import type { Category, Role } from '../../types';
 
 interface CatLink {
   href: string;
@@ -9,14 +11,22 @@ interface CatLink {
   match: (path: string, search: string) => boolean;
 }
 
-const publicLinks: CatLink[] = [
-  { href: '/shop', icon: 'fa-border-all', label: 'All', match: (p, s) => p === '/shop' && !s },
-  { href: '/shop?tab=produce', icon: 'fa-wheat-awn', label: 'Produce', match: (_p, s) => s.includes('tab=produce') },
-  { href: '/shop?tab=inputs', icon: 'fa-flask', label: 'Agro Inputs', match: (_p, s) => s.includes('tab=inputs') },
-  { href: '/shop?tab=equipment', icon: 'fa-tractor', label: 'Equipment', match: (_p, s) => s.includes('tab=equipment') },
-  { href: '/shop?tab=services', icon: 'fa-hand-holding-medical', label: 'Services', match: (_p, s) => s.includes('tab=services') },
-  { href: '/demands', icon: 'fa-clipboard-list', label: 'Demand Board', match: (p) => p === '/demands' },
-];
+/** Section links resolve their target category id at render time (from the live categories list)
+ *  instead of hardcoding database ids, and instead of the old `?tab=` params Shop never read. */
+function buildSectionLinks(categories: Category[]): CatLink[] {
+  const sectionHref = (code: string) => {
+    const id = getSectionIdByCode(categories, code);
+    return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
+  };
+  return [
+    { href: '/shop', icon: 'fa-border-all', label: 'All', match: (p, s) => p === '/shop' && !s },
+    { href: sectionHref('produce'), icon: 'fa-wheat-awn', label: 'Produce', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'produce') || '\0'}`) },
+    { href: sectionHref('inputs'), icon: 'fa-flask', label: 'Agro Inputs', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'inputs') || '\0'}`) },
+    { href: sectionHref('equipment'), icon: 'fa-tractor', label: 'Equipment', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'equipment') || '\0'}`) },
+    { href: sectionHref('services'), icon: 'fa-hand-holding-medical', label: 'Services', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'services') || '\0'}`) },
+    { href: '/demands', icon: 'fa-clipboard-list', label: 'Demand Board', match: (p) => p === '/demands' },
+  ];
+}
 
 const roleLinks: Record<Role, CatLink[]> = {
   farmer: [
@@ -51,28 +61,58 @@ const roleLinks: Record<Role, CatLink[]> = {
     { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
   ],
   admin: [
-    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Listing', match: (p) => p === '/account/post-listing' },
-    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand', match: (p) => p === '/demands/new' },
-    { href: '/admin/orders', icon: 'fa-receipt', label: 'Orders', match: (p) => p === '/admin/orders' },
-    { href: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', match: (p) => p === '/admin/flash-sales' },
-    { href: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', match: (p) => p === '/admin/coupons' },
-    { href: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', match: (p) => p === '/admin/verifications' },
+    { href: '/admin', icon: 'fa-gauge', label: 'Admin Console', match: (p) => p.startsWith('/admin') },
     { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
   ],
 };
 
-export function CategoryBar() {
+export function CategoryBar({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
   const location = useLocation();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const scrollRef = useRef<HTMLUListElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const links = user ? [...publicLinks, ...(roleLinks[user.role] || [])] : publicLinks;
+  useEffect(() => {
+    void getCategories().then(setCategories);
+  }, []);
+
+  const sectionLinks = buildSectionLinks(categories);
+  const quickLabels = ['All', 'Produce', 'Services', 'Demand Board'];
+  const links = compact
+    ? sectionLinks.filter((l) => quickLabels.includes(l.label))
+    : (user ? [...sectionLinks, ...(roleLinks[user.role] || [])] : sectionLinks);
+
+  function updateScrollState() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener('resize', updateScrollState);
+    return () => window.removeEventListener('resize', updateScrollState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [links.length]);
+
+  function scrollBy(delta: number) {
+    scrollRef.current?.scrollBy({ left: delta, behavior: 'smooth' });
+  }
 
   return (
     <div id="category-bar">
-      <div className="container">
-        <ul id="role-nav" className="category-list">
+      <div className="container cat-scroll-wrap">
+        {canScrollLeft && (
+          <button className="cat-scroll-btn cat-scroll-btn-left" onClick={() => scrollBy(-200)} aria-label="Scroll left">
+            <i className="fa-solid fa-chevron-left"></i>
+          </button>
+        )}
+        <ul id="role-nav" className="category-list" ref={scrollRef} onScroll={updateScrollState}>
           {links.map((link) => (
-            <li key={link.href}>
+            <li key={link.label}>
               <Link
                 to={link.href}
                 className={`cat-pill ${link.match(location.pathname, location.search) ? 'active' : ''}`}
@@ -83,6 +123,11 @@ export function CategoryBar() {
             </li>
           ))}
         </ul>
+        {canScrollRight && (
+          <button className="cat-scroll-btn cat-scroll-btn-right" onClick={() => scrollBy(200)} aria-label="Scroll right">
+            <i className="fa-solid fa-chevron-right"></i>
+          </button>
+        )}
       </div>
     </div>
   );

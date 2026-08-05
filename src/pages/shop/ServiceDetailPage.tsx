@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProductById } from '../../lib/products';
+import { getCategories, getSectionIdByCode } from '../../lib/categories';
 import { createBooking } from '../../lib/bookings';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
@@ -21,6 +22,14 @@ export default function ServiceDetailPage() {
   const [bookMessage, setBookMessage] = useState('');
   const [product, setProduct] = useState<Awaited<ReturnType<typeof getProductById>>>(null);
   const [loading, setLoading] = useState(true);
+  const [servicesHref, setServicesHref] = useState('/shop');
+
+  useEffect(() => {
+    void getCategories().then((categories) => {
+      const id = getSectionIdByCode(categories, 'services');
+      if (id) setServicesHref(`/shop?categoryId=${encodeURIComponent(id)}`);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -61,7 +70,7 @@ export default function ServiceDetailPage() {
         <div className="empty-cart" style={{ gridColumn: '1/-1' }}>
           <i className="fa-solid fa-toolbox"></i>
           <p>Service not found.</p>
-          <Link to="/shop?tab=services" className="btn-secondary btn-inline btn-sm">Browse Services</Link>
+          <Link to={servicesHref} className="btn-secondary btn-inline btn-sm">Browse Services</Link>
         </div>
       </div>
     );

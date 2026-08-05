@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { getProducts } from '../lib/products';
 import { getDemands } from '../lib/demands';
 import { getActiveFlashSale } from '../lib/flashSales';
-import { getCategories } from '../lib/categories';
+import { getCategories, getSectionIdByCode } from '../lib/categories';
 import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
@@ -36,6 +37,7 @@ function useCountdown(endAt: string | null) {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [heroQuery, setHeroQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
@@ -55,10 +57,19 @@ export default function HomePage() {
     })();
   }, []);
 
-  const inputsProducts = products.filter((p) => p.type === 'product').slice(0, 4);
-  const serviceProducts = products.filter((p) => p.type === 'service').slice(0, 4);
   const featuredProducts = products.slice(0, 8);
+  const produceRail = products.filter((p) => p.categoryCode === 'produce').slice(0, 4);
+  const servicesRail = products.filter((p) => p.type === 'service').slice(0, 4);
   const previewDemands = demands.slice(0, 4);
+
+  const sectionHref = (code: string) => {
+    const id = getSectionIdByCode(categories, code);
+    return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
+  };
+
+  const isSupplier = !!user && user.role !== 'buyer';
+  const postHref = !user ? '/register' : isSupplier ? '/account/post-listing' : '/demands/new';
+  const postLabel = !user ? 'Get Started' : isSupplier ? 'Post a Listing' : 'Post a Demand';
 
   function doHeroSearch(value: string = heroQuery) {
     if (!value.trim()) return;
@@ -84,7 +95,7 @@ export default function HomePage() {
             <em>Find what you need.</em>
           </h1>
           <p className="hero-sub">
-            Verified farmers, buyers, agro-dealers and service providers — all in one place. Every deal escrow protected.
+            Verified farmers, buyers, agro-dealers and service providers — all in one place.
           </p>
           <div className="hero-search">
             <SearchSuggest
@@ -99,6 +110,14 @@ export default function HomePage() {
               <i className="fa-solid fa-magnifying-glass"></i> Search
             </button>
           </div>
+          <div className="hero-actions" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+            <Link to="/shop" className="btn-primary btn-inline">
+              <i className="fa-solid fa-store"></i> Browse Market
+            </Link>
+            <Link to={postHref} className="btn-outline btn-inline">
+              <i className="fa-solid fa-plus"></i> {postLabel}
+            </Link>
+          </div>
           <div className="popular">
             <span>Popular:</span>
             <Link to="/shop?search=tomatoes">Tomatoes</Link>
@@ -111,16 +130,45 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TRUST STRIP */}
+      {/* TRUST STRIP - only claims the product can actually back today */}
       <div className="trust-strip">
-        <div className="trust-item"><i className="fa-solid fa-shield-halved"></i> Escrow Protected</div>
-        <div className="trust-item"><i className="fa-solid fa-circle-check"></i> Verified Users</div>
-        <div className="trust-item"><i className="fa-solid fa-handshake"></i> Direct Trade</div>
-        <div className="trust-item"><i className="fa-solid fa-lock"></i> Secure Payments</div>
-        <div className="trust-item"><i className="fa-solid fa-headset"></i> 24/7 Support</div>
+        <div className="trust-item"><i className="fa-solid fa-circle-check"></i> Verified Sellers</div>
+        <div className="trust-item"><i className="fa-solid fa-handshake"></i> Direct Trade, No Middlemen</div>
+        <div className="trust-item"><i className="fa-solid fa-money-check-dollar"></i> Payment Verification</div>
+        <div className="trust-item"><i className="fa-solid fa-comments"></i> Buyer-Seller Messaging</div>
+        <div className="trust-item"><i className="fa-solid fa-headset"></i> Support When You Need It</div>
       </div>
 
-      {/* FLASH DEALS */}
+      {/* BROWSE MARKET */}
+      <div className="section">
+        <div className="shop-layout home-browse-layout">
+          <CategorySidebar
+            categories={categories}
+            sectionId="all"
+            categoryId="all"
+            onSelectSection={(id) => navigate(id === 'all' ? '/shop' : `/shop?categoryId=${encodeURIComponent(id)}`)}
+            onSelectCategory={(_sectionId, id) => navigate(`/shop?categoryId=${encodeURIComponent(id)}`)}
+          />
+
+          <div className="shop-content">
+            <div className="section-hdr">
+              <h2><i className="fa-solid fa-store" style={{ color: 'var(--primary)' }}></i> Browse the Market</h2>
+              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
+            </div>
+            {products.length === 0 ? (
+              <p className="text-muted text-center">No products yet.</p>
+            ) : (
+              <div className="grid-4">
+                {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="divider"></div>
+
+      {/* FLASH DEALS - only shown when one is actually live */}
       {flashSale && !expired && flashSale.items.length > 0 && (
         <>
           <div className="section">
@@ -146,34 +194,56 @@ export default function HomePage() {
 
       {/* FRESH PRODUCE */}
       <div className="section">
-        <div className="shop-layout home-browse-layout">
-          <CategorySidebar
-            categories={categories}
-            sectionId="all"
-            categoryId="all"
-            onSelectSection={(id) => navigate(id === 'all' ? '/shop' : `/shop?categoryId=${encodeURIComponent(id)}`)}
-            onSelectCategory={(_sectionId, id) => navigate(`/shop?categoryId=${encodeURIComponent(id)}`)}
-          />
-
-          <div className="shop-content">
-            <div className="section-hdr">
-              <h2><i className="fa-solid fa-wheat-awn" style={{ color: 'var(--primary)' }}></i> Fresh Produce</h2>
-              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-            </div>
-            {products.length === 0 ? (
-              <p className="text-muted text-center">No products yet.</p>
-            ) : (
-              <div className="grid-4">
-                {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
-              </div>
-            )}
-          </div>
+        <div className="section-hdr">
+          <h2><i className="fa-solid fa-wheat-awn" style={{ color: 'var(--primary)' }}></i> Fresh Produce</h2>
+          <Link to={sectionHref('produce')} className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
         </div>
+        {produceRail.length === 0 ? (
+          <p className="text-muted">No fresh produce listed yet.</p>
+        ) : (
+          <div className="grid-4">
+            {produceRail.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        )}
       </div>
 
       <div className="divider"></div>
 
-      {/* TWO SIDED BANNERS */}
+      {/* SERVICES */}
+      <div className="section">
+        <div className="section-hdr">
+          <h2><i className="fa-solid fa-hand-holding-medical" style={{ color: 'var(--primary)' }}></i> Agro Services</h2>
+          <Link to={sectionHref('services')} className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
+        </div>
+        {servicesRail.length === 0 ? (
+          <p className="text-muted">No services listed yet.</p>
+        ) : (
+          <div className="grid-4">
+            {servicesRail.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        )}
+      </div>
+
+      <div className="divider"></div>
+
+      {/* DEMAND BOARD PREVIEW */}
+      <div className="section">
+        <div className="section-hdr">
+          <h2><i className="fa-solid fa-clipboard-list" style={{ color: 'var(--primary)' }}></i> Recent Demands</h2>
+          <Link to="/demands" className="see-all">View demand board <i className="fa-solid fa-chevron-right"></i></Link>
+        </div>
+        {previewDemands.length === 0 ? (
+          <p className="text-muted">No demands posted yet.</p>
+        ) : (
+          <div className="demand-grid">
+            {previewDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
+          </div>
+        )}
+      </div>
+
+      <div className="divider"></div>
+
+      {/* SELLER / BUYER CALLS TO ACTION */}
       <div className="banners">
         <div className="banner banner-green">
           <i className="fa-solid fa-tractor"></i>
@@ -189,45 +259,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* AGRO INPUTS */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-flask" style={{ color: 'var(--primary)' }}></i> Agro Inputs &amp; Fertilizers</h2>
-          <Link to="/shop?tab=inputs" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {inputsProducts.length === 0 ? (
-          <p className="text-muted">No agro inputs listed yet.</p>
-        ) : (
-          <div className="grid-4">
-            {inputsProducts.map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        )}
-      </div>
-
-      <div className="divider"></div>
-
-      {/* SERVICES */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-hand-holding-medical" style={{ color: 'var(--primary)' }}></i> Agro Services</h2>
-          <Link to="/shop?tab=services" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {serviceProducts.length === 0 ? (
-          <p className="text-muted">No services listed yet.</p>
-        ) : (
-          <div className="grid-4">
-            {serviceProducts.map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        )}
-      </div>
-
-      <div className="divider"></div>
-
       {/* HOW IT WORKS */}
       <section className="how-it-works">
         <div className="container">
           <h2 className="section-title">How Agrobaba Works</h2>
-          <p className="section-subtitle">Simple, secure, and transparent agricultural trade in 3 steps.</p>
+          <p className="section-subtitle">Simple and transparent agricultural trade in 3 steps.</p>
           <div className="row g-4 mt-2">
             <div className="col-md-4">
               <div className="step-card">
@@ -246,24 +282,13 @@ export default function HomePage() {
             <div className="col-md-4">
               <div className="step-card">
                 <div className="step-number">03</div>
-                <h3>Trade Safely</h3>
-                <p>Pay through escrow. Confirm delivery. Funds released. Rate your experience. Build your reputation.</p>
+                <h3>Trade Directly</h3>
+                <p>Agree terms, confirm payment, and get your order moving. Rate your experience and build your reputation.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* DEMAND BOARD PREVIEW */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-clipboard-list" style={{ color: 'var(--primary)' }}></i> Recent Demands</h2>
-          <Link to="/demands" className="see-all">View demand board <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        <div className="demand-grid">
-          {previewDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
-        </div>
-      </div>
     </>
   );
 }

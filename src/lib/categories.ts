@@ -55,6 +55,12 @@ export function hasChildren(categories: Category[], id: string): boolean {
   return categories.some((c) => c.parentId === id);
 }
 
+/** Resolves a stable level-1 section code (e.g. "produce", "services") to its current numeric
+ *  category id, so links can target `/shop?categoryId=<id>` without hardcoding database ids. */
+export function getSectionIdByCode(categories: Category[], code: string): string | undefined {
+  return categories.find((c) => c.level === 1 && c.code === code)?.id;
+}
+
 /** Which top-level sections a role's "post a listing" form should default to / offer. */
 const ROLE_SECTIONS: Partial<Record<Role, string[]>> = {
   farmer: ['produce', 'value_added', 'livestock'],

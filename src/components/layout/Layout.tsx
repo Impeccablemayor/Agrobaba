@@ -9,12 +9,13 @@ const AUTH_ROUTES = ['/login', '/register', '/portal-77x-admin'];
 export function Layout() {
   const { pathname } = useLocation();
   const isAuthPage = AUTH_ROUTES.includes(pathname);
+  const isHome = pathname === '/';
 
   return (
     <>
       {!isAuthPage && <TopBar />}
-      {!isAuthPage && <Navbar />}
-      {!isAuthPage && <CategoryBar />}
+      {!isAuthPage && <Navbar compact={isHome} />}
+      {!isAuthPage && <CategoryBar compact={isHome} />}
       <main>
         <Outlet />
       </main>

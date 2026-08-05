@@ -8,13 +8,14 @@ import { SearchSuggest } from '../SearchSuggest';
 import { ConfirmDialog } from '../ConfirmDialog';
 import type { Suggestion } from '../../lib/search';
 
-export function Navbar() {
+export function Navbar({ compact = false }: { compact?: boolean }) {
   const { user, logout } = useAuth();
   const { count } = useCart();
   const { unreadCount } = useMessagesBadge();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   function doSearch(value: string = query) {
     if (!value.trim()) return;
@@ -39,20 +40,35 @@ export function Navbar() {
           <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
         </Link>
 
-        <div className="search-wrap">
-          <i className="fa-solid fa-magnifying-glass"></i>
-          <SearchSuggest
-            value={query}
-            onChange={setQuery}
-            onSubmit={doSearch}
-            onSelectResult={goToProduct}
-            scope="products"
-            placeholder='Search "tomatoes Ibadan", "NPK fertilizer", "poultry vet Lagos"'
-          />
-        </div>
-        <button className="search-btn" onClick={() => doSearch()}>
-          <i className="fa-solid fa-magnifying-glass"></i> Search
-        </button>
+        {compact && !searchOpen ? (
+          <button
+            type="button"
+            className="nav-icon-btn"
+            title="Search"
+            onClick={() => setSearchOpen(true)}
+            style={{ marginLeft: 'auto', marginRight: 8 }}
+          >
+            <i className="fa-solid fa-magnifying-glass"></i>
+          </button>
+        ) : (
+          <>
+            <div className="search-wrap">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <SearchSuggest
+                value={query}
+                onChange={setQuery}
+                onSubmit={(v) => { doSearch(v); if (compact) setSearchOpen(false); }}
+                onSelectResult={goToProduct}
+                scope="products"
+                placeholder='Search "tomatoes Ibadan", "NPK fertilizer", "poultry vet Lagos"'
+                autoFocus={compact}
+              />
+            </div>
+            <button className="search-btn" onClick={() => { doSearch(); if (compact) setSearchOpen(false); }}>
+              <i className="fa-solid fa-magnifying-glass"></i> {!compact && 'Search'}
+            </button>
+          </>
+        )}
 
         <div className="nav-actions" id="auth-links">
           {!user ? (

@@ -19,6 +19,7 @@ interface ApiFlashSale {
   startAt: string;
   endAt: string;
   items: ApiFlashSaleItem[];
+  createdAt: string;
 }
 
 function mapFlashSale(f: ApiFlashSale): FlashSale {
@@ -27,6 +28,7 @@ function mapFlashSale(f: ApiFlashSale): FlashSale {
     title: f.title,
     startAt: f.startAt,
     endAt: f.endAt,
+    createdAt: f.createdAt,
     items: f.items.map((i) => ({
       id: String(i.id),
       productId: String(i.productId),
