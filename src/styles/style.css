@@ -132,6 +132,7 @@ h1, h2, h3, h4, h5 { letter-spacing: -0.02em; line-height: 1.2; font-weight: 700
 .card-seller { font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-bottom: 7px; flex-wrap: wrap; }
 .card-seller i { color: var(--primary); font-size: 10px; }
 .verified-chip { background: var(--primary-light); color: var(--primary); font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+.business-chip { background: var(--accent-light); color: var(--accent); font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
 .card-bottom { display: flex; align-items: center; justify-content: space-between; }
 .card-price { font-size: 14px; font-weight: 800; color: var(--primary); letter-spacing: -0.03em; }
 .card-price del { font-size: 10px; color: var(--muted); font-weight: 400; margin-left: 3px; text-decoration: line-through; }

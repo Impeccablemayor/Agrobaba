@@ -51,7 +51,12 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
           {product.sellerName}
           {product.verified && (
             <span className="verified-chip">
-              <i className="fa-solid fa-circle-check"></i> Verified
+              <i className="fa-solid fa-circle-check"></i> Verified Seller
+            </span>
+          )}
+          {product.sellerBusinessVerified && (
+            <span className="business-chip">
+              <i className="fa-solid fa-building"></i> Registered Business
             </span>
           )}
         </div>

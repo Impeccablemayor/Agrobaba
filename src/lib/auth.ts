@@ -47,6 +47,7 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
       contact: data.contact || '',
       address: data.address || '',
       verified: false,
+      businessVerified: false,
       joinedAt: new Date().toISOString(),
       avatar: null,
     } as SafeUser;
@@ -76,6 +77,7 @@ export async function loginUser(email: string, password: string): Promise<boolea
       contact: '',
       address: '',
       verified: false,
+      businessVerified: false,
       joinedAt: new Date().toISOString(),
       avatar: null,
     } as SafeUser;
@@ -108,6 +110,7 @@ interface ProfileResponse {
   businessName: string | null;
   bio: string | null;
   verified: boolean;
+  businessVerified: boolean;
   avatar: string | null;
 }
 
@@ -124,6 +127,7 @@ function mapProfileToSafeUser(profile: ProfileResponse): SafeUser {
     businessName: profile.businessName || undefined,
     bio: profile.bio || undefined,
     verified: profile.verified,
+    businessVerified: profile.businessVerified,
     joinedAt: '',
     avatar: profile.avatar || null,
   };

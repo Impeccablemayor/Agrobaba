@@ -1,15 +1,44 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { approveVerification, getPendingVerifications, rejectVerification } from '../../lib/verification';
+import {
+  approveBusinessVerification, approveVerification,
+  getPendingVerifications, rejectBusinessVerification, rejectVerification,
+} from '../../lib/verification';
 import { roleLabel, timeAgo } from '../../lib/format';
 import type { PendingVerification } from '../../types';
+
+function DocLink({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{label}</div>
+      {value.startsWith('data:image') ? (
+        <img src={value} alt={label} style={{ maxWidth: 160, maxHeight: 160, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
+      ) : (
+        <a href={value} target="_blank" rel="noreferrer" className="btn-outline btn-sm btn-inline">
+          <i className="fa-solid fa-file"></i> View
+        </a>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div className="account-detail-item">
+      <div className="label">{label}</div>
+      <div className="value">{value}</div>
+    </div>
+  );
+}
 
 export default function AdminVerificationsPage() {
   const { user } = useAuth();
   const [pending, setPending] = useState<PendingVerification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<{ userId: string; track: 'identity' | 'business' } | null>(null);
   const [rejectNote, setRejectNote] = useState('');
 
   async function load() {
@@ -29,18 +58,19 @@ export default function AdminVerificationsPage() {
   async function handleApprove(userId: string) {
     if (await approveVerification(userId)) void load();
   }
-
-  function startReject(userId: string) {
-    setRejectingId(userId);
+  async function handleApproveBusiness(userId: string) {
+    if (await approveBusinessVerification(userId)) void load();
+  }
+  function startReject(userId: string, track: 'identity' | 'business') {
+    setRejecting({ userId, track });
     setRejectNote('');
   }
-
-  async function confirmReject(userId: string) {
-    if (!rejectNote.trim()) return;
-    if (await rejectVerification(userId, rejectNote.trim())) {
-      setRejectingId(null);
-      void load();
-    }
+  async function confirmReject() {
+    if (!rejecting || !rejectNote.trim()) return;
+    const ok = rejecting.track === 'identity'
+      ? await rejectVerification(rejecting.userId, rejectNote.trim())
+      : await rejectBusinessVerification(rejecting.userId, rejectNote.trim());
+    if (ok) { setRejecting(null); void load(); }
   }
 
   return (
@@ -56,7 +86,7 @@ export default function AdminVerificationsPage() {
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Pending Verifications</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>Review submissions from farmers, dealers, and service-providers.</p>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>Identity (Verified Seller) and business/CAC (Registered Business) are reviewed independently.</p>
         </div>
 
         {loading ? (
@@ -71,61 +101,99 @@ export default function AdminVerificationsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {pending.map((p) => (
-              <div key={p.userId} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>{p.name} <span style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 12 }}>({roleLabel(p.role)})</span></h3>
-                    <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>{p.email} &middot; submitted {timeAgo(p.submittedAt)}</p>
-                  </div>
-                </div>
+            {pending.map((p) => {
+              const isFarmer = p.role === 'farmer';
+              const isDealer = p.role === 'agro-dealer';
+              const isProvider = p.role === 'service-provider';
+              const isRejectingIdentity = rejecting?.userId === p.userId && rejecting.track === 'identity';
+              const isRejectingBusiness = rejecting?.userId === p.userId && rejecting.track === 'business';
 
-                <div className="account-detail-grid" style={{ marginBottom: 12 }}>
-                  <div className="account-detail-item">
-                    <div className="label">Business Name</div>
-                    <div className="value">{p.businessName || '—'}</div>
+              return (
+                <div key={p.userId} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>{p.name} <span style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 12 }}>({roleLabel(p.role)})</span></h3>
+                      <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>{p.email} &middot; submitted {timeAgo(p.submittedAt)}</p>
+                    </div>
                   </div>
-                  <div className="account-detail-item">
-                    <div className="label">ID / Registration Number</div>
-                    <div className="value">{p.idNumber || '—'}</div>
-                  </div>
-                </div>
 
-                {p.document && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Submitted Document</div>
-                    {p.document.startsWith('data:image') ? (
-                      <img src={p.document} alt="Verification document" style={{ maxWidth: 240, maxHeight: 240, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }} />
-                    ) : (
-                      <a href={p.document} target="_blank" rel="noreferrer" className="btn-outline btn-sm btn-inline">
-                        <i className="fa-solid fa-file"></i> View Document
-                      </a>
+                  {/* Identity section */}
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Identity &mdash; Verified Seller {p.status === 'pending' ? '' : `(${p.status})`}
+                    </div>
+                    <div className="account-detail-grid" style={{ marginBottom: 10 }}>
+                      <Field label="ID Number" value={p.idNumber} />
+                      <Field label="Business Name" value={p.businessName} />
+                      {isFarmer && <Field label="Farm Name" value={p.farmName} />}
+                      {isFarmer && <Field label="Crops / Livestock" value={p.cropsOrLivestock} />}
+                      {(isDealer || isProvider) && <Field label={isDealer ? 'Business Address' : 'Business Address / Area of Operation'} value={p.businessAddress} />}
+                      {isDealer && <Field label="Product Categories Sold" value={p.productCategoriesSold} />}
+                      <Field label="Bank" value={p.bankName ? `${p.bankName} — ${p.bankAccountName} — ${p.bankAccountNumber}` : null} />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                      <DocLink label="Government ID" value={p.governmentIdDocument} />
+                      {isFarmer && <DocLink label="Selfie" value={p.selfieDocument} />}
+                      {isProvider && <DocLink label="Professional Certificates" value={p.professionalCertificates} />}
+                      {isProvider && <DocLink label="Portfolio" value={p.portfolioDocument} />}
+                    </div>
+
+                    {p.status === 'pending' && (
+                      isRejectingIdentity ? (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                          <input type="text" placeholder="Reason for rejection..." value={rejectNote} onChange={(e) => setRejectNote(e.target.value)}
+                            style={{ flex: 1, minWidth: 200, border: '2px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '9px 12px', fontSize: 13 }} />
+                          <button className="btn-danger btn-sm btn-inline" onClick={confirmReject}>Confirm Reject</button>
+                          <button className="btn-outline btn-sm btn-inline" onClick={() => setRejecting(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button className="btn-primary btn-sm btn-inline" onClick={() => handleApprove(p.userId)}>
+                            <i className="fa-solid fa-check"></i> Approve Identity
+                          </button>
+                          <button className="btn-danger btn-sm btn-inline" onClick={() => startReject(p.userId, 'identity')}>
+                            <i className="fa-solid fa-xmark"></i> Reject
+                          </button>
+                        </div>
+                      )
                     )}
                   </div>
-                )}
 
-                {rejectingId === p.userId ? (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <input
-                      type="text" placeholder="Reason for rejection..." value={rejectNote}
-                      onChange={(e) => setRejectNote(e.target.value)}
-                      style={{ flex: 1, minWidth: 200, border: '2px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '9px 12px', fontSize: 13 }}
-                    />
-                    <button className="btn-danger btn-sm btn-inline" onClick={() => confirmReject(p.userId)}>Confirm Reject</button>
-                    <button className="btn-outline btn-sm btn-inline" onClick={() => setRejectingId(null)}>Cancel</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn-primary btn-sm btn-inline" onClick={() => handleApprove(p.userId)}>
-                      <i className="fa-solid fa-check"></i> Approve
-                    </button>
-                    <button className="btn-danger btn-sm btn-inline" onClick={() => startReject(p.userId)}>
-                      <i className="fa-solid fa-xmark"></i> Reject
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                  {/* Business/CAC section - only if submitted */}
+                  {p.businessStatus && (
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Business &mdash; Registered Business {p.businessStatus === 'pending' ? '' : `(${p.businessStatus})`}
+                      </div>
+                      <div className="account-detail-grid" style={{ marginBottom: 10 }}>
+                        <Field label="CAC Number" value={p.cacNumber} />
+                      </div>
+                      <DocLink label="CAC Certificate" value={p.cacDocument} />
+
+                      {p.businessStatus === 'pending' && (
+                        isRejectingBusiness ? (
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                            <input type="text" placeholder="Reason for rejection..." value={rejectNote} onChange={(e) => setRejectNote(e.target.value)}
+                              style={{ flex: 1, minWidth: 200, border: '2px solid var(--border-mid)', borderRadius: 'var(--radius-sm)', padding: '9px 12px', fontSize: 13 }} />
+                            <button className="btn-danger btn-sm btn-inline" onClick={confirmReject}>Confirm Reject</button>
+                            <button className="btn-outline btn-sm btn-inline" onClick={() => setRejecting(null)}>Cancel</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                            <button className="btn-primary btn-sm btn-inline" onClick={() => handleApproveBusiness(p.userId)}>
+                              <i className="fa-solid fa-check"></i> Approve Business
+                            </button>
+                            <button className="btn-danger btn-sm btn-inline" onClick={() => startReject(p.userId, 'business')}>
+                              <i className="fa-solid fa-xmark"></i> Reject
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -17,12 +17,30 @@ export type VerificationStatus = 'unsubmitted' | 'pending' | 'approved' | 'rejec
 
 export interface VerificationStatusInfo {
   status: VerificationStatus;
+  businessStatus: VerificationStatus | null;
   businessName: string | null;
   idNumber: string | null;
+  governmentIdDocument: string | null;
+  selfieDocument: string | null;
+  farmName: string | null;
+  cropsOrLivestock: string | null;
+  businessAddress: string | null;
+  productCategoriesSold: string | null;
+  professionalCertificates: string | null;
+  portfolioDocument: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankName: string | null;
+  cacNumber: string | null;
+  cacDocument: string | null;
+  declarationAccepted: boolean;
   note: string | null;
+  businessNote: string | null;
   submittedAt: string | null;
   reviewedAt: string | null;
+  businessReviewedAt: string | null;
   verified: boolean;
+  businessVerified: boolean;
 }
 
 export interface PendingVerification {
@@ -30,9 +48,23 @@ export interface PendingVerification {
   name: string;
   email: string;
   role: Role;
+  status: VerificationStatus;
+  businessStatus: VerificationStatus | null;
   businessName: string | null;
   idNumber: string | null;
-  document: string | null;
+  governmentIdDocument: string | null;
+  selfieDocument: string | null;
+  farmName: string | null;
+  cropsOrLivestock: string | null;
+  businessAddress: string | null;
+  productCategoriesSold: string | null;
+  professionalCertificates: string | null;
+  portfolioDocument: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankName: string | null;
+  cacNumber: string | null;
+  cacDocument: string | null;
   submittedAt: string;
 }
 
@@ -49,6 +81,7 @@ export interface User {
   businessName?: string;
   bio?: string;
   verified: boolean;
+  businessVerified: boolean;
   joinedAt: string;
   avatar: string | null;
 }
@@ -76,6 +109,7 @@ export interface Product {
   sellerName: string;
   sellerRole: Role | 'seed' | string;
   verified: boolean;
+  sellerBusinessVerified: boolean;
   rating: number;
   reviews: number;
   sold: number;
