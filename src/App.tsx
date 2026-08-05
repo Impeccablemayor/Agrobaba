@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
+import { RoleProtectedRoute } from './components/routing/RoleProtectedRoute';
 import { GuestOnlyRoute } from './components/routing/GuestOnlyRoute';
 
 import HomePage from './pages/HomePage';
@@ -85,10 +86,10 @@ function App() {
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
 
-        <Route path="admin/verifications" element={<ProtectedRoute><AdminVerificationsPage /></ProtectedRoute>} />
-        <Route path="admin/orders" element={<ProtectedRoute><AdminOrdersPage /></ProtectedRoute>} />
-        <Route path="admin/flash-sales" element={<ProtectedRoute><AdminFlashSalesPage /></ProtectedRoute>} />
-        <Route path="admin/coupons" element={<ProtectedRoute><AdminCouponsPage /></ProtectedRoute>} />
+        <Route path="admin/verifications" element={<RoleProtectedRoute role="admin"><AdminVerificationsPage /></RoleProtectedRoute>} />
+        <Route path="admin/orders" element={<RoleProtectedRoute role="admin"><AdminOrdersPage /></RoleProtectedRoute>} />
+        <Route path="admin/flash-sales" element={<RoleProtectedRoute role="admin"><AdminFlashSalesPage /></RoleProtectedRoute>} />
+        <Route path="admin/coupons" element={<RoleProtectedRoute role="admin"><AdminCouponsPage /></RoleProtectedRoute>} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>
