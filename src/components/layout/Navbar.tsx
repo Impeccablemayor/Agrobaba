@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import type { Suggestion } from '../../lib/search';
 
 export function Navbar({ compact = false }: { compact?: boolean }) {
-  const { user, logout } = useAuth();
+  const { user, status, logout } = useAuth();
   const { count } = useCart();
   const { unreadCount } = useMessagesBadge();
   const navigate = useNavigate();
@@ -71,7 +71,13 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
         )}
 
         <div className="nav-actions" id="auth-links">
-          {!user ? (
+          {status === 'loading' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 12 }}>
+              <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
+              Checking session…
+            </div>
+          ) : (
+            !user ? (
             <ul style={{ display: 'flex', alignItems: 'center', gap: 0, margin: 0, padding: 0 }}>
               <li>
                 <Link to="/login" className="btn-login">
@@ -115,7 +121,7 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
                 </button>
               </li>
             </ul>
-          )}
+            ))}
         </div>
       </div>
       <ConfirmDialog

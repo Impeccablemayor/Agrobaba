@@ -730,3 +730,12 @@ select { cursor: pointer; }
 @media (max-width: 900px) {
   .admin-queue-layout { grid-template-columns: 1fr; }
 }
+
+/* ===== SERVER UNAVAILABLE BANNER ===== */
+.server-unavailable-banner { background: #dc2626; color: #fff; font-size: 12.5px; font-weight: 600; padding: 9px 24px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; text-align: center; }
+.server-unavailable-banner i { margin-right: 6px; }
+.server-unavailable-banner button { background: rgba(255,255,255,0.92); color: #b91c1c; border: none; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.server-unavailable-banner button:hover { background: #fff; }
+
+/* ===== SPIN ===== */
+@keyframes spin { to { transform: rotate(360deg); } }

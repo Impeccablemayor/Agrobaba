@@ -1,6 +1,6 @@
 import { KEYS, getItem, setItem } from './storage';
 import { showToast } from './toastBus';
-import { api, setAuthToken } from './api';
+import { api, ApiError, setAuthToken } from './api';
 import type { Role, SafeUser, User } from '../types';
 
 export function getCurrentUser(): SafeUser | null {
@@ -13,6 +13,17 @@ export function isLoggedIn(): boolean {
 
 export function getUserRole(): Role | null {
   return getCurrentUser()?.role ?? null;
+}
+
+/** A JWT alone is NOT proof of authentication - it only means a session _might_ exist. The
+ *  backend must confirm it via the /api/auth/me verification call before the app trusts it. */
+export function hasStoredToken(): boolean {
+  return localStorage.getItem('agrobaba_token') !== null;
+}
+
+/** True when the backend is reachable but explicitly rejected the session (401/403). */
+export function isAuthRejection(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
 export interface RegisterInput {
@@ -131,6 +142,16 @@ function mapProfileToSafeUser(profile: ProfileResponse): SafeUser {
     joinedAt: '',
     avatar: profile.avatar || null,
   };
+}
+
+/** Asks Spring Boot to verify the stored JWT and returns the freshly confirmed user. Throws
+ *  an ApiError on 401/403 (invalid session) or a network error when the backend is unreachable,
+ *  letting the caller distinguish the two cases. */
+export async function fetchProfile(): Promise<SafeUser> {
+  const profile = await api.get<ProfileResponse>('/api/auth/me');
+  const safeUser = mapProfileToSafeUser(profile);
+  setItem(KEYS.user, safeUser);
+  return safeUser;
 }
 
 export async function updateUser(updatedData: Partial<User>): Promise<boolean> {

@@ -7,6 +7,19 @@ interface ApiErrorShape {
 
 const MAX_RETRIES = 2;
 
+/** Error with an HTTP status, thrown whenever the backend responds but not with 2xx. This lets
+ *  callers distinguish "backend rejected the request (status)" from "backend unreachable", which
+ *  throws the raw fetch TypeError instead. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -47,21 +60,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     data = text;
   }
 
-  function parseJsonResponse<T>(data: unknown): T {
+  if (!response.ok) {
+    const errData = data as ApiErrorShape;
+    const message =
+      typeof errData === 'object' && errData !== null
+        ? errData.message || errData.error || 'Request failed'
+        : 'Request failed';
+    // Keep 401 handling consistent app-wide: notify listeners (AuthContext clears the session).
+    if (response.status === 401) {
+      window.dispatchEvent(new Event('agrobaba:unauthorized'));
+    }
+    throw new ApiError(response.status, message);
+  }
+
   if (data !== null && typeof data === 'object') return data as T;
   if (Array.isArray(data)) return data as T;
   return data as T;
-}
-
-  if (!response.ok) {
-    const errData = data as ApiErrorShape;
-const message = (typeof errData === 'object' && errData !== null)
-  ? (errData.message || errData.error || 'Request failed')
-  : 'Request failed';
-    throw new Error(message);
-  }
-
-  return parseJsonResponse<T>(data);
 }
 
 export const api = {

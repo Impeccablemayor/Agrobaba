@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllOrdersAdmin, updateOrderStatus, verifyOrderPayment } from '../../lib/orders';
-import { formatDate, formatPrice, timeAgo } from '../../lib/format';
+import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { Order } from '../../types';
