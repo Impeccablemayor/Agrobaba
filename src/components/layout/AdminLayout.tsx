@@ -13,6 +13,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: 'fa-gauge', label: 'Overview', isActive: (p) => p === '/admin' },
+  { to: '/admin/personalization', icon: 'fa-brain', label: 'Personalization', isActive: (p) => p === '/admin/personalization' },
   { to: '/admin/orders', icon: 'fa-receipt', label: 'Orders', isActive: (p, s) => p === '/admin/orders' && !s.includes('tab=payments') },
   { to: '/admin/orders?tab=payments', icon: 'fa-money-check-dollar', label: 'Payments', isActive: (p, s) => p === '/admin/orders' && s.includes('tab=payments') },
   { to: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', isActive: (p) => p === '/admin/verifications' },

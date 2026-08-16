@@ -37,7 +37,9 @@ import MyOrdersPage from './pages/account/MyOrdersPage';
 import MyBookingsPage from './pages/account/MyBookingsPage';
 import MySalesPage from './pages/account/MySalesPage';
 import VerifyAccountPage from './pages/account/VerifyAccountPage';
+import PersonalizationWizardPage from './pages/onboarding/PersonalizationWizardPage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
@@ -89,12 +91,14 @@ function App() {
         <Route path="account/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
+        <Route path="onboarding" element={<ProtectedRoute><PersonalizationWizardPage /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       <Route element={<RoleProtectedRoute role="admin"><AdminLayout /></RoleProtectedRoute>}>
         <Route path="admin" element={<AdminOverviewPage />} />
+        <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
         <Route path="admin/verifications" element={<AdminVerificationsPage />} />
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />

@@ -8,8 +8,10 @@ import { getMyConversations } from '../../lib/messages';
 import { getCartCount } from '../../lib/cart';
 import { getMyVerificationStatus } from '../../lib/verification';
 import { getMyProviderBookings } from '../../lib/bookings';
+import { getRecommendedProducts, getMatchingDemands } from '../../lib/home';
+import { getMyPersonalizationProfile } from '../../lib/personalization';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
-import type { Demand, Order, Product, Role, Conversation, ServiceBooking } from '../../types';
+import type { Demand, Order, Product, Role, Conversation, ServiceBooking, ProfileStatus } from '../../types';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 interface MenuLink { href: string; icon: string; label: string; active?: boolean; danger?: boolean; }
@@ -33,6 +35,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'agro-dealer': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Product' },
@@ -44,6 +47,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'service-provider': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Service' },
@@ -54,6 +58,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   buyer: [
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand' },
@@ -62,6 +67,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/cart', icon: 'fa-cart-shopping', label: 'My Cart' },
     { href: '/shop', icon: 'fa-store', label: 'Browse Shop' },
+    { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   admin: [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Listing' },
@@ -127,6 +133,9 @@ export default function MyAccountPage() {
   const [myBookings, setMyBookings] = useState<ServiceBooking[]>([]);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [recommendedCount, setRecommendedCount] = useState(0);
+  const [matchingDemandsCount, setMatchingDemandsCount] = useState(0);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -134,7 +143,8 @@ export default function MyAccountPage() {
     async function loadData() {
       if (!user) return;
       setLoading(true);
-      const [products, orders, sales, demands, conversations, verification, bookings] = await Promise.all([
+      const isSupplier = user.role !== 'buyer';
+      const [products, orders, sales, demands, conversations, verification, bookings, recommended, matchingDemands, personalizationProfile] = await Promise.all([
         getMyProducts(),
         getMyOrders(),
         getMySales(),
@@ -142,6 +152,9 @@ export default function MyAccountPage() {
         getMyConversations(),
         getMyVerificationStatus(),
         user.role === 'service-provider' ? getMyProviderBookings() : Promise.resolve([]),
+        getRecommendedProducts(),
+        isSupplier ? getMatchingDemands() : Promise.resolve([]),
+        getMyPersonalizationProfile(),
       ]);
 
       if (!active) return;
@@ -152,6 +165,9 @@ export default function MyAccountPage() {
       setMyConvs(conversations);
       setVerified(verification?.verified ?? user.verified);
       setMyBookings(bookings);
+      setRecommendedCount(recommended.length);
+      setMatchingDemandsCount(matchingDemands.length);
+      setProfileStatus(personalizationProfile?.status ?? null);
       setLoading(false);
     }
 
@@ -160,6 +176,7 @@ export default function MyAccountPage() {
   }, [user]);
 
   if (!user) return null;
+  const isSupplier = user.role !== 'buyer';
   const unread = myConvs.reduce((s, c) => s + c.unread, 0);
   const bookingRevenue = myBookings
     .filter((b) => ['paid', 'in_progress', 'completed'].includes(b.status))
@@ -277,6 +294,32 @@ export default function MyAccountPage() {
               </Link>
             ))}
           </div>
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+            Matches for You
+          </h4>
+          {profileStatus && profileStatus !== 'completed' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
+              <i className="fa-solid fa-sliders" style={{ color: 'var(--primary)' }}></i>
+              <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>Complete your profile to see personalized matches here.</span>
+              <Link to="/onboarding" className="btn-primary btn-inline btn-sm">Complete My Profile</Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <Link to="/shop" className="account-detail-item" style={{ flex: '1 1 220px', textDecoration: 'none' }}>
+                <div className="label"><i className="fa-solid fa-sparkles"></i> Products Matching Your Interests</div>
+                <div className="value">{recommendedCount > 0 ? recommendedCount : 'No matches yet — check back soon'}</div>
+              </Link>
+              {isSupplier && (
+                <Link to="/demands" className="account-detail-item" style={{ flex: '1 1 220px', textDecoration: 'none' }}>
+                  <div className="label"><i className="fa-solid fa-bullseye"></i> Demands Matching What You Sell</div>
+                  <div className="value">{matchingDemandsCount > 0 ? matchingDemandsCount : 'No matches yet — check back soon'}</div>
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: 28 }}>

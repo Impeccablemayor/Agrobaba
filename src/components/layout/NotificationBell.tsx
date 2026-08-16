@@ -12,6 +12,8 @@ const TYPE_ICONS: Record<string, string> = {
   payment_confirmed: 'fa-circle-check',
   order_status: 'fa-truck',
   verification: 'fa-user-check',
+  listing_match: 'fa-tag',
+  demand_match: 'fa-bullseye',
   default: 'fa-bell',
 };
 

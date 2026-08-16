@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as cartLib from '../lib/cart';
 import { isLoggedIn } from '../lib/auth';
 import { showToast } from '../lib/toastBus';
+import { recordEvent } from '../lib/behaviorEvents';
 import type { CartItem, Product } from '../types';
 
 interface CartContextValue {
@@ -32,11 +33,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     cartLib.addToCart(product, quantity, size);
+    recordEvent('add_to_cart', product.id);
     refresh();
   }
 
   function removeFromCart(itemId: string): void {
+    const item = cart.find((i) => i.id === itemId);
     cartLib.removeFromCart(itemId);
+    if (item) recordEvent('remove_from_cart', item.productId);
     refresh();
   }
 

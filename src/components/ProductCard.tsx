@@ -5,7 +5,15 @@ import { useCart } from '../contexts/CartContext';
 import { CATEGORY_ICONS } from '../lib/constants';
 import type { Product } from '../types';
 
-export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
+export const ProductCard = memo(function ProductCard({
+  product,
+  onNotInterested,
+}: {
+  product: Product;
+  /** Only passed by the "Recommended for You" rail — dismissing a specific recommendation isn't
+   *  a meaningful action on general listing surfaces (produce/services rails, search results). */
+  onNotInterested?: (productId: string) => void;
+}) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const icon = CATEGORY_ICONS[product.category] || CATEGORY_ICONS.default;
@@ -23,10 +31,20 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
     addToCart(product, 1, 'Standard');
   }
 
+  function handleNotInterested(e: React.MouseEvent) {
+    e.stopPropagation();
+    onNotInterested?.(product.id);
+  }
+
   return (
     <div className="card" onClick={() => navigate(detailPath)}>
       <div className="card-img">
         {product.discount > 0 && <div className="disc-tag">{product.discount}% OFF</div>}
+        {onNotInterested && (
+          <button className="not-interested-btn" onClick={handleNotInterested} title="Not interested">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        )}
         {product.image ? (
           <img src={product.image} alt={product.name} loading="lazy" />
         ) : (
@@ -46,6 +64,11 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
           {starString(product.rating)} <span>({product.reviews || 0})</span>
         </div>
         <div className="card-name">{product.name}</div>
+        {product.recommendationReason && (
+          <div className="reco-reason">
+            <i className="fa-solid fa-sparkles"></i> {product.recommendationReason}
+          </div>
+        )}
         <div className="card-seller">
           <i className="fa-solid fa-circle-check"></i>
           {product.sellerName}

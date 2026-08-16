@@ -2,16 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getProducts } from '../lib/products';
+import { getRecommendedProducts, getMatchingDemands } from '../lib/home';
 import { getDemands } from '../lib/demands';
 import { getActiveFlashSale } from '../lib/flashSales';
 import { getCategories, getSectionIdByCode } from '../lib/categories';
+import { getMyPersonalizationProfile } from '../lib/personalization';
+import { recordEvent } from '../lib/behaviorEvents';
+import { showToast } from '../lib/toastBus';
 import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
 import { CategorySidebar } from '../components/CategorySidebar';
 import type { Suggestion } from '../lib/search';
-import type { Category, Demand, FlashSale, Product } from '../types';
+import type { Category, Demand, FlashSale, Product, ProfileStatus } from '../types';
 
 function useCountdown(endAt: string | null) {
   const [remaining, setRemaining] = useState(0);
@@ -40,34 +44,55 @@ export default function HomePage() {
   const { user } = useAuth();
   const [heroQuery, setHeroQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [recommended, setRecommended] = useState<Product[]>([]);
+  const [matchingDemands, setMatchingDemands] = useState<Demand[]>([]);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
   const [demands, setDemands] = useState<Demand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [flashSale, setFlashSale] = useState<FlashSale | null>(null);
   const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
+  const isSupplier = !!user && user.role !== 'buyer';
+
   useEffect(() => {
     void (async () => {
-      const [allProducts, allDemands, activeFlashSale, allCategories] = await Promise.all([
+      const [allProducts, allDemands, activeFlashSale, allCategories, recommendedProducts, matchingDemandsResult, personalizationProfile] = await Promise.all([
         getProducts(), getDemands(), getActiveFlashSale(), getCategories(),
+        user ? getRecommendedProducts() : Promise.resolve([]),
+        isSupplier ? getMatchingDemands() : Promise.resolve([]),
+        user ? getMyPersonalizationProfile() : Promise.resolve(null),
       ]);
       setProducts(allProducts);
       setDemands(allDemands);
       setFlashSale(activeFlashSale);
       setCategories(allCategories);
+      setRecommended(recommendedProducts);
+      setMatchingDemands(matchingDemandsResult);
+      setProfileStatus(personalizationProfile?.status ?? null);
     })();
-  }, []);
+  }, [user, isSupplier]);
 
   const featuredProducts = products.slice(0, 8);
-  const produceRail = products.filter((p) => p.categoryCode === 'produce').slice(0, 4);
-  const servicesRail = products.filter((p) => p.type === 'service').slice(0, 4);
+  // categoryCode is the full leaf code (e.g. "produce.grains.maize") - every listing's category
+  // is enforced to be a leaf, never the bare section, so this has to be a prefix match.
+  const recommendedIds = new Set(recommended.map((p) => p.id));
+  const withRecommendedFirst = (candidates: Product[]) =>
+    [...candidates].sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)));
+  const produceRail = withRecommendedFirst(products.filter((p) => p.categoryCode?.startsWith('produce.'))).slice(0, 4);
+  const servicesRail = withRecommendedFirst(products.filter((p) => p.type === 'service')).slice(0, 4);
   const previewDemands = demands.slice(0, 4);
+
+  function handleNotInterested(productId: string) {
+    recordEvent('not_interested', productId);
+    setRecommended((prev) => prev.filter((p) => p.id !== productId));
+    showToast("Got it — you'll see less like this", 'info');
+  }
 
   const sectionHref = (code: string) => {
     const id = getSectionIdByCode(categories, code);
     return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
   };
 
-  const isSupplier = !!user && user.role !== 'buyer';
   const postHref = !user ? '/register' : isSupplier ? '/account/post-listing' : '/demands/new';
   const postLabel = !user ? 'Get Started' : isSupplier ? 'Post a Listing' : 'Post a Demand';
 
@@ -138,6 +163,55 @@ export default function HomePage() {
         <div className="trust-item"><i className="fa-solid fa-comments"></i> Buyer-Seller Messaging</div>
         <div className="trust-item"><i className="fa-solid fa-headset"></i> Support When You Need It</div>
       </div>
+
+      {/* RECOMMENDED FOR YOU - only rendered once we actually have personalized picks */}
+      {recommended.length > 0 && (
+        <>
+          <div className="section">
+            <div className="section-hdr">
+              <h2><i className="fa-solid fa-sparkles" style={{ color: 'var(--primary)' }}></i> Recommended for You</h2>
+            </div>
+            <div className="grid-4">
+              {recommended.map((p) => <ProductCard key={p.id} product={p} onNotInterested={handleNotInterested} />)}
+            </div>
+          </div>
+
+          <div className="divider"></div>
+        </>
+      )}
+
+      {/* DEMANDS YOU COULD FULFILL - seller-side mirror of Recommended for You */}
+      {matchingDemands.length > 0 && (
+        <>
+          <div className="section">
+            <div className="section-hdr">
+              <h2><i className="fa-solid fa-bullseye" style={{ color: 'var(--primary)' }}></i> Demands You Could Fulfill</h2>
+              <Link to="/demands" className="see-all">View demand board <i className="fa-solid fa-chevron-right"></i></Link>
+            </div>
+            <div className="demand-grid">
+              {matchingDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
+            </div>
+          </div>
+
+          <div className="divider"></div>
+        </>
+      )}
+
+      {/* COMPLETE YOUR PROFILE - nudge for anyone whose profile isn't personalizing anything yet */}
+      {user && profileStatus && profileStatus !== 'completed' && (
+        <>
+          <div className="section">
+            <div className="banner banner-green">
+              <i className="fa-solid fa-sliders"></i>
+              <h3>Get recommendations made for you</h3>
+              <p>Tell us what you're looking for and we'll surface matching listings, demands and alerts across the site — takes under 2 minutes.</p>
+              <Link to="/onboarding" className="banner-btn"><i className="fa-solid fa-arrow-right"></i> Complete My Profile</Link>
+            </div>
+          </div>
+
+          <div className="divider"></div>
+        </>
+      )}
 
       {/* BROWSE MARKET */}
       <div className="section">

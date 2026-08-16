@@ -13,6 +13,107 @@ export interface Category {
   sortOrder: number;
 }
 
+export type ProfileStatus = 'not_started' | 'skipped' | 'completed';
+
+export interface TaxonomyOption {
+  code: string;
+  label: string;
+  categoryCodes: string[];
+}
+
+export interface PersonalizationTaxonomy {
+  enterprises: TaxonomyOption[];
+  dealerProductTypes: TaxonomyOption[];
+  providerServiceTypes: TaxonomyOption[];
+  buyerTypes: TaxonomyOption[];
+  buyingPurposes: TaxonomyOption[];
+  purposesByBuyerType: Record<string, string[]>;
+  buyingPreferences: TaxonomyOption[];
+  purchaseScaleOptions: TaxonomyOption[];
+  purchaseFrequencyOptions: TaxonomyOption[];
+  sourcingAreaOptions: TaxonomyOption[];
+  fulfillmentOptions: TaxonomyOption[];
+  equipmentServiceIntentOptions: TaxonomyOption[];
+  farmerActivities: TaxonomyOption[];
+  farmScaleOptions: TaxonomyOption[];
+  farmerPreferences: TaxonomyOption[];
+  farmerNeedSectionCodes: string[];
+  dealerActivities: TaxonomyOption[];
+  dealerCustomerTypes: TaxonomyOption[];
+  salesModelOptions: TaxonomyOption[];
+  restockingFrequencyOptions: TaxonomyOption[];
+  sourcingQuantityOptions: TaxonomyOption[];
+  localSourcingPreferenceOptions: TaxonomyOption[];
+  deliveryNeededOptions: TaxonomyOption[];
+  operatingAreaOptions: TaxonomyOption[];
+  deliveryCoverageOptions: TaxonomyOption[];
+  dealerPreferences: TaxonomyOption[];
+  dealerNeedSectionCodes: string[];
+  providerEquipmentOptions: TaxonomyOption[];
+  serviceDeliveryModeOptions: TaxonomyOption[];
+  providerCustomerTypes: TaxonomyOption[];
+  serviceOperatingAreaOptions: TaxonomyOption[];
+  pricingModelOptions: TaxonomyOption[];
+  availabilityOptions: TaxonomyOption[];
+  serviceCapacityOptions: TaxonomyOption[];
+  providerNeedSectionCodes: string[];
+}
+
+export interface RoleDefaults {
+  suggestedSectionCodes: string[];
+  suggestedListingKinds: ListingKind[];
+}
+
+export interface PersonalizationProfile {
+  userId: string;
+  primaryRole: Role;
+  status: ProfileStatus;
+  offerGroups: string[];
+  offerCategoryCodes: string[];
+  offerOther: string[];
+  buyerTypes: string[];
+  buyerTypeOther: string[];
+  buyingPurposes: string[];
+  buyingPurposeOther: string[];
+  needCategoryCodes: string[];
+  needOther: string[];
+  preferredListingKinds: ListingKind[];
+  buyingPreferences: string[];
+  purchaseScale: string | null;
+  purchaseFrequency: string | null;
+  sourcingAreaPreference: string | null;
+  fulfillmentPreference: string | null;
+  farmerActivities: string[];
+  farmerActivityOther: string[];
+  farmScale: string | null;
+  farmerPreferences: string[];
+  dealerActivities: string[];
+  dealerActivityOther: string[];
+  dealerCustomerTypes: string[];
+  dealerCustomerTypeOther: string[];
+  salesModel: string | null;
+  restockingFrequency: string | null;
+  sourcingQuantity: string | null;
+  localSourcingPreference: string | null;
+  deliveryNeeded: string | null;
+  operatingArea: string | null;
+  deliveryCoverage: string | null;
+  dealerPreferences: string[];
+  providerEquipment: string[];
+  providerEquipmentOther: string[];
+  serviceDeliveryMode: string[];
+  serviceDeliveryModeOther: string[];
+  providerCustomerTypes: string[];
+  providerCustomerTypeOther: string[];
+  serviceOperatingArea: string | null;
+  serviceAreaDetails: string[];
+  pricingModel: string[];
+  availability: string[];
+  serviceCapacity: string | null;
+  updatedAt: string | null;
+  defaults: RoleDefaults;
+}
+
 export type VerificationStatus = 'unsubmitted' | 'pending' | 'approved' | 'rejected';
 
 export interface VerificationStatusInfo {
@@ -117,6 +218,11 @@ export interface Product {
   tags: string[];
   createdAt: string;
   status: 'active' | 'inactive';
+  /** Only set on products returned by GET /api/home/recommended - see PersonalizationScoring.explain. */
+  recommendationReason?: string | null;
+  /** Which RecommendationScorer produced recommendationReason (e.g. "deterministic-v1") - not
+   *  rendered anywhere yet, groundwork for comparing scorers once more than one exists. */
+  scoringMethod?: string | null;
 }
 
 export interface DemandResponse {
@@ -324,6 +430,22 @@ export interface AdminOverview {
   openTicketsCount: number;
   flashSalesSoon: FlashSaleSoon[];
   recentActions: AuditLogEntry[];
+}
+
+export interface CategoryInterestSummary {
+  categoryId: number;
+  categoryName: string;
+  totalScore: number;
+}
+
+export interface AdminPersonalizationOverview {
+  totalEvents: number;
+  eventsByType: Record<string, number>;
+  eventsLast7Days: number;
+  notInterestedCount: number;
+  usersWithLearnedInterest: number;
+  totalUsers: number;
+  topCategoriesByInterest: CategoryInterestSummary[];
 }
 
 export interface VerificationHistoryEntry {

@@ -37,7 +37,7 @@ export default function RegisterPage() {
     }
     const success = await register({ ...form, role });
     if (success) {
-      navigate('/account');
+      navigate('/onboarding');
     }
   }
 
