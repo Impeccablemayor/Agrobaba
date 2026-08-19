@@ -6,6 +6,7 @@ import { placeOrder } from '../../lib/orders';
 import { previewCoupon } from '../../lib/coupons';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice } from '../../lib/format';
+import { groupCartBySeller } from '../../lib/cart';
 import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
@@ -36,6 +37,7 @@ export default function CheckoutPage() {
       : Math.min(appliedCoupon.discountValue, total)
     : 0;
   const finalTotal = total - discountAmount;
+  const sellerGroups = groupCartBySeller(cart);
 
   async function handleApplyCoupon() {
     if (!couponInput.trim()) return;
@@ -129,10 +131,19 @@ export default function CheckoutPage() {
             <div className="summary-card">
               <h3>Order Summary</h3>
               <div className="summary-items">
-                {cart.map((item) => (
-                  <div className="summary-line" key={item.id}>
-                    <span className="nm">{item.name} <span style={{ color: 'var(--muted)' }}>&times;{item.quantity}</span></span>
-                    <span>{formatPrice(item.price * item.quantity)}</span>
+                {sellerGroups.map((group) => (
+                  <div key={group.sellerId} style={{ marginBottom: sellerGroups.length > 1 ? 10 : 0 }}>
+                    {sellerGroups.length > 1 && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                        <i className="fa-solid fa-store" style={{ color: 'var(--primary)' }}></i> {group.sellerName}
+                      </div>
+                    )}
+                    {group.items.map((item) => (
+                      <div className="summary-line" key={item.id}>
+                        <span className="nm">{item.name} <span style={{ color: 'var(--muted)' }}>&times;{item.quantity}</span></span>
+                        <span>{formatPrice(item.price * item.quantity)}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

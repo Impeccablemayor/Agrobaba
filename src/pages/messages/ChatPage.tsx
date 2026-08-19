@@ -24,6 +24,15 @@ export default function ChatPage() {
   const [input, setInput] = useState(productName ? `Hi! I'm interested in your listing: "${productName}". Is it still available?` : '');
   const [booking, setBooking] = useState<ServiceBooking | null>(null);
 
+  // Derived from the persisted conversation, not just the URL - a demand-response chat never
+  // carries a URL param at all, and a product-inquiry chat loses its URL param on reload/revisit.
+  // The URL param only matters for a genuinely brand-new conversation with zero messages yet.
+  const conversationContext = messages.find((m) => m.productName || m.demandTitle);
+  const displayProductName = conversationContext?.productName || (messages.length === 0 ? productName : '');
+  const displayProductId = conversationContext?.productId || (messages.length === 0 ? productId : null);
+  const displayDemandTitle = conversationContext?.demandTitle || '';
+  const displayDemandId = conversationContext?.demandId || null;
+
   useEffect(() => {
     let active = true;
     if (!bookingId) { setBooking(null); return undefined; }
@@ -71,8 +80,10 @@ export default function ChatPage() {
       receiverId: partnerId!,
       receiverName: partnerName,
       content,
-      productId: productId || null,
-      productName: productName || null,
+      productId: displayProductId || null,
+      productName: displayProductName || null,
+      demandId: displayDemandId || null,
+      demandTitle: displayDemandTitle || null,
     });
 
     if (sent) {
@@ -106,10 +117,10 @@ export default function ChatPage() {
             <BookingSummaryCard booking={booking} currentUserId={user?.id || ''} onUpdated={setBooking} />
           )}
 
-          {!booking && productName && (
+          {!booking && (displayProductName || displayDemandTitle) && (
             <div className="chat-context">
-              <i className="fa-solid fa-tag"></i>
-              <span>Regarding: <strong>{productName}</strong></span>
+              <i className={`fa-solid ${displayDemandTitle ? 'fa-clipboard-list' : 'fa-tag'}`}></i>
+              <span>Regarding: <strong>{displayDemandTitle || displayProductName}</strong></span>
             </div>
           )}
 

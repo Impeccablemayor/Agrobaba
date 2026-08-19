@@ -126,8 +126,8 @@ export default function ShopPage() {
 
   const sortedProducts = useMemo(() => {
     let list = [...products];
-    if (sort === 'price-low') list = list.sort((a, b) => a.price - b.price);
-    else if (sort === 'price-high') list = list.sort((a, b) => b.price - a.price);
+    if (sort === 'price-low') list = list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    else if (sort === 'price-high') list = list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
     else if (sort === 'rating') list = list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     else if (sort === 'popular') list = list.sort((a, b) => (b.sold || 0) - (a.sold || 0));
     return list;

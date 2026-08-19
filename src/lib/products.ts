@@ -13,7 +13,8 @@ export interface ProductFilters {
 export interface AddProductInput {
   name: string;
   description?: string;
-  price: number | string;
+  /** Optional when `negotiated` is true - a negotiated listing has no public price. */
+  price?: number | string;
   category?: string;
   categoryId?: string | null;
   listingKind?: string;
@@ -25,6 +26,15 @@ export interface AddProductInput {
   image?: string | null;
   discount?: number | string;
   tags?: string[];
+  /** Phase 1 of the Flexible Commerce Architecture roadmap - all optional. */
+  unitType?: string | null;
+  minOrderQuantity?: number | string | null;
+  maxOrderQuantity?: number | string | null;
+  incrementQuantity?: number | string | null;
+  /** Phase 2 of the Flexible Commerce Architecture roadmap - all optional. */
+  priceTiers?: { minQuantity: number | string; pricePerUnit: number | string }[];
+  /** Negotiated Commerce roadmap - when true, `price` may be omitted entirely. */
+  negotiated?: boolean;
 }
 
 export async function addProduct(data: AddProductInput): Promise<Product | false> {
@@ -32,7 +42,7 @@ export async function addProduct(data: AddProductInput): Promise<Product | false
     const product = await api.post<Product>('/api/products', {
       name: data.name,
       description: data.description || '',
-      price: Number(data.price) || 0,
+      price: data.price !== undefined && data.price !== '' ? Number(data.price) : null,
       category: data.category || 'Other',
       categoryId: data.categoryId ? Number(data.categoryId) : null,
       listingKind: data.listingKind || null,
@@ -44,6 +54,14 @@ export async function addProduct(data: AddProductInput): Promise<Product | false
       image: data.image || null,
       discount: Number(data.discount) || 0,
       tags: data.tags || [],
+      unitType: data.unitType || null,
+      minOrderQuantity: data.minOrderQuantity ? Number(data.minOrderQuantity) : null,
+      maxOrderQuantity: data.maxOrderQuantity ? Number(data.maxOrderQuantity) : null,
+      incrementQuantity: data.incrementQuantity ? Number(data.incrementQuantity) : null,
+      priceTiers: data.priceTiers
+        ? data.priceTiers.map((t) => ({ minQuantity: Number(t.minQuantity), pricePerUnit: Number(t.pricePerUnit) }))
+        : null,
+      negotiated: data.negotiated || false,
     });
     showToast('Listing posted successfully!', 'success');
     return product;

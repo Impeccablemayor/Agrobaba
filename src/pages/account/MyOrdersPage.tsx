@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyOrders } from '../../lib/orders';
+import { createReview } from '../../lib/reviews';
 import { formatDate, formatPrice } from '../../lib/format';
 
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -9,12 +10,66 @@ import type { Order } from '../../types';
 
 type Filter = 'all' | 'unpaid' | 'paid' | 'delivered';
 
+/** Inline star-rating + optional-comment form for a single delivered order item. Once submitted
+ *  successfully, the parent hides this in favor of a static "Reviewed" state for the rest of the
+ *  session - a genuine duplicate attempt (e.g. after a reload) is still correctly rejected by the
+ *  backend with a clear error toast, so no separate "already reviewed" fetch is needed for v1. */
+function ReviewForm({ orderId, productId, onSubmitted }: { orderId: string; productId: string; onSubmitted: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (rating < 1) return;
+    setSubmitting(true);
+    const result = await createReview({ orderId, productId, rating, comment: comment.trim() || undefined });
+    setSubmitting(false);
+    if (result) onSubmitted();
+  }
+
+  return (
+    <div style={{ marginTop: 8, padding: 10, background: 'var(--bg-soft, #f5f6f3)', borderRadius: 'var(--radius-sm)' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => setRating(n)}
+            onMouseEnter={() => setHoverRating(n)}
+            onMouseLeave={() => setHoverRating(0)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, fontSize: 16 }}
+          >
+            <i className={`fa-star ${n <= (hoverRating || rating) ? 'fa-solid' : 'fa-regular'}`} style={{ color: 'var(--accent)' }}></i>
+          </button>
+        ))}
+      </div>
+      <textarea
+        placeholder="Optional comment…"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={2}
+        style={{ width: '100%', fontSize: 12, marginBottom: 8, resize: 'vertical' }}
+      />
+      <button
+        className="btn-primary btn-sm btn-inline"
+        disabled={rating < 1 || submitting}
+        onClick={handleSubmit}
+      >
+        {submitting ? 'Submitting…' : 'Submit Review'}
+      </button>
+    </div>
+  );
+}
+
 export default function MyOrdersPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewedProductIds, setReviewedProductIds] = useState<Set<string>>(new Set());
+  const [reviewingProductId, setReviewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -145,12 +200,12 @@ export default function MyOrdersPage() {
       {activeOrder && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setActiveOrder(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setActiveOrder(null); setReviewingProductId(null); } }}
         >
           <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius)', maxWidth: 560, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'var(--bg)' }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Order Details</h3>
-              <button onClick={() => setActiveOrder(null)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--muted)', cursor: 'pointer' }}>
+              <button onClick={() => { setActiveOrder(null); setReviewingProductId(null); }} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--muted)', cursor: 'pointer' }}>
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -178,12 +233,39 @@ export default function MyOrdersPage() {
 
               <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>Items</h4>
               {activeOrder.items.map((item) => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>{item.quantity} &times; {formatPrice(item.price)} &middot; Sold by {item.sellerName}</div>
+                <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{item.quantity} &times; {formatPrice(item.price)} &middot; Sold by {item.sellerName}</div>
+                    </div>
+                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(item.price * item.quantity)}</div>
                   </div>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(item.price * item.quantity)}</div>
+
+                  {activeOrder.status === 'delivered' && (
+                    reviewedProductIds.has(item.productId) ? (
+                      <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--primary)', fontWeight: 600 }}>
+                        <i className="fa-solid fa-circle-check"></i> Reviewed
+                      </div>
+                    ) : reviewingProductId === item.productId ? (
+                      <ReviewForm
+                        orderId={activeOrder.id}
+                        productId={item.productId}
+                        onSubmitted={() => {
+                          setReviewedProductIds((prev) => new Set(prev).add(item.productId));
+                          setReviewingProductId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        className="btn-outline btn-sm btn-inline"
+                        style={{ marginTop: 8, padding: '4px 10px', fontSize: 11.5 }}
+                        onClick={() => setReviewingProductId(item.productId)}
+                      >
+                        <i className="fa-solid fa-star"></i> Leave a Review
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
 

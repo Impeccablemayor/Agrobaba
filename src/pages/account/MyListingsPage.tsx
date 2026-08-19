@@ -149,7 +149,7 @@ export default function MyListingsPage() {
                     </div>
                     <div className="card-body">
                       <div className="card-name">{p.name}</div>
-                      <div className="card-price">{formatPrice(p.price)}</div>
+                      <div className="card-price">{p.negotiated ? 'Negotiable' : formatPrice(p.price ?? 0)}</div>
                       <div className="card-seller" style={{ marginTop: 8 }}>
                         <i className="fa-solid fa-box"></i> {p.quantity} {p.unit} &middot; {p.sold || 0} sold
                       </div>

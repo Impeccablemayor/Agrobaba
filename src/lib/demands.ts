@@ -1,6 +1,6 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import type { Demand } from '../types';
+import type { Demand, Order } from '../types';
 
 export interface DemandFilters {
   category?: string;
@@ -88,6 +88,13 @@ export async function getMyDemands(): Promise<Demand[]> {
 export interface RespondInput {
   message: string;
   price?: number | string;
+  productId: string;
+}
+
+export interface AcceptResponseInput {
+  quantity: number | string;
+  address: string;
+  phone: string;
 }
 
 export async function deleteDemand(id: string): Promise<boolean> {
@@ -107,11 +114,28 @@ export async function respondToDemand(demandId: string, responseData: RespondInp
     await api.post(`/api/demands/${demandId}/respond`, {
       message: responseData.message,
       price: Number(responseData.price) || 0,
+      productId: Number(responseData.productId),
     });
     showToast('Response sent! A message has been started.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to send response';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+export async function acceptDemandResponse(demandId: string, responseId: string, input: AcceptResponseInput): Promise<Order | false> {
+  try {
+    const order = await api.post<Order>(`/api/demands/${demandId}/responses/${responseId}/accept`, {
+      quantity: Number(input.quantity),
+      address: input.address,
+      phone: input.phone,
+    });
+    showToast('Response accepted — order placed!', 'success');
+    return order;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to accept this response';
     showToast(message, 'error');
     return false;
   }

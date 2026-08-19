@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addProduct } from '../../lib/products';
+import { UNIT_TYPES, unitLabel, type UnitType } from '../../lib/units';
 import { getAllowedSectionCodesForRole, getCategories, findCategory, hasChildren } from '../../lib/categories';
 import { showToast } from '../../lib/toastBus';
 import { CategoryPicker } from '../../components/CategoryPicker';
@@ -92,6 +93,12 @@ export default function PostListingPage() {
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('');
+  const [unitType, setUnitType] = useState('');
+  const [minOrderQuantity, setMinOrderQuantity] = useState('');
+  const [maxOrderQuantity, setMaxOrderQuantity] = useState('');
+  const [incrementQuantity, setIncrementQuantity] = useState('');
+  const [priceTiers, setPriceTiers] = useState<{ minQuantity: string; pricePerUnit: string }[]>([]);
+  const [negotiated, setNegotiated] = useState(false);
   const [size, setSize] = useState('Standard');
   const [location, setLocation] = useState(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
   const [discount, setDiscount] = useState('0');
@@ -135,6 +142,18 @@ export default function PostListingPage() {
   const effectiveUnit = unit || c.units[0];
   const allowedSections = getAllowedSectionCodesForRole(user.role);
 
+  function addPriceTierRow() {
+    setPriceTiers((rows) => [...rows, { minQuantity: '', pricePerUnit: '' }]);
+  }
+
+  function updatePriceTierRow(index: number, field: 'minQuantity' | 'pricePerUnit', value: string) {
+    setPriceTiers((rows) => rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  }
+
+  function removePriceTierRow(index: number) {
+    setPriceTiers((rows) => rows.filter((_, i) => i !== index));
+  }
+
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -158,11 +177,21 @@ export default function PostListingPage() {
       showToast('Please pick a specific subcategory, not a broader category.', 'error');
       return;
     }
+    if (!negotiated && !price) {
+      showToast('Please set a price, or mark this listing as negotiated.', 'error');
+      return;
+    }
     const listingKind = selected.allowedListingKinds[0];
     const result = await addProduct({
-      name, categoryId, listingKind, price, quantity, unit: effectiveUnit,
+      name, categoryId, listingKind, price: price || undefined, quantity, unit: effectiveUnit,
       size: c.showSize ? size : 'Standard', location, discount, description,
       type: c.type, image,
+      unitType: unitType || null,
+      minOrderQuantity: minOrderQuantity || null,
+      maxOrderQuantity: maxOrderQuantity || null,
+      incrementQuantity: incrementQuantity || null,
+      priceTiers: negotiated ? [] : priceTiers.filter((t) => t.minQuantity && t.pricePerUnit),
+      negotiated,
     });
     if (result) {
       navigate('/account/my-listings');
@@ -215,11 +244,27 @@ export default function PostListingPage() {
           <div className="row g-3">
             <div className="col-md-6">
               <div className="form-group">
-                <label>{c.priceLabel} <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input type="number" placeholder="e.g. 8500" min="0" required value={price} onChange={(e) => setPrice(e.target.value)} />
+                <label>{c.priceLabel} {!negotiated && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input
+                  type="number" placeholder={negotiated ? 'Optional starting reference price' : 'e.g. 8500'} min="0"
+                  required={!negotiated} value={price} onChange={(e) => setPrice(e.target.value)}
+                />
               </div>
             </div>
           </div>
+
+          {c.type !== 'service' && (
+            <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <input
+                type="checkbox" id="negotiated-check" checked={negotiated}
+                onChange={(e) => setNegotiated(e.target.checked)}
+                style={{ width: 16, height: 16, marginTop: 3, flexShrink: 0 }}
+              />
+              <label htmlFor="negotiated-check" style={{ cursor: 'pointer', marginBottom: 0 }}>
+                This listing requires negotiation <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(no fixed price — buyers request a quote instead of buying directly)</span>
+              </label>
+            </div>
+          )}
 
           <div className="row g-3">
             <div className="col-md-6">
@@ -237,6 +282,65 @@ export default function PostListingPage() {
               </div>
             </div>
           </div>
+
+          <div className="form-group">
+            <label>Order Rules <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 10 }}>
+              For products sold in bulk with a minimum order size (e.g. fingerlings sold 1,000 at a time) — leave blank for a simple listing.
+            </p>
+            <div className="row g-3">
+              <div className="col-md-3">
+                <select value={unitType} onChange={(e) => setUnitType(e.target.value)}>
+                  <option value="">No unit type</option>
+                  {UNIT_TYPES.map((u: UnitType) => <option key={u} value={u}>{unitLabel(u)}</option>)}
+                </select>
+              </div>
+              <div className="col-md-3">
+                <input type="number" placeholder="Min order" min="1" value={minOrderQuantity} onChange={(e) => setMinOrderQuantity(e.target.value)} />
+              </div>
+              <div className="col-md-3">
+                <input type="number" placeholder="Max order" min="1" value={maxOrderQuantity} onChange={(e) => setMaxOrderQuantity(e.target.value)} />
+              </div>
+              <div className="col-md-3">
+                <input type="number" placeholder="Increment" min="1" value={incrementQuantity} onChange={(e) => setIncrementQuantity(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {!negotiated && (
+          <div className="form-group">
+            <label>Price Tiers <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 10 }}>
+              Offer a lower price per unit at higher order quantities — each tier must be cheaper than the base price and the tier before it.
+            </p>
+            {priceTiers.map((tier, i) => (
+              <div className="row g-3" key={i} style={{ marginBottom: 8, alignItems: 'center' }}>
+                <div className="col-md-5">
+                  <input
+                    type="number" placeholder="At quantity" min="1"
+                    value={tier.minQuantity}
+                    onChange={(e) => updatePriceTierRow(i, 'minQuantity', e.target.value)}
+                  />
+                </div>
+                <div className="col-md-5">
+                  <input
+                    type="number" placeholder="Price per unit (₦)" min="0" step="0.01"
+                    value={tier.pricePerUnit}
+                    onChange={(e) => updatePriceTierRow(i, 'pricePerUnit', e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <button type="button" className="btn-outline btn-inline btn-sm" onClick={() => removePriceTierRow(i)} style={{ width: '100%' }}>
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button type="button" className="btn-outline btn-inline btn-sm" onClick={addPriceTierRow}>
+              <i className="fa-solid fa-plus"></i> Add price tier
+            </button>
+          </div>
+          )}
 
           <div className="row g-3">
             {c.showSize && (

@@ -54,7 +54,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     refresh();
   }
 
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+  // Cart Model completion (Flexible Commerce Architecture §4) - the nav badge counts distinct
+  // cart lines ("2 listings in your cart"), never the sum of physical unit quantities. A single
+  // 20,000-piece order must show "1" on the icon, not "20000".
+  const count = cart.length;
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (

@@ -96,7 +96,12 @@ export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Orde
 
   try {
     const payload = {
-      items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity, size: item.size })),
+      items: cart.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        size: item.size,
+        acceptedQuoteId: item.acceptedQuoteId ? Number(item.acceptedQuoteId) : null,
+      })),
       address: deliveryData.address || user.address || '',
       phone: deliveryData.phone || user.contact || '',
       couponCode: deliveryData.couponCode || null,

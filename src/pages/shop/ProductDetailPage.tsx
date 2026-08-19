@@ -1,12 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { getProductById, getProducts } from '../../lib/products';
+import { getProductReviews } from '../../lib/reviews';
 import { useCart } from '../../contexts/CartContext';
 import { isLoggedIn } from '../../lib/auth';
 import { showToast } from '../../lib/toastBus';
-import { formatPrice, starString } from '../../lib/format';
+import { formatDate, formatPrice, starString } from '../../lib/format';
+import { formatUnitQuantity, resolveUnitPrice } from '../../lib/units';
+import { requestQuote } from '../../lib/quotes';
 import { ProductCard } from '../../components/ProductCard';
-import type { Product } from '../../types';
+import type { Product, Review } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
@@ -18,10 +21,13 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState('Standard');
+  const [buyerNotes, setBuyerNotes] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState('');
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews'>('description');
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -38,6 +44,9 @@ export default function ProductDetailPage() {
       const data = await getProductById(id);
       if (!active) return;
       setProduct(data);
+      // A minOrderQuantity means quantity=1 (the useState default) could be invalid - start
+      // the quantity control at the actual minimum instead.
+      if (data?.minOrderQuantity) setQuantity(data.minOrderQuantity);
 
       if (data) {
         const items = (await getProducts({ category: data.category })).filter((item) => item.id !== data.id).slice(0, 6);
@@ -49,6 +58,16 @@ export default function ProductDetailPage() {
     }
 
     void loadProduct();
+    return () => { active = false; };
+  }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    if (!id) { setReviews([]); return; }
+    void (async () => {
+      const data = await getProductReviews(id);
+      if (active) setReviews(data);
+    })();
     return () => { active = false; };
   }, [id]);
 
@@ -73,11 +92,59 @@ export default function ProductDetailPage() {
     return <Navigate to={`/shop/service/${product.id}`} replace />;
   }
 
-  const oldPrice = product.discount > 0 ? Math.round(product.price / (1 - product.discount / 100)) : null;
+  const oldPrice = product.price != null && product.discount > 0 ? Math.round(product.price / (1 - product.discount / 100)) : null;
 
   function handleAddToCart(e: FormEvent) {
     e.preventDefault();
-    addToCart(product!, quantity, size);
+    // Native HTML5 min/max validation on the quantity input silently blocks the submit event
+    // instead of running this handler at all, which left buyers with no feedback when they typed
+    // an out-of-range quantity - the <form> now has noValidate so this always runs, and gives an
+    // explicit reason instead of nothing happening. Mirrors OrderService's own validation order
+    // (min -> max/stock -> increment) so the message matches what checkout would reject with anyway.
+    const p = product!;
+    if (quantity < 1) {
+      showToast('Quantity must be at least 1.', 'error');
+      return;
+    }
+    if (p.minOrderQuantity && quantity < p.minOrderQuantity) {
+      showToast(`Minimum order for "${p.name}" is ${formatUnitQuantity(p.minOrderQuantity, p.unitType)}.`, 'error');
+      return;
+    }
+    if (p.maxOrderQuantity && quantity > p.maxOrderQuantity) {
+      showToast(`Maximum order for "${p.name}" is ${formatUnitQuantity(p.maxOrderQuantity, p.unitType)}.`, 'error');
+      return;
+    }
+    if (quantity > p.quantity) {
+      showToast(`Only ${formatUnitQuantity(p.quantity, p.unitType)} of "${p.name}" available.`, 'error');
+      return;
+    }
+    if (p.incrementQuantity) {
+      const effectiveMin = p.minOrderQuantity || 0;
+      if ((quantity - effectiveMin) % p.incrementQuantity !== 0) {
+        showToast(`Orders for "${p.name}" must be in steps of ${p.incrementQuantity} from the minimum.`, 'error');
+        return;
+      }
+    }
+    addToCart(p, quantity, size);
+  }
+
+  function handleRequestQuote(e: FormEvent) {
+    e.preventDefault();
+    if (!isLoggedIn()) {
+      showToast('Please login to request a quote.', 'warning');
+      navigate('/login');
+      return;
+    }
+    const p = product!;
+    void (async () => {
+      const result = await requestQuote({
+        productId: p.id,
+        requestedQuantity: quantity || null,
+        buyerNotes,
+        deliveryLocation,
+      });
+      if (result) navigate(`/account/quotes/${result.id}`);
+    })();
   }
 
   function handleMessageSeller() {
@@ -157,17 +224,48 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <div className="price">{formatPrice(product.price)}</div>
-              {oldPrice && (
-                <>
-                  <div style={{ fontSize: 14, color: 'var(--muted)', textDecoration: 'line-through' }}>{formatPrice(oldPrice)}</div>
-                  <div style={{ background: 'var(--danger)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4 }}>
-                    {product.discount}% OFF
+            {product.negotiated ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div className="price" style={{ fontSize: 18 }}>
+                  {product.price != null ? `From ${formatPrice(product.price)} (negotiable)` : 'Price: To be negotiated'}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div className="price">{formatPrice(product.price ?? 0)}</div>
+                {oldPrice && (
+                  <>
+                    <div style={{ fontSize: 14, color: 'var(--muted)', textDecoration: 'line-through' }}>{formatPrice(oldPrice)}</div>
+                    <div style={{ background: 'var(--danger)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4 }}>
+                      {product.discount}% OFF
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {product.priceTiers && product.priceTiers.length > 0 && (
+              <div style={{ padding: 12, background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  <i className="fa-solid fa-layer-group"></i> Bulk Pricing
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                    <span>1 – {product.priceTiers[0].minQuantity - 1} {product.unit || 'units'}</span>
+                    <span>{formatPrice(product.price ?? 0)} / unit</span>
                   </div>
-                </>
-              )}
-            </div>
+                  {product.priceTiers.map((tier, i) => {
+                    const next = product.priceTiers![i + 1];
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{formatUnitQuantity(tier.minQuantity, product.unitType)}{next ? ` – ${next.minQuantity - 1}` : '+'}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(tier.pricePerUnit)} / unit</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="stock-info">
               <i className="fa-solid fa-circle-check"></i>
@@ -176,13 +274,61 @@ export default function ProductDetailPage() {
 
             <div className="description">{product.description}</div>
 
-            <form onSubmit={handleAddToCart}>
+            {product.negotiated ? (
+              <form onSubmit={handleRequestQuote}>
+                <div className="form-group">
+                  <label>Desired Quantity <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    type="number" min="1" placeholder="e.g. 20000"
+                    value={quantity} onChange={(e) => setQuantity(Number(e.target.value))}
+                    style={{ padding: '10px 12px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Delivery Location <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    type="text" placeholder="Where should this be delivered?"
+                    value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)}
+                    style={{ padding: '10px 12px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Notes for the Seller</label>
+                  <textarea
+                    rows={3} placeholder="Tell the seller what you need — quantity, timing, specifications..."
+                    value={buyerNotes} onChange={(e) => setBuyerNotes(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                    <i className="fa-solid fa-comments-dollar"></i> Request Quote
+                  </button>
+                  <Link to="/account/quotes" className="btn-outline btn-inline" style={{ padding: '11px 16px' }}>
+                    <i className="fa-solid fa-file-invoice-dollar"></i>
+                  </Link>
+                </div>
+              </form>
+            ) : (
+            <form onSubmit={handleAddToCart} noValidate>
               <div className="qty-size-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Quantity</label>
-                  <select value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} style={{ padding: '10px 12px' }}>
-                    {[1, 2, 3, 4, 5, 10, 20, 50].map((q) => <option key={q} value={q}>{q}</option>)}
-                  </select>
+                  <input
+                    type="number"
+                    value={quantity}
+                    min={product.minOrderQuantity || 1}
+                    max={product.maxOrderQuantity || product.quantity || undefined}
+                    step={product.incrementQuantity || 1}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    style={{ padding: '10px 12px' }}
+                  />
+                  {(product.minOrderQuantity || product.incrementQuantity) && (
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                      {product.minOrderQuantity ? `Minimum order: ${formatUnitQuantity(product.minOrderQuantity, product.unitType)}` : ''}
+                      {product.minOrderQuantity && product.incrementQuantity ? ' · ' : ''}
+                      {product.incrementQuantity ? `In steps of ${product.incrementQuantity}` : ''}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Size / Package</label>
@@ -191,6 +337,13 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
               </div>
+
+              {product.priceTiers && product.priceTiers.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 12, padding: '8px 0' }}>
+                  <span style={{ color: 'var(--muted)' }}>{formatPrice(resolveUnitPrice(product, quantity))} / unit at this quantity</span>
+                  <span style={{ fontWeight: 800 }}>{formatPrice(resolveUnitPrice(product, quantity) * quantity)}</span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>
@@ -201,6 +354,7 @@ export default function ProductDetailPage() {
                 </Link>
               </div>
             </form>
+            )}
 
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: 14, background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -259,9 +413,24 @@ export default function ProductDetailPage() {
               </table>
             )}
             {tab === 'reviews' && (
-              <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 24 }}>
-                No reviews yet. Be the first to purchase and review this product!
-              </p>
+              reviews.length === 0 ? (
+                <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 24 }}>
+                  No reviews yet. Be the first to purchase and review this product!
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {reviews.map((r) => (
+                    <div key={r.id} style={{ paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>{r.reviewerHandle}</span>
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDate(r.createdAt)}</span>
+                      </div>
+                      <div style={{ color: 'var(--accent)', fontSize: 13, marginBottom: r.comment ? 6 : 0 }}>{starString(r.rating)}</div>
+                      {r.comment && <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>

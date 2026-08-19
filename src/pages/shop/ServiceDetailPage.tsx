@@ -148,7 +148,7 @@ export default function ServiceDetailPage() {
         <div className="sd-info-grid">
           <div className="sd-info-item">
             <div className="label">Price</div>
-            <div className="value price">{formatPrice(product.price)}</div>
+            <div className="value price">{formatPrice(product.price ?? 0)}</div>
           </div>
           <div className="sd-info-item">
             <div className="label">Session / Package</div>

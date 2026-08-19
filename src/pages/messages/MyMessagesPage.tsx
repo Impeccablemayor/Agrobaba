@@ -47,6 +47,10 @@ export default function MyMessagesPage() {
               const lastMsg = conv.lastMessage.content.length > 60
                 ? conv.lastMessage.content.substring(0, 60) + '...'
                 : conv.lastMessage.content;
+              // Search the whole thread, not just lastMessage - a reply sent later in the
+              // conversation may not itself carry the product/demand tag.
+              const contextMsg = conv.messages.find((m) => m.productName || m.demandTitle);
+              const contextLabel = contextMsg?.demandTitle || contextMsg?.productName || null;
               return (
                 <div
                   key={conv.partnerId}
@@ -67,6 +71,11 @@ export default function MyMessagesPage() {
                       </span>
                       <span className="time">{timeAgo(conv.lastMessage.createdAt)}</span>
                     </div>
+                    {contextLabel && (
+                      <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600, marginBottom: 2 }}>
+                        <i className={`fa-solid ${contextMsg?.demandTitle ? 'fa-clipboard-list' : 'fa-tag'}`}></i> {contextLabel}
+                      </div>
+                    )}
                     <div className="preview" style={conv.unread > 0 ? { fontWeight: 600, color: 'var(--text)' } : undefined}>{lastMsg}</div>
                   </div>
                   <i className="fa-solid fa-chevron-right" style={{ color: 'var(--muted)', fontSize: 12 }}></i>

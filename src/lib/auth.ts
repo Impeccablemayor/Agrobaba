@@ -236,3 +236,4 @@ export async function deleteAccount(password: string): Promise<boolean> {
     return false;
   }
 }
+

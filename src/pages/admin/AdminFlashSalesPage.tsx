@@ -59,7 +59,7 @@ export default function AdminFlashSalesPage() {
       const exists = prev.find((s) => s.productId === productId);
       if (exists) return prev.filter((s) => s.productId !== productId);
       const product = products.find((p) => p.id === productId);
-      return [...prev, { productId, salePrice: product ? String(Math.round(product.price * 0.8)) : '' }];
+      return [...prev, { productId, salePrice: product && product.price != null ? String(Math.round(product.price * 0.8)) : '' }];
     });
   }
 
@@ -234,7 +234,7 @@ export default function AdminFlashSalesPage() {
                 return (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
                     <input type="checkbox" checked={!!sel} onChange={() => toggleProduct(p.id)} />
-                    <span style={{ flex: 1, fontSize: 12 }}>{p.name} <span style={{ color: 'var(--muted)' }}>({formatPrice(p.price)})</span></span>
+                    <span style={{ flex: 1, fontSize: 12 }}>{p.name} <span style={{ color: 'var(--muted)' }}>({p.negotiated ? 'negotiable' : formatPrice(p.price ?? 0)})</span></span>
                     {sel && (
                       <input
                         type="number" min="0" placeholder="Sale price" value={sel.salePrice}

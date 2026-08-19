@@ -195,7 +195,8 @@ export interface Product {
   id: string;
   name: string;
   description: string;
-  price: number;
+  /** Null for a negotiated listing with no public price - see `negotiated` below. */
+  price: number | null;
   category: string;
   categoryId: string | null;
   categoryCode: string | null;
@@ -206,6 +207,18 @@ export interface Product {
   unit: string;
   location: string;
   image: string | null;
+  /** Phase 1 of the Flexible Commerce Architecture roadmap - all optional. Unset on every
+   *  listing created before this phase; those keep behaving exactly as before. */
+  unitType?: string | null;
+  minOrderQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+  incrementQuantity?: number | null;
+  /** Phase 2 of the Flexible Commerce Architecture roadmap - optional bulk price breaks, sorted
+   *  ascending by minQuantity. Empty/undefined means "flat price only". */
+  priceTiers?: { minQuantity: number; pricePerUnit: number }[];
+  /** Negotiated Commerce roadmap - when true, this listing has no fixed public price; buyers
+   *  request a quote instead of adding to cart directly. */
+  negotiated: boolean;
   sellerId: string;
   sellerName: string;
   sellerRole: Role | 'seed' | string;
@@ -231,7 +244,13 @@ export interface DemandResponse {
   responderName: string;
   responderRole: Role;
   message: string;
-  price: number;
+  price: number | null;
+  productId: string | null;
+  productName: string | null;
+  productImage: string | null;
+  productPrice: number | null;
+  accepted: boolean;
+  orderId: string | null;
   createdAt: string;
 }
 
@@ -250,8 +269,59 @@ export interface Demand {
   buyerName: string;
   buyerRole: Role;
   responses: DemandResponse[];
-  status: 'open' | 'closed';
+  status: 'open' | 'closed' | 'matched';
   createdAt: string;
+}
+
+export interface QuoteOffer {
+  id: string;
+  quantity: number;
+  pricePerUnit: number;
+  deliveryFee: number;
+  additionalFees: number;
+  notes: string | null;
+  total: number;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface QuoteRequest {
+  id: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  productUnit: string | null;
+  buyerId: string;
+  buyerName: string;
+  sellerId: string;
+  sellerName: string;
+  requestedQuantity: number | null;
+  buyerNotes: string | null;
+  deliveryLocation: string | null;
+  status: 'pending' | 'offer_sent' | 'accepted' | 'rejected' | 'cancelled';
+  offers: QuoteOffer[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcceptedQuote {
+  id: string;
+  quoteRequestId: string;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  sellerId: string;
+  sellerName: string;
+  buyerId: string;
+  quantity: number;
+  unit: string | null;
+  pricePerUnit: number;
+  deliveryFee: number;
+  additionalFees: number;
+  total: number;
+  status: 'awaiting_checkout' | 'converted';
+  orderId: string | null;
+  acceptedAt: string;
 }
 
 export interface CartItem {
@@ -266,6 +336,15 @@ export interface CartItem {
   sellerName: string;
   type: ProductType;
   addedAt: string;
+  /** Cart Model completion (Flexible Commerce Architecture §4) - a pricing snapshot taken at
+   *  add-to-cart time so `price` can be correctly re-resolved if the quantity is edited in-cart,
+   *  without a network round-trip. Immutable thereafter, same as `price` itself. */
+  unit?: string | null;
+  basePrice?: number;
+  priceTiers?: { minQuantity: number; pricePerUnit: number }[];
+  /** Negotiated Commerce roadmap - when set, this line's price/quantity are locked from an
+   *  AcceptedQuote, not live product pricing. The cart renders it read-only. */
+  acceptedQuoteId?: string | null;
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed';
@@ -296,6 +375,15 @@ export interface ServiceBooking {
   paymentDate: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Review {
+  id: string;
+  productId: string;
+  reviewerHandle: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
 }
 
 export interface Order {

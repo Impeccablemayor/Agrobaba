@@ -23,12 +23,15 @@ export const ProductCard = memo(function ProductCard({
 
   function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation();
-    if (isService) {
-      // Booking a service needs a date/location/notes — there's no valid "quick add", so go to the real booking form.
+    if (isService || product.negotiated) {
+      // A service needs a date/location/notes, and a negotiated listing has no fixed price to
+      // add at all — neither has a valid "quick add", so go to the real form instead.
       navigate(detailPath);
       return;
     }
-    addToCart(product, 1, 'Standard');
+    // A product with a minOrderQuantity can't be validly added as just 1 (Flexible Commerce
+    // Architecture Phase 1) - quick-add must respect it, not silently violate the seller's rule.
+    addToCart(product, Math.max(1, product.minOrderQuantity || 1), 'Standard');
   }
 
   function handleNotInterested(e: React.MouseEvent) {
@@ -85,13 +88,19 @@ export const ProductCard = memo(function ProductCard({
         </div>
         <div className="card-bottom">
           <div className="card-price">
-            {formatPrice(product.price)}{' '}
-            {product.discount > 0 && (
-              <del>{formatPrice(Math.round(product.price / (1 - product.discount / 100)))}</del>
+            {product.negotiated ? (
+              <span style={{ fontSize: 13 }}>Negotiable</span>
+            ) : (
+              <>
+                {formatPrice(product.price ?? 0)}{' '}
+                {product.discount > 0 && (
+                  <del>{formatPrice(Math.round((product.price ?? 0) / (1 - product.discount / 100)))}</del>
+                )}
+              </>
             )}
           </div>
           <button className="card-add-btn" onClick={handleQuickAdd}>
-            {product.type === 'service' ? 'Book' : 'Add'}
+            {product.type === 'service' ? 'Book' : product.negotiated ? 'Quote' : 'Add'}
           </button>
         </div>
       </div>

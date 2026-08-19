@@ -160,7 +160,7 @@ export default function MyDemandsPage() {
                             <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'capitalize' }}>{r.responderRole || 'Seller'} &middot; {timeAgo(r.createdAt)}</div>
                           </div>
                         </div>
-                        {r.price > 0 && <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15 }}>{formatPrice(r.price)}</div>}
+                        {!!r.price && r.price > 0 && <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15 }}>{formatPrice(r.price)}</div>}
                       </div>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{r.message}</p>
                       <button
