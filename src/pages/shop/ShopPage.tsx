@@ -23,6 +23,7 @@ export default function ShopPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [noResultsHints, setNoResultsHints] = useState<SuggestGroup[]>([]);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const abortRef = useRef<AbortController | undefined>(undefined);
@@ -122,7 +123,12 @@ export default function ShopPage() {
         }
       }
     })();
-  }, [sectionId, categoryId, submittedQuery]);
+  }, [sectionId, categoryId, submittedQuery, reloadNonce]);
+
+  /** Bumped by "Try again" to re-run the fetch effect without changing any filter. */
+  function handleRetry() {
+    setReloadNonce((n) => n + 1);
+  }
 
   const sortedProducts = useMemo(() => {
     let list = [...products];
@@ -132,6 +138,10 @@ export default function ShopPage() {
     else if (sort === 'popular') list = list.sort((a, b) => (b.sold || 0) - (a.sold || 0));
     return list;
   }, [products, sort]);
+
+  // Browsing with zero results and zero filters almost certainly means the request failed
+  // (e.g. a cold-starting backend), not that the marketplace is genuinely empty.
+  const isUnfilteredView = !submittedQuery.trim() && categoryId === 'all' && sectionId === 'all';
 
   function resetFilters() {
     setSectionId('all');
@@ -192,7 +202,7 @@ export default function ShopPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-                {sortedProducts.length} listing{sortedProducts.length !== 1 ? 's' : ''} found
+                {isLoading ? 'Loading…' : `${sortedProducts.length} listing${sortedProducts.length !== 1 ? 's' : ''} found`}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Sort by:</label>
@@ -210,23 +220,38 @@ export default function ShopPage() {
               </div>
             </div>
 
-            {sortedProducts.length === 0 ? (
-              <div className="empty-cart" style={{ margin: '24px 0' }}>
-                <i className="fa-solid fa-store-slash"></i>
-                <p>No listings found. Try a different search or category.</p>
-                {noResultsHints.some((g) => g.items.length > 0) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
-                    {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
-                      <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
-                        <i className="fa-solid fa-magnifying-glass"></i> {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
-                  <i className="fa-solid fa-rotate"></i> Clear filters
-                </button>
+            {isLoading ? (
+              <div className="empty-cart" style={{ margin: '24px 0' }} aria-live="polite" aria-busy="true">
+                <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--primary)' }}></i>
+                <p>Loading listings… this can take a moment when the server is waking up.</p>
               </div>
+            ) : sortedProducts.length === 0 ? (
+              isUnfilteredView ? (
+                <div className="empty-cart" style={{ margin: '24px 0' }}>
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+                  <p>We couldn't load listings right now — the server may still be waking up.</p>
+                  <button onClick={handleRetry} className="btn-primary btn-inline btn-sm">
+                    <i className="fa-solid fa-rotate"></i> Try Again
+                  </button>
+                </div>
+              ) : (
+                <div className="empty-cart" style={{ margin: '24px 0' }}>
+                  <i className="fa-solid fa-store-slash"></i>
+                  <p>No listings found. Try a different search or category.</p>
+                  {noResultsHints.some((g) => g.items.length > 0) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
+                      {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
+                        <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
+                          <i className="fa-solid fa-magnifying-glass"></i> {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
+                    <i className="fa-solid fa-rotate"></i> Clear filters
+                  </button>
+                </div>
+              )
             ) : (
               <div className="grid-3">
                 {sortedProducts.map((p) => <ProductCard key={p.id} product={p} />)}
