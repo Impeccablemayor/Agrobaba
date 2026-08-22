@@ -24,6 +24,7 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   useEffect(() => {
     if (cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
@@ -51,17 +52,21 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
+    if (placingOrder) return;
     if (!name.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in your name, phone number and delivery address.', 'error');
       return;
     }
+    setPlacingOrder(true);
     const addr = [address.trim(), city.trim(), state.trim()].filter(Boolean).join(', ');
     const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
       showToast('Order placed! Complete payment to confirm.', 'success');
       navigate(`/pay-offline?orderId=${encodeURIComponent(order.id)}`);
+      return;
     }
+    setPlacingOrder(false);
   }
 
   return (
@@ -187,8 +192,14 @@ export default function CheckoutPage() {
                 <span>{formatPrice(finalTotal)}</span>
               </div>
 
-              <button onClick={handlePlaceOrder} className="btn-primary btn-inline" style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}>
-                <i className="fa-solid fa-lock"></i> Place Order
+              <button
+                onClick={handlePlaceOrder}
+                disabled={placingOrder}
+                className="btn-primary btn-inline"
+                style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
+              >
+                {placingOrder && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+                {placingOrder ? 'Placing Order…' : (<><i className="fa-solid fa-lock"></i> Place Order</>)}
               </button>
               <p className="pay-note"><i className="fa-solid fa-shield-halved"></i> Payment via secure bank transfer (mock escrow)</p>
             </div>

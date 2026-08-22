@@ -1,18 +1,26 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 export default function DeleteAccountPage() {
   const { deleteAccount } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  async function handleDelete() {
+    setDeleting(true);
     const ok = await deleteAccount(password);
-    if (ok) navigate('/');
+    if (ok) {
+      setConfirmOpen(false);
+      navigate('/');
+      return;
+    }
+    setDeleting(false);
+    setConfirmOpen(false);
   }
 
   return (
@@ -31,7 +39,10 @@ export default function DeleteAccountPage() {
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>Permanently remove your Agrobaba account and all associated data.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="danger-card">
+        <form
+          onSubmit={(e) => { e.preventDefault(); setConfirmOpen(true); }}
+          className="danger-card"
+        >
           <h3><i className="fa-solid fa-triangle-exclamation"></i> This action cannot be undone</h3>
           <p className="sub">Deleting your account will permanently remove:</p>
 
@@ -62,6 +73,17 @@ export default function DeleteAccountPage() {
 
         <Link to="/account" className="cancel-link"><i className="fa-solid fa-arrow-left"></i> No, take me back to my account</Link>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Permanently delete your account?"
+        message="This action will permanently remove your account, listings, orders, messages and all associated data. It cannot be undone."
+        confirmLabel="Delete My Account"
+        destructive
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

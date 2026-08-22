@@ -13,6 +13,7 @@ export default function ConfirmPaymentPage() {
   const [paymentMode, setPaymentMode] = useState('');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -27,16 +28,20 @@ export default function ConfirmPaymentPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (!orderId) {
       showToast('Missing order reference. Please start again from your order.', 'error');
       return;
     }
+    setSubmitting(true);
     const success = await confirmPayment(orderId, {
       paymentMode, paymentDate, transactionNumber, amount: Number(amount),
     });
     if (success) {
       navigate('/account/my-orders');
+      return;
     }
+    setSubmitting(false);
   }
 
   return (
@@ -95,8 +100,9 @@ export default function ConfirmPaymentPage() {
             <input type="date" required value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
           </div>
 
-          <button type="submit" className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
-            <i className="fa-solid fa-paper-plane"></i> Submit Payment Confirmation
+          <button type="submit" disabled={submitting} className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
+            {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+            {submitting ? 'Submitting…' : (<><i className="fa-solid fa-paper-plane"></i> Submit Payment Confirmation</>)}
           </button>
         </form>
       </div>

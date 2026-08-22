@@ -104,6 +104,7 @@ export default function PostListingPage() {
   const [discount, setDiscount] = useState('0');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     void getCategories().then(setCategories);
@@ -163,11 +164,13 @@ export default function PostListingPage() {
     }
     const reader = new FileReader();
     reader.onload = (ev) => setImage(ev.target?.result as string);
+    reader.onerror = () => showToast("Couldn't read that image file. Please try a different photo.", 'error');
     reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (!categoryId) {
       showToast('Please select a category.', 'error');
       return;
@@ -181,6 +184,7 @@ export default function PostListingPage() {
       showToast('Please set a price, or mark this listing as negotiated.', 'error');
       return;
     }
+    setSubmitting(true);
     const listingKind = selected.allowedListingKinds[0];
     const result = await addProduct({
       name, categoryId, listingKind, price: price || undefined, quantity, unit: effectiveUnit,
@@ -195,7 +199,9 @@ export default function PostListingPage() {
     });
     if (result) {
       navigate('/account/my-listings');
+      return;
     }
+    setSubmitting(false);
   }
 
   return (
@@ -371,8 +377,9 @@ export default function PostListingPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-              <i className="fa-solid fa-check"></i> {c.submitLabel}
+            <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 1 }}>
+              {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+              {submitting ? 'Publishing…' : (<><i className="fa-solid fa-check"></i> {c.submitLabel}</>)}
             </button>
             <Link to="/account" className="btn-outline btn-inline" style={{ padding: '11px 24px' }}>Cancel</Link>
           </div>

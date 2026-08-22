@@ -13,13 +13,20 @@ export default function EditAccountPage() {
   const [city, setCity] = useState(user?.city || '');
   const [country, setCountry] = useState(user?.country || '');
   const [bio, setBio] = useState(user?.bio || '');
+  const [submitting, setSubmitting] = useState(false);
 
   if (!user) return null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     const ok = await updateUser({ name, contact, businessName, address, city, country, bio });
-    if (ok) navigate('/account');
+    if (ok) {
+      navigate('/account');
+      return;
+    }
+    setSubmitting(false);
   }
 
   return (
@@ -48,7 +55,7 @@ export default function EditAccountPage() {
             <div className="col-md-6">
               <div className="field">
                 <label>Full Name <span className="req">*</span></label>
-                <input type="text" placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} />
+                <input type="text" placeholder="Your full name" required value={name} onChange={(e) => setName(e.target.value)} />
               </div>
             </div>
             <div className="col-md-6">
@@ -64,7 +71,7 @@ export default function EditAccountPage() {
             <div className="col-md-6">
               <div className="field">
                 <label>Phone Number <span className="req">*</span></label>
-                <input type="tel" placeholder="e.g. 08012345678" value={contact} onChange={(e) => setContact(e.target.value)} />
+                <input type="tel" placeholder="e.g. 08012345678" required value={contact} onChange={(e) => setContact(e.target.value)} />
               </div>
             </div>
             <div className="col-md-6">
@@ -106,8 +113,9 @@ export default function EditAccountPage() {
           <hr className="form-divider" />
 
           <div className="actions">
-            <button type="submit" className="btn-primary btn-inline">
-              <i className="fa-solid fa-floppy-disk"></i> Save Changes
+            <button type="submit" disabled={submitting} className="btn-primary btn-inline">
+              {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+              {submitting ? 'Saving…' : (<><i className="fa-solid fa-floppy-disk"></i> Save Changes</>)}
             </button>
             <Link to="/account" className="btn-outline btn-inline">Cancel</Link>
           </div>

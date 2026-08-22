@@ -9,14 +9,21 @@ export default function AdminLoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     const ok = await login(email, password);
-    if (!ok) return;
+    if (!ok) {
+      setSubmitting(false);
+      return;
+    }
 
     if (getCurrentUser()?.role !== 'admin') {
       logout();
+      setSubmitting(false);
       showToast('This portal is for administrators only.', 'error');
       return;
     }
@@ -42,8 +49,9 @@ export default function AdminLoginPage() {
             <label>Password</label>
             <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          <button type="submit" className="btn-primary w-100">
-            <i className="fa-solid fa-right-to-bracket"></i> Sign In
+          <button type="submit" disabled={submitting} className="btn-primary w-100">
+            {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+            {submitting ? 'Signing In…' : (<><i className="fa-solid fa-right-to-bracket"></i> Sign In</>)}
           </button>
         </form>
       </div>

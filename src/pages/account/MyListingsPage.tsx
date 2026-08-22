@@ -5,6 +5,7 @@ import { deleteProduct, getMyProducts } from '../../lib/products';
 import { formatPrice } from '../../lib/format';
 import { CATEGORY_ICONS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Role } from '../../types';
 
@@ -22,6 +23,8 @@ export default function MyListingsPage() {
 
   const [products, setProducts] = useState<Awaited<ReturnType<typeof getMyProducts>>>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -76,10 +79,14 @@ export default function MyListingsPage() {
   if (status === 'active') filteredProducts = filteredProducts.filter((p) => p.status === 'active');
   else if (status === 'discount') filteredProducts = filteredProducts.filter((p) => p.discount > 0);
 
-  async function handleDelete(id: string) {
-    if (confirm('Are you sure you want to delete this listing? This cannot be undone.')) {
-      const ok = await deleteProduct(id);
-      if (ok) setProducts((prev) => prev.filter((p) => p.id !== id));
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    const ok = await deleteProduct(pendingDelete.id);
+    setDeleting(false);
+    if (ok) {
+      setProducts((prev) => prev.filter((p) => p.id !== pendingDelete.id));
+      setPendingDelete(null);
     }
   }
 
@@ -160,7 +167,7 @@ export default function MyListingsPage() {
                         >
                           <i className="fa-solid fa-eye"></i> View
                         </Link>
-                        <button onClick={() => handleDelete(p.id)} className="btn-danger btn-sm btn-inline" style={{ flex: 1, padding: 6, width: 'auto' }}>
+                        <button onClick={() => setPendingDelete({ id: p.id, name: p.name })} className="btn-danger btn-sm btn-inline" style={{ flex: 1, padding: 6, width: 'auto' }}>
                           <i className="fa-solid fa-trash"></i> Delete
                         </button>
                       </div>
@@ -173,6 +180,17 @@ export default function MyListingsPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete this listing?"
+        message={`"${pendingDelete?.name}" will be permanently removed from the marketplace. This cannot be undone.`}
+        confirmLabel="Delete Listing"
+        destructive
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

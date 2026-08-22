@@ -8,9 +8,11 @@ export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (newPassword !== confirmPassword) {
       showToast('New passwords do not match.', 'error');
       return;
@@ -20,7 +22,9 @@ export default function ChangePasswordPage() {
       return;
     }
 
+    setSubmitting(true);
     const success = await changePassword(oldPassword, newPassword);
+    setSubmitting(false);
     if (success) {
       setOldPassword('');
       setNewPassword('');
@@ -73,8 +77,9 @@ export default function ChangePasswordPage() {
             />
           </div>
 
-          <button type="submit" className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
-            <i className="fa-solid fa-floppy-disk"></i> Update Password
+          <button type="submit" disabled={submitting} className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
+            {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+            {submitting ? 'Updating…' : (<><i className="fa-solid fa-floppy-disk"></i> Update Password</>)}
           </button>
         </form>
       </div>

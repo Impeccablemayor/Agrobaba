@@ -5,6 +5,7 @@ import { formatPrice, timeAgo } from '../../lib/format';
 import { formatUnitQuantity } from '../../lib/units';
 import { useAuth } from '../../contexts/AuthContext';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { QuoteOffer } from '../../types';
 
@@ -93,6 +94,7 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState<Awaited<ReturnType<typeof getQuoteById>>>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   async function reload() {
     if (!id) return;
@@ -151,11 +153,14 @@ export default function QuoteDetailPage() {
   }
 
   async function handleCancel() {
-    if (!confirm('Cancel this quote request?')) return;
+    if (!quote) return;
     setBusy(true);
-    const result = await cancelQuote(quote!.id);
+    const result = await cancelQuote(quote.id);
     setBusy(false);
-    if (result) void reload();
+    if (result) {
+      setCancelOpen(false);
+      void reload();
+    }
   }
 
   return (
@@ -173,7 +178,7 @@ export default function QuoteDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span className="demand-chip"><i className="fa-solid fa-file-invoice-dollar"></i> {STATUS_LABELS[quote.status] || quote.status}</span>
                 {canCancel && (
-                  <button onClick={handleCancel} disabled={busy} className="btn-danger btn-sm btn-inline">
+                  <button onClick={() => setCancelOpen(true)} disabled={busy} className="btn-danger btn-sm btn-inline">
                     <i className="fa-solid fa-xmark"></i> Cancel Request
                   </button>
                 )}
@@ -275,6 +280,17 @@ export default function QuoteDetailPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel this quote request?"
+        message="The seller will be notified that you're no longer interested. This cannot be undone."
+        confirmLabel="Cancel Request"
+        destructive
+        busy={busy}
+        onConfirm={handleCancel}
+        onCancel={() => setCancelOpen(false)}
+      />
     </div>
   );
 }

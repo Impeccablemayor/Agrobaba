@@ -17,6 +17,7 @@ export default function PostDemandPage() {
   const [location, setLocation] = useState(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     void getCategories().then(setCategories);
@@ -24,6 +25,7 @@ export default function PostDemandPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (parseFloat(budget) <= 0 || !budget) {
       showToast('Please enter a valid budget.', 'error');
       return;
@@ -38,10 +40,12 @@ export default function PostDemandPage() {
       return;
     }
 
+    setSubmitting(true);
     const result = await addDemand({
       title, categoryId, requestedListingKind: selected.allowedListingKinds[0],
       quantity, budget, location, deadline, description,
     });
+    setSubmitting(false);
     if (result) {
       setTitle('');
       setCategoryId(null);
@@ -119,8 +123,9 @@ export default function PostDemandPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-              <i className="fa-solid fa-bullhorn"></i> Post Demand
+            <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 1 }}>
+              {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+              {submitting ? 'Posting…' : (<><i className="fa-solid fa-bullhorn"></i> Post Demand</>)}
             </button>
             <Link to="/demands" className="btn-outline btn-inline" style={{ padding: '11px 24px' }}>Cancel</Link>
           </div>

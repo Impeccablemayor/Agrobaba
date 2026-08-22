@@ -5,6 +5,7 @@ import { getMyProducts } from '../../lib/products';
 import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DemandResponse, Product } from '../../types';
 
 /** Inline quantity + delivery-details form for accepting one response - opens on demand, submits
@@ -82,6 +83,8 @@ export default function DemandDetailPage() {
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [demand, setDemand] = useState<Awaited<ReturnType<typeof getDemandById>>>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function reloadDemand() {
     if (!id) return;
@@ -157,8 +160,10 @@ export default function DemandDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this demand? This cannot be undone.')) return;
-    const ok = await deleteDemand(demand!.id);
+    if (!demand) return;
+    setDeleting(true);
+    const ok = await deleteDemand(demand.id);
+    setDeleting(false);
     if (ok) navigate('/demands');
   }
 
@@ -177,7 +182,7 @@ export default function DemandDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span className="demand-chip"><i className="fa-solid fa-clipboard-list"></i> {demand.category}</span>
                 {user?.role === 'admin' && (
-                  <button onClick={handleDelete} className="btn-danger btn-sm btn-inline">
+                  <button onClick={() => setDeleteOpen(true)} className="btn-danger btn-sm btn-inline">
                     <i className="fa-solid fa-trash"></i> Delete (Admin)
                   </button>
                 )}
@@ -291,6 +296,17 @@ export default function DemandDetailPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete this demand?"
+        message={`"${demand?.title}" will be permanently removed along with its responses. This cannot be undone.`}
+        confirmLabel="Delete Demand"
+        destructive
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }

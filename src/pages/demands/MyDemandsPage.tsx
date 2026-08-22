@@ -4,6 +4,7 @@ import { deleteDemand, getMyDemands } from '../../lib/demands';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { DEMAND_CATEGORY_ICONS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Demand } from '../../types';
 
@@ -13,6 +14,8 @@ export default function MyDemandsPage() {
   const [activeModal, setActiveModal] = useState<Demand | null>(null);
   const [demands, setDemands] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<Demand | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -41,9 +44,13 @@ export default function MyDemandsPage() {
     { icon: 'fa-naira-sign', label: 'Total Budget', value: formatPrice(totalBudget), color: 'var(--primary)' },
   ];
 
-  function handleDelete(id: string) {
-    if (confirm('Delete this demand? This cannot be undone.')) {
-      deleteDemand(id);
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    const ok = await deleteDemand(pendingDelete.id);
+    setDeleting(false);
+    if (ok) {
+      setPendingDelete(null);
       setRefreshKey((k) => k + 1);
     }
   }
@@ -111,7 +118,7 @@ export default function MyDemandsPage() {
                       <button onClick={() => setActiveModal(d)} className="btn-secondary btn-sm btn-inline" style={{ flex: 1, padding: 6 }}>
                         <i className="fa-solid fa-reply"></i> {respCount} Response{respCount !== 1 ? 's' : ''}
                       </button>
-                      <button onClick={() => handleDelete(d.id)} className="btn-danger btn-sm btn-inline" style={{ padding: '6px 12px', width: 'auto' }}>
+                      <button onClick={() => setPendingDelete(d)} className="btn-danger btn-sm btn-inline" style={{ padding: '6px 12px', width: 'auto' }} aria-label={`Delete demand: ${d.title}`}>
                         <i className="fa-solid fa-trash"></i>
                       </button>
                     </div>
@@ -177,6 +184,17 @@ export default function MyDemandsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete this demand?"
+        message={`"${pendingDelete?.title}" and its ${pendingDelete?.responses?.length ?? 0} response${(pendingDelete?.responses?.length ?? 0) === 1 ? '' : 's'} will be permanently removed. This cannot be undone.`}
+        confirmLabel="Delete Demand"
+        destructive
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

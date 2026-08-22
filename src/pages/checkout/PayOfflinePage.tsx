@@ -11,11 +11,16 @@ export default function PayOfflinePage() {
   const orderId = searchParams.get('orderId') || '';
   const [copied, setCopied] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    if (!orderId) return undefined;
-    void getOrderById(orderId).then((data) => { if (active) setOrder(data); });
+    if (!orderId) { setLoading(false); return undefined; }
+    void getOrderById(orderId).then((data) => {
+      if (!active) return;
+      setOrder(data);
+      setLoading(false);
+    });
     return () => { active = false; };
   }, [orderId]);
 
@@ -44,6 +49,18 @@ export default function PayOfflinePage() {
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>Transfer to the Agrobaba escrow account below, then confirm your payment.</p>
         </div>
 
+        {loading ? (
+          <div className="empty-cart">
+            <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--primary)' }}></i>
+            <p>Loading your order…</p>
+          </div>
+        ) : !order ? (
+          <div className="empty-cart">
+            <i className="fa-solid fa-circle-exclamation"></i>
+            <p>{orderId ? "We couldn't load this order. It may have been removed." : 'No order reference was provided.'}</p>
+            <Link to="/cart" className="btn-primary btn-inline btn-sm"><i className="fa-solid fa-cart-shopping"></i> Back to Cart</Link>
+          </div>
+        ) : (
         <div className="row g-4">
           <div className="col-lg-8">
             <div className="pay-card">
@@ -116,6 +133,7 @@ export default function PayOfflinePage() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

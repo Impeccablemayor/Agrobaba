@@ -359,6 +359,12 @@ select:disabled { background: var(--bg-soft); color: var(--muted); cursor: not-a
 .confirm-dialog p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
 .confirm-actions { display: flex; gap: 10px; }
 .confirm-actions .btn { width: auto; flex: 1; }
+.confirm-actions .btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+@media (max-width: 480px) {
+  .confirm-dialog { padding: 20px; }
+  .confirm-actions { flex-direction: column-reverse; }
+  .confirm-actions .btn { width: 100%; }
+}
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 /* ===== FOOTER ===== */

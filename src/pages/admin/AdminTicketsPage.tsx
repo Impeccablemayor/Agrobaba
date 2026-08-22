@@ -17,6 +17,7 @@ export default function AdminTicketsPage() {
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [search, setSearch] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -32,7 +33,11 @@ export default function AdminTicketsPage() {
   if (user.role !== 'admin') return <Navigate to="/account" replace />;
 
   async function handleStatusChange(ticket: Ticket, status: TicketStatus) {
-    if (await updateTicketStatus(ticket.id, status)) {
+    if (updatingStatus) return;
+    setUpdatingStatus(true);
+    const ok = await updateTicketStatus(ticket.id, status);
+    setUpdatingStatus(false);
+    if (ok) {
       void load();
       if (detail?.id === ticket.id) setDetail({ ...ticket, status });
     }
@@ -128,6 +133,7 @@ export default function AdminTicketsPage() {
                   <button
                     key={s}
                     className={`status-tab ${detail.status === s ? 'active' : ''}`}
+                    disabled={updatingStatus}
                     onClick={() => handleStatusChange(detail, s)}
                   >
                     {STATUS_LABEL[s]}

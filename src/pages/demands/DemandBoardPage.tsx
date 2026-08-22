@@ -156,7 +156,12 @@ export default function DemandBoardPage() {
             </Link>
           </div>
 
-          {sortedDemands.length === 0 ? (
+          {isLoading ? (
+            <div className="empty-cart" style={{ gridColumn: '1/-1' }}>
+              <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--primary)' }}></i>
+              <p>Loading demands…</p>
+            </div>
+          ) : sortedDemands.length === 0 ? (
             <div className="empty-cart" style={{ gridColumn: '1/-1' }}>
               <i className="fa-solid fa-clipboard-list"></i>
               <p>No demands found. Try a different search or category.</p>

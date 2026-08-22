@@ -23,6 +23,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(productName ? `Hi! I'm interested in your listing: "${productName}". Is it still available?` : '');
   const [booking, setBooking] = useState<ServiceBooking | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
   // Derived from the persisted conversation, not just the URL - a demand-response chat never
   // carries a URL param at all, and a product-inquiry chat loses its URL param on reload/revisit.
@@ -57,6 +59,7 @@ export default function ChatPage() {
         const prevLastId = prev.length > 0 ? prev[prev.length - 1].id : null;
         return lastId === prevLastId && prev.length === conversation.length ? prev : conversation;
       });
+      setLoading(false);
       await markAsRead(partnerId!);
       await refreshUnread();
     }
@@ -73,9 +76,11 @@ export default function ChatPage() {
   if (!partnerId) return null;
 
   async function handleSend() {
+    if (sending) return;
     const content = input.trim();
     if (!content) return;
 
+    setSending(true);
     const sent = await sendMessage({
       receiverId: partnerId!,
       receiverName: partnerName,
@@ -92,6 +97,7 @@ export default function ChatPage() {
       setMessages(conversation);
       await refreshUnread();
     }
+    setSending(false);
   }
 
   return (
@@ -125,7 +131,11 @@ export default function ChatPage() {
           )}
 
           <div className="chat-messages">
-            {messages.length === 0 ? (
+            {loading ? (
+              <p className="text-muted text-center" style={{ padding: 24 }}>
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Loading conversation…
+              </p>
+            ) : messages.length === 0 ? (
               <p className="text-muted text-center" style={{ padding: 24 }}>No messages yet. Say hello!</p>
             ) : (
               messages.map((m) => {
@@ -154,8 +164,8 @@ export default function ChatPage() {
                 }
               }}
             />
-            <button onClick={handleSend} aria-label="Send">
-              <i className="fa-solid fa-paper-plane"></i> Send
+            <button onClick={handleSend} disabled={sending} aria-label="Send">
+              {sending ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> : <i className="fa-solid fa-paper-plane"></i>} Send
             </button>
           </div>
         </div>

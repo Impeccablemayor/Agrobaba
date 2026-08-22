@@ -3,6 +3,7 @@ import {
   acceptBooking, cancelBooking, confirmBookingPayment, declineBooking, updateBookingStatus, verifyBookingPayment,
 } from '../lib/bookings';
 import { formatPrice, formatDate } from '../lib/format';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { ServiceBooking } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -46,6 +47,7 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
   const [paymentDate, setPaymentDate] = useState('');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   async function handleAccept() {
     setBusy(true);
@@ -86,11 +88,13 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
   }
 
   async function handleCancel() {
-    if (!confirm('Cancel this booking?')) return;
     setBusy(true);
     const result = await cancelBooking(booking.id);
     setBusy(false);
-    if (result) onUpdated(result);
+    if (result) {
+      setCancelOpen(false);
+      onUpdated(result);
+    }
   }
 
   return (
@@ -211,10 +215,21 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
       )}
 
       {(isProvider || isCustomer) && ['requested', 'accepted'].includes(booking.status) && (
-        <button onClick={handleCancel} disabled={busy} className="btn-outline btn-sm btn-inline" style={{ alignSelf: 'flex-start' }}>
+        <button onClick={() => setCancelOpen(true)} disabled={busy} className="btn-outline btn-sm btn-inline" style={{ alignSelf: 'flex-start' }}>
           Cancel Booking
         </button>
       )}
+
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel this booking?"
+        message={`The booking for "${booking.serviceName}" on ${formatDate(booking.scheduledDate)} will be cancelled for both parties.`}
+        confirmLabel="Cancel Booking"
+        destructive
+        busy={busy}
+        onConfirm={handleCancel}
+        onCancel={() => setCancelOpen(false)}
+      />
     </div>
   );
 }

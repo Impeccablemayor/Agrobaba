@@ -4,17 +4,22 @@ import { getMyConversations } from '../../lib/messages';
 import { timeAgo } from '../../lib/format';
 import type { Conversation } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 export default function MyMessagesPage() {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadConversations() {
       const data = await getMyConversations();
-      if (active) setConversations(data);
+      if (active) {
+        setConversations(data);
+        setLoading(false);
+      }
     }
 
     void loadConversations();
@@ -32,7 +37,9 @@ export default function MyMessagesPage() {
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>All your conversations with buyers and sellers in one place.</p>
         </div>
 
-        {conversations.length === 0 ? (
+        {loading ? (
+          <PageLoadingSpinner message="Loading your messages…" />
+        ) : conversations.length === 0 ? (
           <div className="empty-cart">
             <i className="fa-regular fa-comments"></i>
             <p>No messages yet. Start a conversation by contacting a seller or responding to a demand.</p>

@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<Role>('buyer');
   const [showPassword, setShowPassword] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', password: '', contact: '', country: 'Nigeria', city: '', address: '',
   });
@@ -27,6 +28,7 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (!termsChecked) {
       showToast('Please accept the Terms of Service to continue.', 'error');
       return;
@@ -35,10 +37,17 @@ export default function RegisterPage() {
       showToast('Please fill in all required fields.', 'error');
       return;
     }
+    if (form.password.length < 8) {
+      showToast('Password must be at least 8 characters.', 'error');
+      return;
+    }
+    setSubmitting(true);
     const success = await register({ ...form, role });
     if (success) {
       navigate('/onboarding');
+      return;
     }
+    setSubmitting(false);
   }
 
   return (
@@ -114,6 +123,7 @@ export default function RegisterPage() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Min. 8 characters"
                       required
+                      minLength={8}
                       autoComplete="new-password"
                       style={{ paddingRight: 44 }}
                       value={form.password}
@@ -169,8 +179,9 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            <button type="submit" className="btn-primary">
-              <i className="fa-solid fa-user-plus"></i> Create Account
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
+              {submitting ? 'Creating Account…' : (<><i className="fa-solid fa-user-plus"></i> Create Account</>)}
             </button>
           </form>
 
