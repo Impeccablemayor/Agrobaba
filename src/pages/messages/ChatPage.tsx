@@ -35,38 +35,91 @@ export default function ChatPage() {
   const displayDemandTitle = conversationContext?.demandTitle || '';
   const displayDemandId = conversationContext?.demandId || null;
 
+  // Polling is paused while the tab is hidden (nobody is watching the chat) and resumes
+  // immediately on return - same live feel while active, zero idle traffic in background tabs.
+  const POLL_MS = 5000;
+
   useEffect(() => {
     let active = true;
+    let interval: number | undefined;
     if (!bookingId) { setBooking(null); return undefined; }
     async function loadBooking() {
       const data = await getBookingById(bookingId!);
       if (active) setBooking(data);
     }
-    void loadBooking();
-    const interval = setInterval(loadBooking, 5000);
-    return () => { active = false; clearInterval(interval); };
+
+    function startPolling() {
+      if (interval !== undefined || document.visibilityState === 'hidden') return;
+      void loadBooking();
+      interval = window.setInterval(() => {
+        if (document.visibilityState === 'visible') void loadBooking();
+      }, POLL_MS);
+    }
+    function stopPolling() {
+      if (interval !== undefined) { clearInterval(interval); interval = undefined; }
+    }
+    function handleVisibilityChange() {
+      stopPolling();
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    startPolling();
+    return () => { active = false; stopPolling(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
   }, [bookingId]);
 
   useEffect(() => {
     let active = true;
+    let interval: number | undefined;
     if (!partnerId) return undefined;
 
-    async function loadConversation() {
-      const conversation = await getConversation(partnerId!);
-      if (!active) return;
-      setMessages((prev) => {
-        const lastId = conversation.length > 0 ? conversation[conversation.length - 1].id : null;
-        const prevLastId = prev.length > 0 ? prev[prev.length - 1].id : null;
-        return lastId === prevLastId && prev.length === conversation.length ? prev : conversation;
-      });
-      setLoading(false);
+    // Signature of the last fetched conversation - lets poll ticks where nothing new arrived
+    // skip the read-receipt + badge endpoints entirely instead of hitting them every 5s.
+    let lastSignature: string | null = null;
+
+    async function syncReadState() {
       await markAsRead(partnerId!);
       await refreshUnread();
     }
 
-    void loadConversation();
-    const interval = setInterval(loadConversation, 5000);
-    return () => { active = false; clearInterval(interval); };
+    async function loadConversation(markRead: boolean) {
+      const conversation = await getConversation(partnerId!);
+      if (!active) return;
+      const lastId = conversation.length > 0 ? conversation[conversation.length - 1].id : null;
+      setMessages((prev) => {
+        const prevLastId = prev.length > 0 ? prev[prev.length - 1].id : null;
+        return lastId === prevLastId && prev.length === conversation.length ? prev : conversation;
+      });
+      setLoading(false);
+
+      const signature = `${conversation.length}:${lastId ?? ''}`;
+      const changed = lastSignature !== null && signature !== lastSignature;
+      lastSignature = signature;
+
+      // markRead covers opening the chat / returning to the tab; `changed` covers messages that
+      // arrived while already watching.
+      if (markRead || changed) void syncReadState();
+    }
+
+    function startPolling() {
+      if (interval !== undefined || document.visibilityState === 'hidden') return;
+      void loadConversation(true);
+      interval = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
+        void loadConversation(false);
+      }, POLL_MS);
+    }
+    function stopPolling() {
+      if (interval !== undefined) { clearInterval(interval); interval = undefined; }
+    }
+    function handleVisibilityChange() {
+      stopPolling();
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    startPolling();
+    return () => { active = false; stopPolling(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
   }, [partnerId, refreshUnread]);
 
   useEffect(() => {
