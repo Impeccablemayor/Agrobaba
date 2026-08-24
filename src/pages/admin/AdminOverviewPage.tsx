@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAdminOverview } from '../../lib/adminOverview';
+import { useAdminOverview } from '../../hooks/queries/useAdmin';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
-import type { AdminOverview } from '../../types';
 
 function StatCard({ to, icon, color, value, label }: { to: string; icon: string; color: string; value: number | string; label: string }) {
   return (
@@ -21,18 +19,9 @@ function StatCard({ to, icon, color, value, label }: { to: string; icon: string;
 }
 
 export default function AdminOverviewPage() {
-  const [data, setData] = useState<AdminOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useAdminOverview();
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      setData(await getAdminOverview());
-      setLoading(false);
-    })();
-  }, []);
-
-  if (loading) return <PageLoadingSpinner message="Loading overview…" />;
+  if (loading && !data) return <PageLoadingSpinner message="Loading overview…" />;
   if (!data) return <p className="text-muted">Unable to load the overview right now.</p>;
 
   const nothingNeedsAttention = data.paymentSubmissionsCount === 0 && data.pendingVerificationsCount === 0

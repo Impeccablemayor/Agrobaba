@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getMyQuotes } from '../../lib/quotes';
+import { useMyQuotes } from '../../hooks/queries/useQuotes';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { formatUnitQuantity } from '../../lib/units';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
-import type { QuoteRequest } from '../../types';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Awaiting offer', offer_sent: 'Offer sent', accepted: 'Accepted', rejected: 'Rejected', cancelled: 'Cancelled',
@@ -15,18 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function MyQuotesPage() {
-  const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      setLoading(true);
-      const data = await getMyQuotes();
-      if (active) { setQuotes(data); setLoading(false); }
-    })();
-    return () => { active = false; };
-  }, []);
+  const { data: quotes = [], isLoading: loading } = useMyQuotes();
 
   const pendingCount = quotes.filter((q) => q.status === 'pending' || q.status === 'offer_sent').length;
   const acceptedCount = quotes.filter((q) => q.status === 'accepted').length;

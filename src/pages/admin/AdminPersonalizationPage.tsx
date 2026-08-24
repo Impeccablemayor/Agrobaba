@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getAdminPersonalizationOverview } from '../../lib/adminPersonalization';
+import { useAdminPersonalization } from '../../hooks/queries/useAdmin';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
-import type { AdminPersonalizationOverview } from '../../types';
 
 function StatCard({ icon, color, value, label }: { icon: string; color: string; value: number | string; label: string }) {
   return (
@@ -17,25 +15,14 @@ function StatCard({ icon, color, value, label }: { icon: string; color: string; 
   );
 }
 
-/** "type_like_this" -> "Type Like This" - matches AdminOverviewPage/AdminActivityPage's
- *  event.replace(/_/g, ' ') convention for raw backend event/type strings. */
 function humanize(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function AdminPersonalizationPage() {
-  const [data, setData] = useState<AdminPersonalizationOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useAdminPersonalization();
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      setData(await getAdminPersonalizationOverview());
-      setLoading(false);
-    })();
-  }, []);
-
-  if (loading) return <PageLoadingSpinner message="Loading personalization overview…" />;
+  if (loading && !data) return <PageLoadingSpinner message="Loading personalization overview…" />;
   if (!data) return <p className="text-muted">Unable to load the personalization overview right now.</p>;
 
   const eventTypeRows = Object.entries(data.eventsByType).sort((a, b) => b[1] - a[1]);

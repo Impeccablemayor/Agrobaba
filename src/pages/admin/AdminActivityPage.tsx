@@ -1,31 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAuditLog } from '../../lib/adminOverview';
+import { useAuditLog } from '../../hooks/queries/useAdmin';
 import { formatDate } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
-import type { AuditLogEntry } from '../../types';
 
 export default function AdminActivityPage() {
   const { user } = useAuth();
-  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      void (async () => { setLoading(true); setEntries(await getAuditLog(200)); setLoading(false); })();
-    }
-  }, [user]);
-
-  if (!user) return null;
-  if (user.role !== 'admin') return <Navigate to="/account" replace />;
+  const { data: entries = [], isLoading: loading } = useAuditLog(200);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return entries;
     const q = search.trim().toLowerCase();
     return entries.filter((e) => e.event.toLowerCase().includes(q) || e.actor.toLowerCase().includes(q) || e.detail.toLowerCase().includes(q));
   }, [entries, search]);
+
+  if (!user) return null;
+  if (user.role !== 'admin') return <Navigate to="/account" replace />;
 
   return (
     <div>
@@ -34,7 +27,7 @@ export default function AdminActivityPage() {
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>An audit trail of admin actions and security-relevant events. Most recent 200.</p>
       </div>
 
-      {loading ? (
+      {loading && entries.length === 0 ? (
         <PageLoadingSpinner message="Loading activity…" />
       ) : (
         <>

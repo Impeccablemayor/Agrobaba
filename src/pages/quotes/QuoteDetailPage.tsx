@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getQuoteById, sendOffer, acceptOffer, rejectOffer, cancelQuote } from '../../lib/quotes';
+import { useQuote } from '../../hooks/queries/useQuotes';
+import { sendOffer, acceptOffer, rejectOffer, cancelQuote } from '../../lib/quotes';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { formatUnitQuantity } from '../../lib/units';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,7 +10,6 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { QuoteOffer } from '../../types';
 
-/** Seller-side form for sending (or revising, after a rejection) an offer. */
 function SendOfferForm({ quoteId, productUnit, onSent }: { quoteId: string; productUnit: string | null; onSent: () => void }) {
   const [quantity, setQuantity] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
@@ -91,29 +91,12 @@ export default function QuoteDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [quote, setQuote] = useState<Awaited<ReturnType<typeof getQuoteById>>>(null);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  async function reload() {
-    if (!id) return;
-    const data = await getQuoteById(id);
-    setQuote(data);
-  }
+  const { data: quote, isLoading: loading, refetch } = useQuote(id);
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      if (!id) { setLoading(false); return; }
-      setLoading(true);
-      const data = await getQuoteById(id);
-      if (active) { setQuote(data); setLoading(false); }
-    })();
-    return () => { active = false; };
-  }, [id]);
-
-  if (loading) return <PageLoadingSpinner message="Loading quote request…" />;
+  if (loading && !quote) return <PageLoadingSpinner message="Loading quote request…" />;
 
   if (!quote) {
     return (
@@ -149,7 +132,7 @@ export default function QuoteDetailPage() {
     setBusy(true);
     const result = await rejectOffer(quote!.id);
     setBusy(false);
-    if (result) void reload();
+    if (result) void refetch();
   }
 
   async function handleCancel() {
@@ -159,7 +142,7 @@ export default function QuoteDetailPage() {
     setBusy(false);
     if (result) {
       setCancelOpen(false);
-      void reload();
+      void refetch();
     }
   }
 
@@ -239,7 +222,7 @@ export default function QuoteDetailPage() {
                   ) : canSendOffer ? (
                     <>
                       {quote.status === 'rejected' && <p className="sub">The buyer rejected your last offer. You can send a revised one below.</p>}
-                      <SendOfferForm quoteId={quote.id} productUnit={quote.productUnit} onSent={() => void reload()} />
+                      <SendOfferForm quoteId={quote.id} productUnit={quote.productUnit} onSent={() => void refetch()} />
                     </>
                   ) : (
                     <p className="sub">Waiting on the buyer's decision.</p>
