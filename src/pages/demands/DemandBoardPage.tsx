@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getDemands } from '../../lib/demands';
-import { getCategories } from '../../lib/categories';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { useDemands } from '../../hooks/queries/useDemands';
 import { DEMAND_CATEGORY_ICONS } from '../../lib/constants';
 import { DemandCard } from '../../components/DemandCard';
 import { SearchSuggest } from '../../components/SearchSuggest';
-import { getSearchSuggestions, type Suggestion, type SuggestGroup } from '../../lib/search';
-import type { Category, Demand } from '../../types';
+import { getSearchSuggestions, type SuggestGroup, type Suggestion } from '../../lib/search';
 
 export default function DemandBoardPage() {
   const navigate = useNavigate();
@@ -14,17 +13,16 @@ export default function DemandBoardPage() {
   const [inputValue, setInputValue] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [sort, setSort] = useState('newest');
-  const [demands, setDemands] = useState<Demand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [noResultsHints, setNoResultsHints] = useState<SuggestGroup[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const abortRef = useRef<AbortController | undefined>(undefined);
 
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
+  const { data: categories = [] } = useCategories();
+  const {
+    data: demands = [],
+    isLoading,
+    isFetching,
+  } = useDemands({ categoryId: categoryId === 'all' ? undefined : categoryId, search: submittedQuery });
 
   const categoryPills = useMemo(() => {
     const level2 = categories.filter((c) => c.level === 2);
@@ -35,24 +33,14 @@ export default function DemandBoardPage() {
   }, [categories]);
 
   useEffect(() => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setIsLoading(true);
-    void (async () => {
-      const list = await getDemands({ categoryId: categoryId === 'all' ? undefined : categoryId, search: submittedQuery }, controller.signal);
-      if (!controller.signal.aborted) {
-        setDemands(list);
-        setIsLoading(false);
-        if (list.length === 0 && submittedQuery.trim()) {
-          const hints = await getSearchSuggestions(submittedQuery.trim(), 'demands');
-          if (!controller.signal.aborted) setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
-        } else {
-          setNoResultsHints([]);
-        }
-      }
-    })();
-  }, [categoryId, submittedQuery]);
+    if (!isLoading && demands.length === 0 && submittedQuery.trim()) {
+      void getSearchSuggestions(submittedQuery.trim(), 'demands').then((hints) => {
+        setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
+      });
+    } else {
+      setNoResultsHints([]);
+    }
+  }, [isLoading, demands.length, submittedQuery]);
 
   function handleSearch(value: string) {
     setInputValue(value);
@@ -117,7 +105,7 @@ export default function DemandBoardPage() {
                 scope="demands"
                 placeholder="Search demands by title, category, location..."
               />
-              {isLoading && (
+              {isFetching && (
                 <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}></i>
               )}
             </div>
@@ -149,7 +137,7 @@ export default function DemandBoardPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-              {sortedDemands.length} demand{sortedDemands.length !== 1 ? 's' : ''} posted
+              {isFetching && !isLoading ? 'Updating demands…' : `${sortedDemands.length} demand${sortedDemands.length !== 1 ? 's' : ''} posted`}
             </p>
             <Link to="/demands/new" className="btn-primary btn-inline btn-sm">
               <i className="fa-solid fa-plus"></i> Post a Demand
@@ -184,7 +172,6 @@ export default function DemandBoardPage() {
                 <DemandCard
                   key={d.id}
                   demand={d}
-                  onDeleted={(id) => setDemands((prev) => prev.filter((x) => x.id !== id))}
                 />
               ))}
             </div>

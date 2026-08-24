@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getProducts } from '../../lib/products';
-import { getCategories } from '../../lib/categories';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { useProducts } from '../../hooks/queries/useProducts';
 import { ProductCard } from '../../components/ProductCard';
 import { SearchSuggest } from '../../components/SearchSuggest';
 import { CategorySidebar } from '../../components/CategorySidebar';
-import { getSearchSuggestions, type Suggestion, type SuggestGroup } from '../../lib/search';
-import type { Category, Product } from '../../types';
+import { getSearchSuggestions, type SuggestGroup, type Suggestion } from '../../lib/search';
 
 export default function ShopPage() {
   const navigate = useNavigate();
@@ -19,18 +18,11 @@ export default function ShopPage() {
   const [inputValue, setInputValue] = useState(urlSearch);
   const [submittedQuery, setSubmittedQuery] = useState(urlSearch);
   const [sort, setSort] = useState('newest');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [noResultsHints, setNoResultsHints] = useState<SuggestGroup[]>([]);
-  const [reloadNonce, setReloadNonce] = useState(0);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const abortRef = useRef<AbortController | undefined>(undefined);
 
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
+  const { data: categories = [] } = useCategories();
 
   useEffect(() => {
     if (urlCategoryId === 'all') {
@@ -53,15 +45,32 @@ export default function ShopPage() {
     setCategoryId(selected.level === 1 ? 'all' : selected.id);
   }, [categories, urlCategoryId]);
 
-  // Picks up a search triggered from elsewhere (navbar/hero) while already on this page -
-  // useSearchParams doesn't remount the page, so the initial-state read above only fires once.
   useEffect(() => {
     if (urlSearch !== submittedQuery) {
       setInputValue(urlSearch);
       setSubmittedQuery(urlSearch);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlSearch]);
+  }, [urlSearch, submittedQuery]);
+
+  const activeCategoryId = categoryId !== 'all' ? categoryId : (sectionId !== 'all' ? sectionId : undefined);
+
+  const {
+    data: products = [],
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useProducts({ categoryId: activeCategoryId, search: submittedQuery });
+
+  useEffect(() => {
+    if (!isLoading && products.length === 0 && submittedQuery.trim()) {
+      void getSearchSuggestions(submittedQuery.trim(), 'products').then((hints) => {
+        setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
+      });
+    } else {
+      setNoResultsHints([]);
+    }
+  }, [isLoading, products.length, submittedQuery]);
 
   function handleSelectSection(id: string) {
     setSectionId(id);
@@ -104,32 +113,6 @@ export default function ShopPage() {
     navigate(`/shop/product/${item.value}`);
   }
 
-  useEffect(() => {
-    const activeId = categoryId !== 'all' ? categoryId : (sectionId !== 'all' ? sectionId : undefined);
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setIsLoading(true);
-    void (async () => {
-      const list = await getProducts({ categoryId: activeId, search: submittedQuery }, controller.signal);
-      if (!controller.signal.aborted) {
-        setProducts(list);
-        setIsLoading(false);
-        if (list.length === 0 && submittedQuery.trim()) {
-          const hints = await getSearchSuggestions(submittedQuery.trim(), 'products');
-          if (!controller.signal.aborted) setNoResultsHints(hints.filter((g) => g.type === 'category' || g.type === 'popular'));
-        } else {
-          setNoResultsHints([]);
-        }
-      }
-    })();
-  }, [sectionId, categoryId, submittedQuery, reloadNonce]);
-
-  /** Bumped by "Try again" to re-run the fetch effect without changing any filter. */
-  function handleRetry() {
-    setReloadNonce((n) => n + 1);
-  }
-
   const sortedProducts = useMemo(() => {
     let list = [...products];
     if (sort === 'price-low') list = list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
@@ -139,8 +122,6 @@ export default function ShopPage() {
     return list;
   }, [products, sort]);
 
-  // Browsing with zero results and zero filters almost certainly means the request failed
-  // (e.g. a cold-starting backend), not that the marketplace is genuinely empty.
   const isUnfilteredView = !submittedQuery.trim() && categoryId === 'all' && sectionId === 'all';
 
   function resetFilters() {
@@ -195,14 +176,14 @@ export default function ShopPage() {
                 scope="products"
                 placeholder="🔍 Search by name, category, location, seller..."
               />
-              {isLoading && (
+              {isFetching && (
                 <i className="fa-solid fa-spinner fa-spin" style={{ position: 'absolute', right: 14, top: 14, color: 'var(--muted)' }}></i>
               )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-                {isLoading ? 'Loading…' : `${sortedProducts.length} listing${sortedProducts.length !== 1 ? 's' : ''} found`}
+                {isFetching && !isLoading ? 'Updating listings…' : `${sortedProducts.length} listing${sortedProducts.length !== 1 ? 's' : ''} found`}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Sort by:</label>
@@ -225,33 +206,31 @@ export default function ShopPage() {
                 <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--primary)' }}></i>
                 <p>Loading listings… this can take a moment when the server is waking up.</p>
               </div>
+            ) : isError || (sortedProducts.length === 0 && isUnfilteredView) ? (
+              <div className="empty-cart" style={{ margin: '24px 0' }}>
+                <i className="fa-solid fa-triangle-exclamation"></i>
+                <p>We couldn't load listings right now — the server may still be waking up.</p>
+                <button onClick={() => void refetch()} className="btn-primary btn-inline btn-sm">
+                  <i className="fa-solid fa-rotate"></i> Try Again
+                </button>
+              </div>
             ) : sortedProducts.length === 0 ? (
-              isUnfilteredView ? (
-                <div className="empty-cart" style={{ margin: '24px 0' }}>
-                  <i className="fa-solid fa-triangle-exclamation"></i>
-                  <p>We couldn't load listings right now — the server may still be waking up.</p>
-                  <button onClick={handleRetry} className="btn-primary btn-inline btn-sm">
-                    <i className="fa-solid fa-rotate"></i> Try Again
-                  </button>
-                </div>
-              ) : (
-                <div className="empty-cart" style={{ margin: '24px 0' }}>
-                  <i className="fa-solid fa-store-slash"></i>
-                  <p>No listings found. Try a different search or category.</p>
-                  {noResultsHints.some((g) => g.items.length > 0) && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
-                      {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
-                        <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
-                          <i className="fa-solid fa-magnifying-glass"></i> {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
-                    <i className="fa-solid fa-rotate"></i> Clear filters
-                  </button>
-                </div>
-              )
+              <div className="empty-cart" style={{ margin: '24px 0' }}>
+                <i className="fa-solid fa-store-slash"></i>
+                <p>No listings found. Try a different search or category.</p>
+                {noResultsHints.some((g) => g.items.length > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, margin: '12px 0' }}>
+                    {noResultsHints.flatMap((g) => g.items).slice(0, 6).map((item) => (
+                      <button key={item.value} onClick={() => submitSearch(item.label)} className="filter-pill">
+                        <i className="fa-solid fa-magnifying-glass"></i> {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={resetFilters} className="btn-secondary btn-inline btn-sm">
+                  <i className="fa-solid fa-rotate"></i> Clear filters
+                </button>
+              </div>
             ) : (
               <div className="grid-3">
                 {sortedProducts.map((p) => <ProductCard key={p.id} product={p} />)}

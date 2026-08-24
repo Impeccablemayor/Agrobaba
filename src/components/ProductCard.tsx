@@ -49,7 +49,7 @@ export const ProductCard = memo(function ProductCard({
           </button>
         )}
         {product.image ? (
-          <img src={product.image} alt={product.name} loading="lazy" />
+          <img src={product.image} alt={product.name} loading="lazy" decoding="async" />
         ) : (
           <div className="card-img-inner">
             <i className={`fa-solid ${icon}`}></i>

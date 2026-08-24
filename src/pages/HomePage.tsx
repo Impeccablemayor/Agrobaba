@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getProducts } from '../lib/products';
-import { getRecommendedProducts, getMatchingDemands } from '../lib/home';
-import { getDemands } from '../lib/demands';
+import { useProducts } from '../hooks/queries/useProducts';
+import { useCategories } from '../hooks/queries/useCategories';
+import { useDemands } from '../hooks/queries/useDemands';
+import { useMatchingDemands, useRecommendedProducts } from '../hooks/queries/useHome';
 import { getActiveFlashSale } from '../lib/flashSales';
-import { getCategories, getSectionIdByCode } from '../lib/categories';
+import { getSectionIdByCode } from '../lib/categories';
 import { getMyPersonalizationProfile } from '../lib/personalization';
 import { recordEvent } from '../lib/behaviorEvents';
 import { showToast } from '../lib/toastBus';
@@ -15,7 +16,7 @@ import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
 import { CategorySidebar } from '../components/CategorySidebar';
 import type { Suggestion } from '../lib/search';
-import type { Category, Demand, FlashSale, Product, ProfileStatus } from '../types';
+import type { FlashSale, Product, ProfileStatus } from '../types';
 
 function useCountdown(endAt: string | null) {
   const [remaining, setRemaining] = useState(0);
@@ -43,39 +44,37 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [heroQuery, setHeroQuery] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [recommended, setRecommended] = useState<Product[]>([]);
-  const [matchingDemands, setMatchingDemands] = useState<Demand[]>([]);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
-  const [demands, setDemands] = useState<Demand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [flashSale, setFlashSale] = useState<FlashSale | null>(null);
   const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
   const isSupplier = !!user && user.role !== 'buyer';
 
+  const { data: products = [] } = useProducts();
+  const { data: demands = [] } = useDemands();
+  const { data: categories = [] } = useCategories();
+  const { data: initialRecommended = [] } = useRecommendedProducts();
+  const { data: matchingDemands = [] } = useMatchingDemands();
+
+  const [filteredRecommended, setFilteredRecommended] = useState<Product[]>([]);
+
+  useEffect(() => {
+    setFilteredRecommended(initialRecommended);
+  }, [initialRecommended]);
+
   useEffect(() => {
     void (async () => {
-      const [allProducts, allDemands, activeFlashSale, allCategories, recommendedProducts, matchingDemandsResult, personalizationProfile] = await Promise.all([
-        getProducts(), getDemands(), getActiveFlashSale(), getCategories(),
-        user ? getRecommendedProducts() : Promise.resolve([]),
-        isSupplier ? getMatchingDemands() : Promise.resolve([]),
-        user ? getMyPersonalizationProfile() : Promise.resolve(null),
-      ]);
-      setProducts(allProducts);
-      setDemands(allDemands);
+      const activeFlashSale = await getActiveFlashSale();
       setFlashSale(activeFlashSale);
-      setCategories(allCategories);
-      setRecommended(recommendedProducts);
-      setMatchingDemands(matchingDemandsResult);
-      setProfileStatus(personalizationProfile?.status ?? null);
+      if (user) {
+        const personalizationProfile = await getMyPersonalizationProfile();
+        setProfileStatus(personalizationProfile?.status ?? null);
+      }
     })();
-  }, [user, isSupplier]);
+  }, [user]);
 
   const featuredProducts = products.slice(0, 8);
-  // categoryCode is the full leaf code (e.g. "produce.grains.maize") - every listing's category
-  // is enforced to be a leaf, never the bare section, so this has to be a prefix match.
-  const recommendedIds = new Set(recommended.map((p) => p.id));
+  const recommendedIds = new Set(filteredRecommended.map((p) => p.id));
   const withRecommendedFirst = (candidates: Product[]) =>
     [...candidates].sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)));
   const produceRail = withRecommendedFirst(products.filter((p) => p.categoryCode?.startsWith('produce.'))).slice(0, 4);
@@ -84,7 +83,7 @@ export default function HomePage() {
 
   function handleNotInterested(productId: string) {
     recordEvent('not_interested', productId);
-    setRecommended((prev) => prev.filter((p) => p.id !== productId));
+    setFilteredRecommended((prev) => prev.filter((p) => p.id !== productId));
     showToast("Got it — you'll see less like this", 'info');
   }
 
@@ -155,7 +154,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TRUST STRIP - only claims the product can actually back today */}
+      {/* TRUST STRIP */}
       <div className="trust-strip">
         <div className="trust-item"><i className="fa-solid fa-circle-check"></i> Verified Sellers</div>
         <div className="trust-item"><i className="fa-solid fa-handshake"></i> Direct Trade, No Middlemen</div>
@@ -164,15 +163,15 @@ export default function HomePage() {
         <div className="trust-item"><i className="fa-solid fa-headset"></i> Support When You Need It</div>
       </div>
 
-      {/* RECOMMENDED FOR YOU - only rendered once we actually have personalized picks */}
-      {recommended.length > 0 && (
+      {/* RECOMMENDED FOR YOU */}
+      {filteredRecommended.length > 0 && (
         <>
           <div className="section">
             <div className="section-hdr">
               <h2><i className="fa-solid fa-sparkles" style={{ color: 'var(--primary)' }}></i> Recommended for You</h2>
             </div>
             <div className="grid-4">
-              {recommended.map((p) => <ProductCard key={p.id} product={p} onNotInterested={handleNotInterested} />)}
+              {filteredRecommended.map((p) => <ProductCard key={p.id} product={p} onNotInterested={handleNotInterested} />)}
             </div>
           </div>
 
@@ -180,7 +179,7 @@ export default function HomePage() {
         </>
       )}
 
-      {/* DEMANDS YOU COULD FULFILL - seller-side mirror of Recommended for You */}
+      {/* DEMANDS YOU COULD FULFILL */}
       {matchingDemands.length > 0 && (
         <>
           <div className="section">
@@ -197,7 +196,7 @@ export default function HomePage() {
         </>
       )}
 
-      {/* COMPLETE YOUR PROFILE - nudge for anyone whose profile isn't personalizing anything yet */}
+      {/* COMPLETE YOUR PROFILE */}
       {user && profileStatus && profileStatus !== 'completed' && (
         <>
           <div className="section">
@@ -242,7 +241,7 @@ export default function HomePage() {
 
       <div className="divider"></div>
 
-      {/* FLASH DEALS - only shown when one is actually live */}
+      {/* FLASH DEALS */}
       {flashSale && !expired && flashSale.items.length > 0 && (
         <>
           <div className="section">

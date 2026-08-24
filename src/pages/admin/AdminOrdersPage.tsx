@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllOrdersAdmin, updateOrderStatus, verifyOrderPayment } from '../../lib/orders';
+import { useAdminOrders } from '../../hooks/queries/useOrders';
+import { useUpdateOrderStatus, useVerifyPayment } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -34,8 +35,6 @@ const NEXT_STATUS: Record<string, string> = { confirmed: 'shipped', shipped: 'de
 export default function AdminOrdersPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
   const [confirmAction, setConfirmAction] = useState<'verify-payment' | 'advance-status' | null>(null);
 
@@ -45,36 +44,11 @@ export default function AdminOrdersPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  async function load() {
-    setLoading(true);
-    setOrders(await getAllOrdersAdmin());
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (user?.role === 'admin') void load();
-  }, [user]);
+  const { data: orders = [], isLoading } = useAdminOrders();
+  const verifyPaymentMutation = useVerifyPayment();
+  const updateStatusMutation = useUpdateOrderStatus();
 
   useEffect(() => setSearchInput(search), [search]);
-
-  if (!user) return null;
-  if (user.role !== 'admin') return <Navigate to="/account" replace />;
-
-  function setTab(next: TabKey) {
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      if (next === 'all') p.delete('tab'); else p.set('tab', next);
-      return p;
-    });
-  }
-
-  function submitSearch(value: string) {
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      if (value) p.set('search', value); else p.delete('search');
-      return p;
-    });
-  }
 
   const filtered = useMemo(() => {
     let list = orders.filter((o) => matchesTab(o, tab));
@@ -106,22 +80,47 @@ export default function AdminOrdersPage() {
     return counts;
   }, [orders]);
 
-  const gmv = orders.filter((o) => o.paid).reduce((s, o) => s + o.total, 0);
+  if (!user) return null;
+  if (user.role !== 'admin') return <Navigate to="/account" replace />;
 
-  async function handleVerifyPayment() {
-    if (!selected) return;
-    setConfirmAction(null);
-    if (await verifyOrderPayment(selected.id)) { await load(); setSelected(null); }
+  function setTab(next: TabKey) {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (next === 'all') p.delete('tab'); else p.set('tab', next);
+      return p;
+    });
   }
 
-  async function handleAdvanceStatus() {
+  function submitSearch(value: string) {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (value) p.set('search', value); else p.delete('search');
+      return p;
+    });
+  }
+
+  const gmv = orders.filter((o) => o.paid).reduce((s, o) => s + o.total, 0);
+
+  function handleVerifyPayment() {
+    if (!selected) return;
+    setConfirmAction(null);
+    verifyPaymentMutation.mutate(selected.id, {
+      onSuccess: () => setSelected(null),
+    });
+  }
+
+  function handleAdvanceStatus() {
     if (!selected || !selected.status || !(selected.status in NEXT_STATUS)) return;
     setConfirmAction(null);
-    if (await updateOrderStatus(selected.id, NEXT_STATUS[selected.status] as Order['status'])) {
-      const fresh = await getAllOrdersAdmin();
-      setOrders(fresh);
-      setSelected(fresh.find((o) => o.id === selected.id) || null);
-    }
+    const nextStatus = NEXT_STATUS[selected.status] as Order['status'];
+    updateStatusMutation.mutate(
+      { orderId: selected.id, status: nextStatus },
+      {
+        onSuccess: () => {
+          setSelected((prev) => (prev ? { ...prev, status: nextStatus } : null));
+        },
+      }
+    );
   }
 
   return (
@@ -131,7 +130,7 @@ export default function AdminOrdersPage() {
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>Every order placed on Agrobaba, across all buyers and sellers.</p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <PageLoadingSpinner message="Loading orders…" />
       ) : (
         <>
