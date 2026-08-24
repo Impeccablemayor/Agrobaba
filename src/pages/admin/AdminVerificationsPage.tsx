@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdminVerifications } from '../../hooks/queries/useAdmin';
 import {
-  approveBusinessVerification, approveVerification, getPendingVerifications,
+  approveBusinessVerification, approveVerification,
   getVerificationHistory, rejectBusinessVerification, rejectVerification,
 } from '../../lib/verification';
 import { roleLabel, timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import type { PendingVerification, VerificationHistoryEntry } from '../../types';
+import type { VerificationHistoryEntry } from '../../types';
 
 function DocPreview({ label, value, onZoom }: { label: string; value: string | null; onZoom: (src: string) => void }) {
   if (!value) return null;
@@ -16,7 +17,7 @@ function DocPreview({ label, value, onZoom }: { label: string; value: string | n
     <div className="doc-preview">
       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</div>
       {value.startsWith('data:image') ? (
-        <img src={value} alt={label} onClick={() => onZoom(value)} />
+        <img src={value} alt={label} loading="lazy" decoding="async" onClick={() => onZoom(value)} />
       ) : (
         <a href={value} target="_blank" rel="noreferrer" className="btn-outline btn-sm btn-inline">
           <i className="fa-solid fa-file"></i> View document
@@ -38,8 +39,6 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 export default function AdminVerificationsPage() {
   const { user } = useAuth();
-  const [pending, setPending] = useState<PendingVerification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [history, setHistory] = useState<VerificationHistoryEntry[]>([]);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
@@ -47,17 +46,13 @@ export default function AdminVerificationsPage() {
   const [rejectNote, setRejectNote] = useState('');
   const [confirmApprove, setConfirmApprove] = useState<'identity' | 'business' | null>(null);
 
-  async function load() {
-    setLoading(true);
-    const data = await getPendingVerifications();
-    setPending(data);
-    setLoading(false);
-    setSelectedUserId((current) => current && data.some((p) => p.userId === current) ? current : (data[0]?.userId || null));
-  }
+  const { data: pending = [], isLoading: loading, refetch } = useAdminVerifications();
 
   useEffect(() => {
-    if (user?.role === 'admin') void load();
-  }, [user]);
+    if (!selectedUserId && pending.length > 0) {
+      setSelectedUserId(pending[0].userId);
+    }
+  }, [pending, selectedUserId]);
 
   useEffect(() => {
     if (!selectedUserId) { setHistory([]); return; }
@@ -73,7 +68,7 @@ export default function AdminVerificationsPage() {
     if (!selected) return;
     setConfirmApprove(null);
     const ok = track === 'identity' ? await approveVerification(selected.userId) : await approveBusinessVerification(selected.userId);
-    if (ok) void load();
+    if (ok) void refetch();
   }
 
   function startReject(track: 'identity' | 'business') {
@@ -86,7 +81,7 @@ export default function AdminVerificationsPage() {
     const ok = rejecting.track === 'identity'
       ? await rejectVerification(selected.userId, rejectNote.trim())
       : await rejectBusinessVerification(selected.userId, rejectNote.trim());
-    if (ok) { setRejecting(null); void load(); }
+    if (ok) { setRejecting(null); void refetch(); }
   }
 
   if (loading) return <PageLoadingSpinner message="Loading pending verifications…" />;

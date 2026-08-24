@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyBookings, getMyProviderBookings } from '../../lib/bookings';
+import { useMyBookings, useProviderBookings } from '../../hooks/queries/useBookings';
 import { formatDate, formatPrice } from '../../lib/format';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -36,30 +35,13 @@ function BookingRow({ booking, otherPartyLabel, onOpen }: { booking: ServiceBook
 export default function MyBookingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [myBookings, setMyBookings] = useState<ServiceBooking[]>([]);
-  const [providerBookings, setProviderBookings] = useState<ServiceBooking[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const isProvider = user?.role === 'service-provider' || user?.role === 'admin';
 
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      if (!user) return;
-      setLoading(true);
-      const [mine, provider] = await Promise.all([
-        getMyBookings(),
-        isProvider ? getMyProviderBookings() : Promise.resolve([]),
-      ]);
-      if (active) {
-        setMyBookings(mine);
-        setProviderBookings(provider);
-        setLoading(false);
-      }
-    }
-    void load();
-    return () => { active = false; };
-  }, [user, isProvider]);
+  const { data: myBookings = [], isLoading: loadingMine } = useMyBookings();
+  const { data: providerBookings = [], isLoading: loadingProvider } = useProviderBookings();
+
+  const loading = loadingMine || (isProvider && loadingProvider);
 
   if (!user) return null;
 

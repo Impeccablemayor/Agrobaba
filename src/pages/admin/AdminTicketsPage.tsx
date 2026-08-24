@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllTicketsAdmin, updateTicketStatus } from '../../lib/tickets';
+import { useAdminTickets } from '../../hooks/queries/useAdmin';
+import { updateTicketStatus } from '../../lib/tickets';
 import { timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ActionMenu } from '../../components/ActionMenu';
@@ -12,36 +13,12 @@ const STATUS_LABEL: Record<TicketStatus, string> = { open: 'Open', in_progress: 
 
 export default function AdminTicketsPage() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    setTickets(await getAllTicketsAdmin());
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (user?.role === 'admin') void load();
-  }, [user]);
-
-  if (!user) return null;
-  if (user.role !== 'admin') return <Navigate to="/account" replace />;
-
-  async function handleStatusChange(ticket: Ticket, status: TicketStatus) {
-    if (updatingStatus) return;
-    setUpdatingStatus(true);
-    const ok = await updateTicketStatus(ticket.id, status);
-    setUpdatingStatus(false);
-    if (ok) {
-      void load();
-      if (detail?.id === ticket.id) setDetail({ ...ticket, status });
-    }
-  }
+  const { data: tickets = [], isLoading: loading, refetch } = useAdminTickets();
 
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
@@ -53,6 +30,20 @@ export default function AdminTicketsPage() {
       return true;
     });
   }, [tickets, statusFilter, search]);
+
+  if (!user) return null;
+  if (user.role !== 'admin') return <Navigate to="/account" replace />;
+
+  async function handleStatusChange(ticket: Ticket, status: TicketStatus) {
+    if (updatingStatus) return;
+    setUpdatingStatus(true);
+    const ok = await updateTicketStatus(ticket.id, status);
+    setUpdatingStatus(false);
+    if (ok) {
+      void refetch();
+      if (detail?.id === ticket.id) setDetail({ ...ticket, status });
+    }
+  }
 
   const statusOptions: TicketStatus[] = ['open', 'in_progress', 'resolved'];
 

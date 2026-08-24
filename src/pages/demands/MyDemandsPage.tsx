@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { deleteDemand, getMyDemands } from '../../lib/demands';
+import { useMyDemands } from '../../hooks/queries/useDemands';
+import { useDeleteDemand } from '../../hooks/mutations/useDemandMutations';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { DEMAND_CATEGORY_ICONS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
@@ -10,28 +11,11 @@ import type { Demand } from '../../types';
 
 export default function MyDemandsPage() {
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0);
   const [activeModal, setActiveModal] = useState<Demand | null>(null);
-  const [demands, setDemands] = useState<Demand[]>([]);
-  const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<Demand | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadDemands() {
-      setLoading(true);
-      const data = await getMyDemands();
-      if (active) {
-        setDemands(data);
-        setLoading(false);
-      }
-    }
-
-    void loadDemands();
-    return () => { active = false; };
-  }, [refreshKey]);
+  const { data: demands = [], isLoading: loading } = useMyDemands();
+  const deleteDemandMutation = useDeleteDemand();
 
   const openCount = demands.filter((d) => d.status === 'open').length;
   const totalResponses = demands.reduce((s, d) => s + (d.responses ? d.responses.length : 0), 0);
@@ -44,15 +28,11 @@ export default function MyDemandsPage() {
     { icon: 'fa-naira-sign', label: 'Total Budget', value: formatPrice(totalBudget), color: 'var(--primary)' },
   ];
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!pendingDelete) return;
-    setDeleting(true);
-    const ok = await deleteDemand(pendingDelete.id);
-    setDeleting(false);
-    if (ok) {
-      setPendingDelete(null);
-      setRefreshKey((k) => k + 1);
-    }
+    deleteDemandMutation.mutate(pendingDelete.id, {
+      onSuccess: () => setPendingDelete(null),
+    });
   }
 
   function messageResponder(responderId: string, responderName: string) {
@@ -191,7 +171,7 @@ export default function MyDemandsPage() {
         message={`"${pendingDelete?.title}" and its ${pendingDelete?.responses?.length ?? 0} response${(pendingDelete?.responses?.length ?? 0) === 1 ? '' : 's'} will be permanently removed. This cannot be undone.`}
         confirmLabel="Delete Demand"
         destructive
-        busy={deleting}
+        busy={deleteDemandMutation.isPending}
         onConfirm={handleDelete}
         onCancel={() => setPendingDelete(null)}
       />

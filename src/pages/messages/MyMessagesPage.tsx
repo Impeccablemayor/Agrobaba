@@ -1,31 +1,12 @@
-import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyConversations } from '../../lib/messages';
+import { useMyConversations } from '../../hooks/queries/useMessages';
 import { timeAgo } from '../../lib/format';
-import type { Conversation } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 export default function MyMessagesPage() {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadConversations() {
-      const data = await getMyConversations();
-      if (active) {
-        setConversations(data);
-        setLoading(false);
-      }
-    }
-
-    void loadConversations();
-    const interval = setInterval(loadConversations, 5000);
-    return () => { active = false; clearInterval(interval); };
-  }, []);
+  const { data: conversations = [], isLoading: loading } = useMyConversations();
 
   return (
     <div className="section">
@@ -54,8 +35,6 @@ export default function MyMessagesPage() {
               const lastMsg = conv.lastMessage.content.length > 60
                 ? conv.lastMessage.content.substring(0, 60) + '...'
                 : conv.lastMessage.content;
-              // Search the whole thread, not just lastMessage - a reply sent later in the
-              // conversation may not itself carry the product/demand tag.
               const contextMsg = conv.messages.find((m) => m.productName || m.demandTitle);
               const contextLabel = contextMsg?.demandTitle || contextMsg?.productName || null;
               return (

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { getConversation, markAsRead, sendMessage } from '../../lib/messages';
-import { getBookingById } from '../../lib/bookings';
-import type { Message, ServiceBooking } from '../../types';
+import { useConversation } from '../../hooks/queries/useMessages';
+import { useBooking } from '../../hooks/queries/useBookings';
+import { markAsRead, sendMessage } from '../../lib/messages';
+import type { ServiceBooking } from '../../types';
 import { useMessagesBadge } from '../../contexts/MessagesContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { timeAgo } from '../../lib/format';
@@ -20,107 +21,28 @@ export default function ChatPage() {
   const productName = searchParams.get('productName') || '';
   const bookingId = searchParams.get('bookingId');
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState(productName ? `Hi! I'm interested in your listing: "${productName}". Is it still available?` : '');
+  const { data: messages = [], isLoading: loading, refetch: refetchConversation } = useConversation(partnerId);
+  const { data: fetchedBooking } = useBooking(bookingId ?? undefined);
+
   const [booking, setBooking] = useState<ServiceBooking | null>(null);
-  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (fetchedBooking) setBooking(fetchedBooking);
+  }, [fetchedBooking]);
+
+  const [input, setInput] = useState(productName ? `Hi! I'm interested in your listing: "${productName}". Is it still available?` : '');
   const [sending, setSending] = useState(false);
 
-  // Derived from the persisted conversation, not just the URL - a demand-response chat never
-  // carries a URL param at all, and a product-inquiry chat loses its URL param on reload/revisit.
-  // The URL param only matters for a genuinely brand-new conversation with zero messages yet.
   const conversationContext = messages.find((m) => m.productName || m.demandTitle);
   const displayProductName = conversationContext?.productName || (messages.length === 0 ? productName : '');
   const displayProductId = conversationContext?.productId || (messages.length === 0 ? productId : null);
   const displayDemandTitle = conversationContext?.demandTitle || '';
   const displayDemandId = conversationContext?.demandId || null;
 
-  // Polling is paused while the tab is hidden (nobody is watching the chat) and resumes
-  // immediately on return - same live feel while active, zero idle traffic in background tabs.
-  const POLL_MS = 5000;
-
   useEffect(() => {
-    let active = true;
-    let interval: number | undefined;
-    if (!bookingId) { setBooking(null); return undefined; }
-    async function loadBooking() {
-      const data = await getBookingById(bookingId!);
-      if (active) setBooking(data);
+    if (partnerId && messages.length > 0) {
+      void markAsRead(partnerId).then(() => refreshUnread());
     }
-
-    function startPolling() {
-      if (interval !== undefined || document.visibilityState === 'hidden') return;
-      void loadBooking();
-      interval = window.setInterval(() => {
-        if (document.visibilityState === 'visible') void loadBooking();
-      }, POLL_MS);
-    }
-    function stopPolling() {
-      if (interval !== undefined) { clearInterval(interval); interval = undefined; }
-    }
-    function handleVisibilityChange() {
-      stopPolling();
-      startPolling();
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    startPolling();
-    return () => { active = false; stopPolling(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
-  }, [bookingId]);
-
-  useEffect(() => {
-    let active = true;
-    let interval: number | undefined;
-    if (!partnerId) return undefined;
-
-    // Signature of the last fetched conversation - lets poll ticks where nothing new arrived
-    // skip the read-receipt + badge endpoints entirely instead of hitting them every 5s.
-    let lastSignature: string | null = null;
-
-    async function syncReadState() {
-      await markAsRead(partnerId!);
-      await refreshUnread();
-    }
-
-    async function loadConversation(markRead: boolean) {
-      const conversation = await getConversation(partnerId!);
-      if (!active) return;
-      const lastId = conversation.length > 0 ? conversation[conversation.length - 1].id : null;
-      setMessages((prev) => {
-        const prevLastId = prev.length > 0 ? prev[prev.length - 1].id : null;
-        return lastId === prevLastId && prev.length === conversation.length ? prev : conversation;
-      });
-      setLoading(false);
-
-      const signature = `${conversation.length}:${lastId ?? ''}`;
-      const changed = lastSignature !== null && signature !== lastSignature;
-      lastSignature = signature;
-
-      // markRead covers opening the chat / returning to the tab; `changed` covers messages that
-      // arrived while already watching.
-      if (markRead || changed) void syncReadState();
-    }
-
-    function startPolling() {
-      if (interval !== undefined || document.visibilityState === 'hidden') return;
-      void loadConversation(true);
-      interval = window.setInterval(() => {
-        if (document.visibilityState !== 'visible') return;
-        void loadConversation(false);
-      }, POLL_MS);
-    }
-    function stopPolling() {
-      if (interval !== undefined) { clearInterval(interval); interval = undefined; }
-    }
-    function handleVisibilityChange() {
-      stopPolling();
-      startPolling();
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    startPolling();
-    return () => { active = false; stopPolling(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
-  }, [partnerId, refreshUnread]);
+  }, [partnerId, messages.length, refreshUnread]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: 'end' });
@@ -146,8 +68,7 @@ export default function ChatPage() {
 
     if (sent) {
       setInput('');
-      const conversation = await getConversation(partnerId!);
-      setMessages(conversation);
+      await refetchConversation();
       await refreshUnread();
     }
     setSending(false);
@@ -184,7 +105,7 @@ export default function ChatPage() {
           )}
 
           <div className="chat-messages">
-            {loading ? (
+            {loading && messages.length === 0 ? (
               <p className="text-muted text-center" style={{ padding: 24 }}>
                 <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Loading conversation…
               </p>

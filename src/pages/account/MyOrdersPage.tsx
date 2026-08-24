@@ -1,19 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyOrders } from '../../lib/orders';
+import { useMyOrders } from '../../hooks/queries/useOrders';
 import { createReview } from '../../lib/reviews';
 import { formatDate, formatPrice } from '../../lib/format';
-
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order } from '../../types';
 
 type Filter = 'all' | 'unpaid' | 'paid' | 'delivered';
 
-/** Inline star-rating + optional-comment form for a single delivered order item. Once submitted
- *  successfully, the parent hides this in favor of a static "Reviewed" state for the rest of the
- *  session - a genuine duplicate attempt (e.g. after a reload) is still correctly rejected by the
- *  backend with a clear error toast, so no separate "already reviewed" fetch is needed for v1. */
 function ReviewForm({ orderId, productId, onSubmitted }: { orderId: string; productId: string; onSubmitted: () => void }) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -66,27 +61,10 @@ export default function MyOrdersPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [reviewedProductIds, setReviewedProductIds] = useState<Set<string>>(new Set());
   const [reviewingProductId, setReviewingProductId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadOrders() {
-      if (!user) return;
-      setLoading(true);
-      const data = await getMyOrders();
-      if (active) {
-        setOrders(data);
-        setLoading(false);
-      }
-    }
-
-    void loadOrders();
-    return () => { active = false; };
-  }, [user]);
+  const { data: orders = [], isLoading: loading } = useMyOrders();
 
   if (!user) return null;
 

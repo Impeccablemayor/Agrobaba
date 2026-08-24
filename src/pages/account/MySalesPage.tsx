@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMySales, updateOrderStatus, verifyOrderPayment } from '../../lib/orders';
+import { useSalesOrders } from '../../hooks/queries/useOrders';
+import { useUpdateOrderStatus, useVerifyPayment } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
-
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order, OrderStatus } from '../../types';
 
@@ -13,25 +13,9 @@ export default function MySalesPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
 
-  const [sales, setSales] = useState<Awaited<ReturnType<typeof getMySales>>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSales() {
-      if (!user) return;
-      setLoading(true);
-      const data = await getMySales();
-      if (active) {
-        setSales(data);
-        setLoading(false);
-      }
-    }
-
-    void loadSales();
-    return () => { active = false; };
-  }, [user]);
+  const { data: sales = [], isLoading: loading } = useSalesOrders();
+  const updateStatusMutation = useUpdateOrderStatus();
+  const verifyPaymentMutation = useVerifyPayment();
 
   if (!user) return null;
 
@@ -83,18 +67,12 @@ export default function MySalesPage() {
   else if (filter === 'paid') filtered = sales.filter((o) => o.paid);
   else if (filter === 'processing') filtered = sales.filter((o) => o.paid && o.status !== 'delivered');
 
-  async function handleStatusChange(orderId: string, status: OrderStatus) {
-    const ok = await updateOrderStatus(orderId, status);
-    if (ok) {
-      setSales((prev) => prev.map((o) => o.id === orderId ? { ...o, status } : o));
-    }
+  function handleStatusChange(orderId: string, status: OrderStatus) {
+    updateStatusMutation.mutate({ orderId, status });
   }
 
-  async function handleVerifyPayment(orderId: string) {
-    const ok = await verifyOrderPayment(orderId);
-    if (ok) {
-      setSales((prev) => prev.map((o) => o.id === orderId ? { ...o, paid: true, status: 'confirmed' } : o));
-    }
+  function handleVerifyPayment(orderId: string) {
+    verifyPaymentMutation.mutate(orderId);
   }
 
   return (

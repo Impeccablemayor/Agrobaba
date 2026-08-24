@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getProductById } from '../../lib/products';
-import { getCategories, getSectionIdByCode } from '../../lib/categories';
+import { useProduct } from '../../hooks/queries/useProducts';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { getSectionIdByCode } from '../../lib/categories';
 import { createBooking } from '../../lib/bookings';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
@@ -20,40 +21,14 @@ export default function ServiceDetailPage() {
   });
   const [bookLocation, setBookLocation] = useState('');
   const [bookMessage, setBookMessage] = useState('');
-  const [product, setProduct] = useState<Awaited<ReturnType<typeof getProductById>>>(null);
-  const [loading, setLoading] = useState(true);
-  const [servicesHref, setServicesHref] = useState('/shop');
 
-  useEffect(() => {
-    void getCategories().then((categories) => {
-      const id = getSectionIdByCode(categories, 'services');
-      if (id) setServicesHref(`/shop?categoryId=${encodeURIComponent(id)}`);
-    });
-  }, []);
+  const { data: product, isLoading: loading } = useProduct(id);
+  const { data: categories = [] } = useCategories();
 
-  useEffect(() => {
-    let active = true;
+  const servicesCatId = getSectionIdByCode(categories, 'services');
+  const servicesHref = servicesCatId ? `/shop?categoryId=${encodeURIComponent(servicesCatId)}` : '/shop';
 
-    async function loadProduct() {
-      if (!id) {
-        if (active) setProduct(null);
-        if (active) setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const data = await getProductById(id);
-      if (active) {
-        setProduct(data);
-        setLoading(false);
-      }
-    }
-
-    void loadProduct();
-    return () => { active = false; };
-  }, [id]);
-
-  if (loading) {
+  if (loading && !product) {
     return (
       <div className="service-detail-layout">
         <div className="empty-cart" style={{ gridColumn: '1/-1' }}>

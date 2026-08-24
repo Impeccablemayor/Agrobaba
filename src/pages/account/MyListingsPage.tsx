@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { deleteProduct, getMyProducts } from '../../lib/products';
+import { useMyProducts } from '../../hooks/queries/useProducts';
+import { useDeleteProduct } from '../../hooks/mutations/useProductMutations';
 import { formatPrice } from '../../lib/format';
 import { CATEGORY_ICONS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
@@ -20,28 +21,10 @@ const LABELS: Record<Role, { title: string; sub: string; add: string; crumb: str
 export default function MyListingsPage() {
   const { user } = useAuth();
   const [status, setStatus] = useState<'all' | 'active' | 'discount'>('all');
-
-  const [products, setProducts] = useState<Awaited<ReturnType<typeof getMyProducts>>>([]);
-  const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadProducts() {
-      if (!user) return;
-      setLoading(true);
-      const data = await getMyProducts();
-      if (active) {
-        setProducts(data);
-        setLoading(false);
-      }
-    }
-
-    void loadProducts();
-    return () => { active = false; };
-  }, [user]);
+  const { data: products = [], isLoading: loading } = useMyProducts();
+  const deleteProductMutation = useDeleteProduct();
 
   if (!user) return null;
   const l = LABELS[user.role];
@@ -79,15 +62,11 @@ export default function MyListingsPage() {
   if (status === 'active') filteredProducts = filteredProducts.filter((p) => p.status === 'active');
   else if (status === 'discount') filteredProducts = filteredProducts.filter((p) => p.discount > 0);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!pendingDelete) return;
-    setDeleting(true);
-    const ok = await deleteProduct(pendingDelete.id);
-    setDeleting(false);
-    if (ok) {
-      setProducts((prev) => prev.filter((p) => p.id !== pendingDelete.id));
-      setPendingDelete(null);
-    }
+    deleteProductMutation.mutate(pendingDelete.id, {
+      onSuccess: () => setPendingDelete(null),
+    });
   }
 
   return (
@@ -146,7 +125,7 @@ export default function MyListingsPage() {
                     <div className="card-img">
                       {p.discount > 0 && <div className="disc-tag">{p.discount}% OFF</div>}
                       {p.image ? (
-                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={p.image} alt={p.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div className="card-img-inner">
                           <i className={`fa-solid ${icon}`}></i>
@@ -187,7 +166,7 @@ export default function MyListingsPage() {
         message={`"${pendingDelete?.name}" will be permanently removed from the marketplace. This cannot be undone.`}
         confirmLabel="Delete Listing"
         destructive
-        busy={deleting}
+        busy={deleteProductMutation.isPending}
         onConfirm={handleDelete}
         onCancel={() => setPendingDelete(null)}
       />

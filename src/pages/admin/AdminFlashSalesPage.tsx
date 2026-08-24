@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getProducts } from '../../lib/products';
-import { createFlashSale, deleteFlashSale, getAllFlashSalesAdmin } from '../../lib/flashSales';
+import { useProducts } from '../../hooks/queries/useProducts';
+import { useAdminFlashSales } from '../../hooks/queries/useAdmin';
+import { createFlashSale, deleteFlashSale } from '../../lib/flashSales';
 import { showToast } from '../../lib/toastBus';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ActionMenu } from '../../components/ActionMenu';
-import type { FlashSale, Product } from '../../types';
+import type { FlashSale } from '../../types';
 
 interface SelectedItem { productId: string; salePrice: string; }
 
@@ -25,9 +26,6 @@ const PHASE_CHIP: Record<Phase, string> = { upcoming: 'chip-info', active: 'chip
 
 export default function AdminFlashSalesPage() {
   const { user } = useAuth();
-  const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<FlashSale | null>(null);
   const [toDelete, setToDelete] = useState<FlashSale | null>(null);
@@ -39,17 +37,18 @@ export default function AdminFlashSalesPage() {
   const [endAt, setEndAt] = useState('');
   const [selected, setSelected] = useState<SelectedItem[]>([]);
 
-  async function load() {
-    setLoading(true);
-    const [sales, allProducts] = await Promise.all([getAllFlashSalesAdmin(), getProducts()]);
-    setFlashSales(sales);
-    setProducts(allProducts);
-    setLoading(false);
-  }
+  const { data: flashSales = [], isLoading: loadingSales, refetch } = useAdminFlashSales();
+  const { data: products = [], isLoading: loadingProducts } = useProducts();
 
-  useEffect(() => {
-    if (user?.role === 'admin') void load();
-  }, [user]);
+  const loading = loadingSales || loadingProducts;
+
+  const filtered = useMemo(() => {
+    return flashSales.filter((f) => {
+      if (phaseFilter !== 'all' && phaseOf(f) !== phaseFilter) return false;
+      if (search.trim() && !f.title.toLowerCase().includes(search.trim().toLowerCase())) return false;
+      return true;
+    });
+  }, [flashSales, phaseFilter, search]);
 
   if (!user) return null;
   if (user.role !== 'admin') return <Navigate to="/account" replace />;
@@ -86,22 +85,14 @@ export default function AdminFlashSalesPage() {
     if (result) {
       resetForm();
       setCreateOpen(false);
-      void load();
+      void refetch();
     }
   }
 
   async function handleDelete() {
     if (!toDelete) return;
-    if (await deleteFlashSale(toDelete.id)) { setToDelete(null); setDetail(null); void load(); }
+    if (await deleteFlashSale(toDelete.id)) { setToDelete(null); setDetail(null); void refetch(); }
   }
-
-  const filtered = useMemo(() => {
-    return flashSales.filter((f) => {
-      if (phaseFilter !== 'all' && phaseOf(f) !== phaseFilter) return false;
-      if (search.trim() && !f.title.toLowerCase().includes(search.trim().toLowerCase())) return false;
-      return true;
-    });
-  }, [flashSales, phaseFilter, search]);
 
   return (
     <div>

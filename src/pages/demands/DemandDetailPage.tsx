@@ -1,15 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getDemandById, respondToDemand, deleteDemand, acceptDemandResponse } from '../../lib/demands';
-import { getMyProducts } from '../../lib/products';
+import { useDemand } from '../../hooks/queries/useDemands';
+import { useMyProducts } from '../../hooks/queries/useProducts';
+import { respondToDemand, deleteDemand, acceptDemandResponse } from '../../lib/demands';
 import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import type { DemandResponse, Product } from '../../types';
+import type { DemandResponse } from '../../types';
 
-/** Inline quantity + delivery-details form for accepting one response - opens on demand, submits
- *  via acceptDemandResponse (which delegates to the same order-creation pipeline checkout uses). */
 function AcceptResponseForm({ demandId, response, onAccepted }: { demandId: string; response: DemandResponse; onAccepted: () => void }) {
   const [quantity, setQuantity] = useState('1');
   const [address, setAddress] = useState('');
@@ -80,51 +79,14 @@ export default function DemandDetailPage() {
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('');
   const [productId, setProductId] = useState('');
-  const [myProducts, setMyProducts] = useState<Product[]>([]);
-  const [demand, setDemand] = useState<Awaited<ReturnType<typeof getDemandById>>>(null);
-  const [loading, setLoading] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  async function reloadDemand() {
-    if (!id) return;
-    const data = await getDemandById(id);
-    setDemand(data);
-  }
+  const { data: demand, isLoading: loading, refetch } = useDemand(id);
+  const { data: myProductsAll = [] } = useMyProducts();
+  const myProducts = myProductsAll.filter((p) => p.status === 'active');
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadDemand() {
-      if (!id) {
-        if (active) setDemand(null);
-        if (active) setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const data = await getDemandById(id);
-      if (active) {
-        setDemand(data);
-        setLoading(false);
-      }
-    }
-
-    void loadDemand();
-    return () => { active = false; };
-  }, [id]);
-
-  useEffect(() => {
-    let active = true;
-    if (!user || user.role === 'buyer') { setMyProducts([]); return; }
-    void (async () => {
-      const products = await getMyProducts();
-      if (active) setMyProducts(products.filter((p) => p.status === 'active'));
-    })();
-    return () => { active = false; };
-  }, [user]);
-
-  if (loading) {
+  if (loading && !demand) {
     return (
       <div className="section"><div className="container">
         <div className="empty-cart">
@@ -223,9 +185,6 @@ export default function DemandDetailPage() {
                   <Link to="/login" className="btn-primary btn-inline btn-sm"><i className="fa-solid fa-right-to-bracket"></i> Log In</Link>
                 </>
               ) : String(user.id) === String(demand.buyerId) ? (
-                // demand.buyerId arrives as a raw JSON number (Jackson-serialized Long) while
-                // user.id is a string - a bare === here silently never matches the demand's own
-                // owner, so String() both sides.
                 <>
                   <h3>Responses ({demand.responses ? demand.responses.length : 0})</h3>
                   {!demand.responses || demand.responses.length === 0 ? (
@@ -238,7 +197,7 @@ export default function DemandDetailPage() {
                           demandId={demand.id}
                           response={r}
                           canAccept={demand.status === 'open'}
-                          onAccepted={() => { void reloadDemand(); }}
+                          onAccepted={() => { void refetch(); }}
                         />
                       ))}
                     </div>

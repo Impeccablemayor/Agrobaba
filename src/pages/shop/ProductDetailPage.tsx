@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { getProductById, getProducts } from '../../lib/products';
+import { useProduct, useProducts } from '../../hooks/queries/useProducts';
 import { getProductReviews } from '../../lib/reviews';
 import { useCart } from '../../contexts/CartContext';
 import { isLoggedIn } from '../../lib/auth';
@@ -9,7 +9,7 @@ import { formatDate, formatPrice, starString } from '../../lib/format';
 import { formatUnitQuantity, resolveUnitPrice } from '../../lib/units';
 import { requestQuote } from '../../lib/quotes';
 import { ProductCard } from '../../components/ProductCard';
-import type { Product, Review } from '../../types';
+import type { Review } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
@@ -24,42 +24,16 @@ export default function ProductDetailPage() {
   const [buyerNotes, setBuyerNotes] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews'>('description');
-  const [product, setProduct] = useState<Product | null>(null);
-  const [related, setRelated] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<Review[]>([]);
 
+  const { data: product, isLoading: loading } = useProduct(id);
+  const { data: categoryProducts = [] } = useProducts({ category: product?.category });
+
+  const related = categoryProducts.filter((item) => item.id !== product?.id).slice(0, 6);
+
   useEffect(() => {
-    let active = true;
-
-    async function loadProduct() {
-      if (!id) {
-        if (active) setProduct(null);
-        if (active) setRelated([]);
-        if (active) setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const data = await getProductById(id);
-      if (!active) return;
-      setProduct(data);
-      // A minOrderQuantity means quantity=1 (the useState default) could be invalid - start
-      // the quantity control at the actual minimum instead.
-      if (data?.minOrderQuantity) setQuantity(data.minOrderQuantity);
-
-      if (data) {
-        const items = (await getProducts({ category: data.category })).filter((item) => item.id !== data.id).slice(0, 6);
-        setRelated(items);
-      } else {
-        setRelated([]);
-      }
-      setLoading(false);
-    }
-
-    void loadProduct();
-    return () => { active = false; };
-  }, [id]);
+    if (product?.minOrderQuantity) setQuantity(product.minOrderQuantity);
+  }, [product?.minOrderQuantity]);
 
   useEffect(() => {
     let active = true;
@@ -71,7 +45,7 @@ export default function ProductDetailPage() {
     return () => { active = false; };
   }, [id]);
 
-  if (loading) {
+  if (loading && !product) {
     return <PageLoadingSpinner message="Loading product details…" />;
   }
 
@@ -87,7 +61,6 @@ export default function ProductDetailPage() {
     );
   }
 
-  // Services are bookable, not addable-to-cart — send them to the real booking page instead.
   if (product.type === 'service') {
     return <Navigate to={`/shop/service/${product.id}`} replace />;
   }
@@ -96,11 +69,6 @@ export default function ProductDetailPage() {
 
   function handleAddToCart(e: FormEvent) {
     e.preventDefault();
-    // Native HTML5 min/max validation on the quantity input silently blocks the submit event
-    // instead of running this handler at all, which left buyers with no feedback when they typed
-    // an out-of-range quantity - the <form> now has noValidate so this always runs, and gives an
-    // explicit reason instead of nothing happening. Mirrors OrderService's own validation order
-    // (min -> max/stock -> increment) so the message matches what checkout would reject with anyway.
     const p = product!;
     if (quantity < 1) {
       showToast('Quantity must be at least 1.', 'error');
@@ -165,7 +133,7 @@ export default function ProductDetailPage() {
           <div className="product-detail-images">
             <div style={{ background: 'var(--bg-soft)', borderRadius: 'var(--radius)', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow)' }}>
               {product.image ? (
-                <img src={product.image} alt={product.name} style={{ width: '100%', borderRadius: 'var(--radius)', objectFit: 'cover', maxHeight: 400 }} />
+                <img src={product.image} alt={product.name} loading="eager" decoding="async" style={{ width: '100%', borderRadius: 'var(--radius)', objectFit: 'cover', maxHeight: 400 }} />
               ) : (
                 <div style={{ textAlign: 'center' }}>
                   <i className="fa-solid fa-box" style={{ fontSize: 64, color: '#d1d5db' }}></i>

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { createCoupon, deleteCoupon, getAllCouponsAdmin } from '../../lib/coupons';
+import { useAdminCoupons } from '../../hooks/queries/useAdmin';
+import { createCoupon, deleteCoupon } from '../../lib/coupons';
 import { showToast } from '../../lib/toastBus';
 import { timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -13,8 +14,6 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 
 export default function AdminCouponsPage() {
   const { user } = useAuth();
-  const [coupons, setCoupons] = useState<Coupon[]>([]);
-  const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Coupon | null>(null);
   const [search, setSearch] = useState('');
@@ -26,15 +25,16 @@ export default function AdminCouponsPage() {
   const [maxUses, setMaxUses] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
 
-  async function load() {
-    setLoading(true);
-    setCoupons(await getAllCouponsAdmin());
-    setLoading(false);
-  }
+  const { data: coupons = [], isLoading: loading, refetch } = useAdminCoupons();
 
-  useEffect(() => {
-    if (user?.role === 'admin') void load();
-  }, [user]);
+  const filtered = useMemo(() => {
+    return coupons.filter((c) => {
+      if (statusFilter === 'active' && !c.active) return false;
+      if (statusFilter === 'inactive' && c.active) return false;
+      if (search.trim() && !c.code.toLowerCase().includes(search.trim().toLowerCase())) return false;
+      return true;
+    });
+  }, [coupons, statusFilter, search]);
 
   if (!user) return null;
   if (user.role !== 'admin') return <Navigate to="/account" replace />;
@@ -56,23 +56,14 @@ export default function AdminCouponsPage() {
     if (result) {
       resetForm();
       setCreateOpen(false);
-      void load();
+      void refetch();
     }
   }
 
   async function handleDelete() {
     if (!toDelete) return;
-    if (await deleteCoupon(toDelete.id)) { setToDelete(null); void load(); }
+    if (await deleteCoupon(toDelete.id)) { setToDelete(null); void refetch(); }
   }
-
-  const filtered = useMemo(() => {
-    return coupons.filter((c) => {
-      if (statusFilter === 'active' && !c.active) return false;
-      if (statusFilter === 'inactive' && c.active) return false;
-      if (search.trim() && !c.code.toLowerCase().includes(search.trim().toLowerCase())) return false;
-      return true;
-    });
-  }, [coupons, statusFilter, search]);
 
   return (
     <div>
