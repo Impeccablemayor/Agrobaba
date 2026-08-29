@@ -17,7 +17,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (status === 'loading') {
+  if (status === 'initializing') {
     return <PageLoadingSpinner message="Checking your session…" />;
   }
 

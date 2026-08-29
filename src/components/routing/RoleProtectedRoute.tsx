@@ -17,7 +17,7 @@ export function RoleProtectedRoute({ role, children }: { role: Role; children: R
   }
 
   if (!user) {
-    if (status === 'loading') {
+    if (status === 'initializing') {
       return <PageLoadingSpinner message="Checking your session…" />;
     }
     return <Navigate to="/login" state={{ from: location }} replace />;

@@ -71,7 +71,7 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
         )}
 
         <div className="nav-actions" id="auth-links">
-          {status === 'loading' ? (
+          {status === 'initializing' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 12 }}>
               <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
               Checking session…

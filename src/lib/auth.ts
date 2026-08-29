@@ -1,7 +1,19 @@
 import { KEYS, getItem, setItem } from './storage';
 import { showToast } from './toastBus';
-import { api, ApiError, setAuthToken } from './api';
+import { api, ApiError, authRefresher, setAuthToken } from './api';
+import { decodeJwtExp } from './refresh';
+import { authLog } from './authEvents';
 import type { Role, SafeUser, User } from '../types';
+
+// Push the token refresh to ~60s before its exp so an active user almost never hits a 401. When a
+// refresh cannot complete (network/server trouble) the 60s backoff keeps the check running without
+// ever logging the user out or spinning a tight loop.
+const PROACTIVE_REFRESH_SKEW_MS = 60_000;
+const PROACTIVE_IMMEDIATE_THRESHOLD_MS = 30_000;
+const PROACTIVE_RETRY_DELAY_MS = 60_000;
+const PROACTIVE_MAX_DELAY_MS = 60 * 60 * 1000;
+
+let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function getCurrentUser(): SafeUser | null {
   return getItem<SafeUser>(KEYS.user);
@@ -18,12 +30,15 @@ export function getUserRole(): Role | null {
 /** A JWT alone is NOT proof of authentication - it only means a session _might_ exist. The
  *  backend must confirm it via the /api/auth/me verification call before the app trusts it. */
 export function hasStoredToken(): boolean {
-  return localStorage.getItem('agrobaba_token') !== null;
+  return authRefresher.hasToken();
 }
 
-/** True when the backend is reachable but explicitly rejected the session (401/403). */
+/** True when the backend reached and explicitly rejected the session with 401 (expired, revoked,
+ *  or an invalid refresh token). 403 is deliberately NOT treated as session-death here: it means
+ *  "forbidden" (e.g. an insufficient-role request), not "logged out", so it must never clear the
+ *  user's session. */
 export function isAuthRejection(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+  return error instanceof ApiError && error.status === 401;
 }
 
 export interface RegisterInput {
@@ -104,9 +119,81 @@ export async function loginUser(email: string, password: string): Promise<boolea
 }
 
 export function logoutUser(): void {
+  cancelProactiveRefresh();
   localStorage.removeItem(KEYS.user);
-  localStorage.removeItem(KEYS.cart);
+  /* The cart is deliberately preserved across logout/session expiry: it is the user's own shopping
+     record, and wiping it on a token expiry is exactly the data loss this silent-refresh system
+     is meant to prevent. */
   setAuthToken(null);
+}
+
+/** Best-effort server-side session revocation (calls /api/auth/logout, which deletes the session
+ *  row and clears the HttpOnly refresh cookie). Fire-and-forget on purpose: local logout must never
+ *  be blocked by the network or the backend auth cache. The POST is issued while the token is still
+ *  present so the Authorization header is attached. */
+export async function logoutBackend(): Promise<void> {
+  try {
+    await api.post('/api/auth/logout');
+  } catch {
+    // Server-side logout is best-effort; the browser-side refresh cookie dies on its next 401.
+  }
+}
+
+function armProactiveTimer(delayMs: number, note?: Record<string, unknown>): void {
+  if (proactiveTimer !== null) {
+    clearTimeout(proactiveTimer);
+    proactiveTimer = null;
+  }
+  proactiveTimer = setTimeout(() => {
+    proactiveTimer = null;
+    void runProactiveRefresh();
+  }, delayMs);
+  authLog('AUTH_PROACTIVE_SCHEDULED', note ? { delayMs, ...note } : { delayMs });
+}
+
+export function cancelProactiveRefresh(): void {
+  if (proactiveTimer !== null) {
+    clearTimeout(proactiveTimer);
+    proactiveTimer = null;
+    authLog('AUTH_PROACTIVE_CANCELLED');
+  }
+}
+
+/** Arms exactly ONE timer while the user is authenticated. Called by AuthContext whenever the auth
+ *  status becomes 'authenticated' (login, register, silent boot restore). Each firing re-arms itself
+ *  from the refreshed token, so a single chain of timers tracks the session without loops. */
+export function scheduleProactiveRefresh(): void {
+  const token = authRefresher.getToken();
+  const expSeconds = token ? decodeJwtExp(token) : null;
+  if (!token || expSeconds === null) {
+    cancelProactiveRefresh();
+    return;
+  }
+  const remainingMs = expSeconds * 1000 - Date.now() - PROACTIVE_REFRESH_SKEW_MS;
+  let delayMs: number;
+  if (remainingMs <= PROACTIVE_IMMEDIATE_THRESHOLD_MS) {
+    delayMs = 0;
+  } else {
+    delayMs = Math.min(Math.max(remainingMs, PROACTIVE_RETRY_DELAY_MS), PROACTIVE_MAX_DELAY_MS);
+  }
+  armProactiveTimer(delayMs);
+}
+
+async function runProactiveRefresh(): Promise<void> {
+  const token = authRefresher.getToken();
+  if (!token) {
+    cancelProactiveRefresh();
+    return;
+  }
+  const outcome = await authRefresher.refresh();
+  if (outcome.ok) {
+    scheduleProactiveRefresh();
+  } else if (outcome.cause === 'infra') {
+    // Infra failure must never log the user out: keep the session and re-check on a fixed backoff.
+    authLog('AUTH_RETRY', { kind: 'proactive', cause: 'infra' });
+    armProactiveTimer(PROACTIVE_RETRY_DELAY_MS, { infra: true });
+  }
+  // cause 'session' already signalled revocation through the 401 path - nothing to re-schedule.
 }
 
 interface ProfileResponse {
@@ -225,9 +312,10 @@ export async function deleteAccount(password: string): Promise<boolean> {
 
   try {
     await api.delete('/api/auth/account', { password });
+    cancelProactiveRefresh();
     localStorage.removeItem(KEYS.user);
     localStorage.removeItem(KEYS.cart);
-    localStorage.removeItem('agrobaba_token');
+    setAuthToken(null);
     showToast('Account deleted. Goodbye!', 'info');
     return true;
   } catch (error) {

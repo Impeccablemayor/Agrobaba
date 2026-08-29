@@ -1,3 +1,14 @@
+import {
+  createRefreshCoordinator,
+  DEFAULT_CHANNEL_NAME,
+  DEFAULT_LOCK_KEY,
+  DEFAULT_REFRESH_PATH,
+  DEFAULT_TOKEN_KEY,
+  isSessionRevokedMessage,
+  type RefreshCoordinator,
+} from './refresh';
+import { authLog } from './authEvents';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 
 interface ApiErrorShape {
@@ -20,6 +31,15 @@ export class ApiError extends Error {
   }
 }
 
+/** The access token could not be re-minted because of a network/server problem while refreshing.
+ *  NEVER a logout - the session is still presumed valid, just temporarily unreachable. */
+export class RefreshUnavailableError extends Error {
+  constructor() {
+    super('Refresh unavailable — network or server issue, not a session problem.');
+    this.name = 'RefreshUnavailableError';
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -38,43 +58,132 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
   }
 }
 
+/** Endpoints that authenticate with the refresh cookie directly (or need no session) must never
+ *  trigger the automatic 401 -> refresh -> retry loop. */
+function isRefreshExempt(path: string): boolean {
+  return (
+    path === '/api/auth/login' ||
+    path === '/api/auth/register' ||
+    path === '/api/auth/refresh' ||
+    path === '/api/auth/forgot-password' ||
+    path === '/api/auth/reset-password'
+  );
+}
+
+function readBody(response: Response): Promise<unknown> {
+  return response.text().then((text) => {
+    try {
+      return text ? (JSON.parse(text) as unknown) : null;
+    } catch {
+      return text;
+    }
+  });
+}
+
+async function throwApiError(response: Response): Promise<never> {
+  const data = (await readBody(response)) as ApiErrorShape | null;
+  const message =
+    typeof data === 'object' && data !== null
+      ? data.message || data.error || 'Request failed'
+      : 'Request failed';
+  throw new ApiError(response.status, message);
+}
+
+/** Cross-tab command bus: lets one tab tell every other tab the session was revoked. */
+interface AuthBus {
+  post(message: unknown): void;
+  listen(handler: (message: unknown) => void): void;
+}
+
+function createAuthBus(channelName: string): AuthBus {
+  let channel: BroadcastChannel | null | undefined;
+  const ensure = (): BroadcastChannel | null => {
+    if (channel === undefined) {
+      try {
+        channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(channelName);
+      } catch {
+        channel = null;
+      }
+    }
+    return channel;
+  };
+  return {
+    post(message: unknown) {
+      try {
+        ensure()?.postMessage(message);
+      } catch {
+        /* channel unavailable - local fallback already handled the event */
+      }
+    },
+    listen(handler: (message: unknown) => void) {
+      try {
+        const ch = ensure();
+        if (ch) ch.onmessage = (event) => handler(event.data);
+      } catch {
+        /* ignore unsupported */
+      }
+    },
+  };
+}
+
+const authBus = createAuthBus(DEFAULT_CHANNEL_NAME);
+
+// Keying on DEFAULT_LOCK_KEY matches the coordinator's default; passing it explicitly keeps the
+// single-flight contract visible here: one critical section per origin, coordinated across tabs.
+export const authRefresher: RefreshCoordinator = createRefreshCoordinator({
+  refreshPath: DEFAULT_REFRESH_PATH,
+  tokenKey: DEFAULT_TOKEN_KEY,
+  lockKey: DEFAULT_LOCK_KEY,
+  broadcast: (message) => authBus.post(message),
+});
+
+// Any tab hearing "session revoked" must apply the same cleanup it would if the event happened
+// locally (signalSessionInvalid guards the once-only broadcast/event).
+authBus.listen((message) => {
+  if (isSessionRevokedMessage(message)) authRefresher.signalSessionInvalid();
+});
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('agrobaba_token');
+  const token = authRefresher.getToken();
   const headers = new Headers(init.headers || {});
-  headers.set('Content-Type', 'application/json');
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const normalizedBase = `${API_BASE_URL}/`;
   const url = new URL(path.replace(/^\/+/, ''), normalizedBase);
 
-  const response = await fetchWithRetry(url.toString(), {
+  /* ------------------------------------------------------------------ */
+  /*  First attempt                                                     */
+  /* ------------------------------------------------------------------ */
+  let response = await fetchWithRetry(url.toString(), {
     ...init,
     headers,
   });
 
-  const text = await response.text();
-  let data: unknown = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
+  if (response.status === 401 && !isRefreshExempt(path)) {
+    const outcome = await authRefresher.refresh();
+    if (outcome.ok && outcome.token) {
+      // Refresh succeeded (either a POST we made or a token minted by a sibling tab) - retry the
+      // original request EXACTLY ONCE with the fresh token. No further 401 handling (no loop).
+      headers.set('Authorization', `Bearer ${outcome.token}`);
+      authLog('AUTH_RETRY', { path, status: 401 });
+      response = await fetch(url.toString(), { ...init, headers });
+    } else if (outcome.cause === 'session') {
+      // The backend rejected the refresh cookie itself (401). signalSessionInvalid() has already
+      // fired once; every in-flight request now surfaces as an auth rejection.
+      await throwApiError(response);
+    } else {
+      // Network/server trouble while refreshing. This is NOT a logout - leave local credentials
+      // intact and throw a distinguishable error so callers can offer a graceful retry.
+      throw new RefreshUnavailableError();
+    }
   }
 
   if (!response.ok) {
-    const errData = data as ApiErrorShape;
-    const message =
-      typeof errData === 'object' && errData !== null
-        ? errData.message || errData.error || 'Request failed'
-        : 'Request failed';
-    // Keep 401 handling consistent app-wide: notify listeners (AuthContext clears the session).
-    if (response.status === 401) {
-      window.dispatchEvent(new Event('agrobaba:unauthorized'));
-    }
-    throw new ApiError(response.status, message);
+    await throwApiError(response);
   }
 
-  if (data !== null && typeof data === 'object') return data as T;
-  if (Array.isArray(data)) return data as T;
+  const data = await readBody(response);
   return data as T;
 }
 
@@ -97,8 +206,7 @@ export const api = {
 };
 
 export function setAuthToken(token: string | null) {
-  if (token) localStorage.setItem('agrobaba_token', token);
-  else localStorage.removeItem('agrobaba_token');
+  authRefresher.setToken(token);
 }
 
 export function getApiBaseUrl() {

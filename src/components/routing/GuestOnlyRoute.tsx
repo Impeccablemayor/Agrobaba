@@ -13,7 +13,7 @@ export function GuestOnlyRoute({ children }: { children: ReactNode }) {
   // who was ALREADY signed in before landing on /login or /register.
   const wasAlreadyAuthenticated = useRef<boolean | null>(null);
 
-  if (status === 'loading') {
+  if (status === 'initializing') {
     return <PageLoadingSpinner message="Checking your session…" />;
   }
 
