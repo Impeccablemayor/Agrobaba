@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProducts } from '../../hooks/queries/useProducts';
 import { useAdminFlashSales } from '../../hooks/queries/useAdmin';
-import { createFlashSale, deleteFlashSale } from '../../lib/flashSales';
+import { useCreateFlashSale, useDeleteFlashSale } from '../../hooks/mutations/useFlashSaleMutations';
 import { showToast } from '../../lib/toastBus';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -37,8 +37,10 @@ export default function AdminFlashSalesPage() {
   const [endAt, setEndAt] = useState('');
   const [selected, setSelected] = useState<SelectedItem[]>([]);
 
-  const { data: flashSales = [], isLoading: loadingSales, refetch } = useAdminFlashSales();
+  const { data: flashSales = [], isLoading: loadingSales } = useAdminFlashSales();
   const { data: products = [], isLoading: loadingProducts } = useProducts();
+  const createMutation = useCreateFlashSale();
+  const deleteMutation = useDeleteFlashSale();
 
   const loading = loadingSales || loadingProducts;
 
@@ -78,20 +80,19 @@ export default function AdminFlashSalesPage() {
       showToast('Please enter a valid sale price for every selected product.', 'error');
       return;
     }
-    const result = await createFlashSale({
+    const result = await createMutation.mutateAsync({
       title: title.trim(), startAt, endAt,
       items: selected.map((s) => ({ productId: s.productId, salePrice: Number(s.salePrice) })),
     });
     if (result) {
       resetForm();
       setCreateOpen(false);
-      void refetch();
     }
   }
 
   async function handleDelete() {
     if (!toDelete) return;
-    if (await deleteFlashSale(toDelete.id)) { setToDelete(null); setDetail(null); void refetch(); }
+    if (await deleteMutation.mutateAsync(toDelete.id)) { setToDelete(null); setDetail(null); }
   }
 
   return (

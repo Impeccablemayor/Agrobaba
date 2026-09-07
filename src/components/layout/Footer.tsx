@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCategories, getSectionIdByCode } from '../../lib/categories';
-import type { Category } from '../../types';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { getSectionIdByCode } from '../../lib/categories';
 
 export function Footer() {
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
+  const { data: categories = [] } = useCategories();
 
   const sectionHref = (code: string) => {
     const id = getSectionIdByCode(categories, code);

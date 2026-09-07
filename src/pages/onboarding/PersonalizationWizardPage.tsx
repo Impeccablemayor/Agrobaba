@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCategories, getChildren } from '../../lib/categories';
-import { getMyPersonalizationProfile, getPersonalizationTaxonomy, savePersonalizationProfile, skipPersonalization } from '../../lib/personalization';
+import { getChildren } from '../../lib/categories';
+import { savePersonalizationProfile, skipPersonalization } from '../../lib/personalization';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { useMyProfileStatus, usePersonalizationTaxonomy } from '../../hooks/queries/usePersonalization';
 import { showToast } from '../../lib/toastBus';
-import type { Category, PersonalizationTaxonomy, ProfileStatus, TaxonomyOption } from '../../types';
+import type { Category, TaxonomyOption } from '../../types';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { getStepsForRole } from './onboardingSteps';
 import { RoleIntroStep } from './components/RoleIntroStep';
@@ -34,13 +37,18 @@ function bucketByLevel(codes: string[], categories: Category[]): Record<1 | 2 | 
 export default function PersonalizationWizardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [taxonomy, setTaxonomy] = useState<PersonalizationTaxonomy | null>(null);
+  const categoriesQ = useCategories();
+  const taxQ = usePersonalizationTaxonomy();
+  const profileQ = useMyProfileStatus(Boolean(user));
+  const categories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
+  const taxonomy = useMemo(() => taxQ.data ?? null, [taxQ.data]);
+  const profile = useMemo(() => profileQ.data, [profileQ.data]);
+  const profileStatus = profile?.status ?? null;
   const [stepIndex, setStepIndex] = useState(0);
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
   const [jumpedToSummary, setJumpedToSummary] = useState(false);
 
   // Seller ("offer") fields - unchanged from Phase 1.
@@ -104,83 +112,72 @@ export default function PersonalizationWizardPage() {
   const [providerNeedLevel2Codes, setProviderNeedLevel2Codes] = useState<string[]>([]);
   const [providerNeedLevel3Codes, setProviderNeedLevel3Codes] = useState<string[]>([]);
 
+  // Resume experience: once profile + categories + taxonomy are available from the cache,
+  // prefill the form fields so returning users land back where they left off.
   useEffect(() => {
-    let active = true;
-    (async () => {
-      const [cats, tax, profile] = await Promise.all([
-        getCategories(),
-        getPersonalizationTaxonomy(),
-        getMyPersonalizationProfile(),
-      ]);
-      if (!active) return;
-      setCategories(cats);
-      setTaxonomy(tax);
-      setProfileStatus(profile?.status ?? null);
-      if (profile) {
-        setOfferGroups(profile.offerGroups);
-        setOfferCategoryCodes(profile.offerCategoryCodes);
-        setOfferOther(profile.offerOther);
-        setBuyerTypes(profile.buyerTypes);
-        setBuyerTypeOther(profile.buyerTypeOther);
-        setBuyingPurposes(profile.buyingPurposes);
-        setBuyingPurposeOther(profile.buyingPurposeOther);
-        // Bucket the flat persisted need-list back into section/category/subcategory by each
-        // code's real tree depth, so resuming later re-populates the right drill-down step.
-        // Role-conditional: buyers have a user-picked section level, farmers/dealers/providers don't.
-        const byLevel = bucketByLevel(profile.needCategoryCodes, cats);
-        if (profile.primaryRole === 'farmer') {
-          setFarmerNeedLevel2Codes(byLevel[2]);
-          setFarmerNeedLevel3Codes(byLevel[3]);
-        } else if (profile.primaryRole === 'agro-dealer') {
-          setDealerNeedLevel2Codes(byLevel[2]);
-          setDealerNeedLevel3Codes(byLevel[3]);
-        } else if (profile.primaryRole === 'service-provider') {
-          setProviderNeedLevel2Codes(byLevel[2]);
-          setProviderNeedLevel3Codes(byLevel[3]);
-        } else {
-          setNeedSectionCodes(byLevel[1]);
-          setNeedCategoryLevel2Codes(byLevel[2]);
-          setNeedCategoryLevel3Codes(byLevel[3]);
-        }
-        setNeedOther(profile.needOther);
-        setPreferredListingKinds(profile.preferredListingKinds);
-        setBuyingPreferences(profile.buyingPreferences);
-        setPurchaseScale(profile.purchaseScale);
-        setPurchaseFrequency(profile.purchaseFrequency);
-        setSourcingAreaPreference(profile.sourcingAreaPreference);
-        setFulfillmentPreference(profile.fulfillmentPreference);
-        setFarmerActivities(profile.farmerActivities);
-        setFarmerActivityOther(profile.farmerActivityOther);
-        setFarmScale(profile.farmScale);
-        setFarmerPreferences(profile.farmerPreferences);
-        setDealerActivities(profile.dealerActivities);
-        setDealerActivityOther(profile.dealerActivityOther);
-        setDealerCustomerTypes(profile.dealerCustomerTypes);
-        setDealerCustomerTypeOther(profile.dealerCustomerTypeOther);
-        setSalesModel(profile.salesModel);
-        setRestockingFrequency(profile.restockingFrequency);
-        setSourcingQuantity(profile.sourcingQuantity);
-        setLocalSourcingPreference(profile.localSourcingPreference);
-        setDeliveryNeeded(profile.deliveryNeeded);
-        setOperatingArea(profile.operatingArea);
-        setDeliveryCoverage(profile.deliveryCoverage);
-        setDealerPreferences(profile.dealerPreferences);
-        setProviderEquipment(profile.providerEquipment);
-        setProviderEquipmentOther(profile.providerEquipmentOther);
-        setServiceDeliveryMode(profile.serviceDeliveryMode);
-        setServiceDeliveryModeOther(profile.serviceDeliveryModeOther);
-        setProviderCustomerTypes(profile.providerCustomerTypes);
-        setProviderCustomerTypeOther(profile.providerCustomerTypeOther);
-        setServiceOperatingArea(profile.serviceOperatingArea);
-        setServiceAreaDetails(profile.serviceAreaDetails);
-        setPricingModel(profile.pricingModel);
-        setAvailability(profile.availability);
-        setServiceCapacity(profile.serviceCapacity);
-      }
-      setLoading(false);
-    })();
-    return () => { active = false; };
-  }, []);
+    if (!profileQ.isFetched || !categoriesQ.isFetched || !taxQ.isFetched) return;
+    setLoading(false);
+    if (!profile) return;
+    setOfferGroups(profile.offerGroups);
+    setOfferCategoryCodes(profile.offerCategoryCodes);
+    setOfferOther(profile.offerOther);
+    setBuyerTypes(profile.buyerTypes);
+    setBuyerTypeOther(profile.buyerTypeOther);
+    setBuyingPurposes(profile.buyingPurposes);
+    setBuyingPurposeOther(profile.buyingPurposeOther);
+    // Bucket the flat persisted need-list back into section/category/subcategory by each
+    // code's real tree depth, so resuming later re-populates the right drill-down step.
+    // Role-conditional: buyers have a user-picked section level, farmers/dealers/providers don't.
+    const byLevel = bucketByLevel(profile.needCategoryCodes, categories);
+    if (profile.primaryRole === 'farmer') {
+      setFarmerNeedLevel2Codes(byLevel[2]);
+      setFarmerNeedLevel3Codes(byLevel[3]);
+    } else if (profile.primaryRole === 'agro-dealer') {
+      setDealerNeedLevel2Codes(byLevel[2]);
+      setDealerNeedLevel3Codes(byLevel[3]);
+    } else if (profile.primaryRole === 'service-provider') {
+      setProviderNeedLevel2Codes(byLevel[2]);
+      setProviderNeedLevel3Codes(byLevel[3]);
+    } else {
+      setNeedSectionCodes(byLevel[1]);
+      setNeedCategoryLevel2Codes(byLevel[2]);
+      setNeedCategoryLevel3Codes(byLevel[3]);
+    }
+    setNeedOther(profile.needOther);
+    setPreferredListingKinds(profile.preferredListingKinds);
+    setBuyingPreferences(profile.buyingPreferences);
+    setPurchaseScale(profile.purchaseScale);
+    setPurchaseFrequency(profile.purchaseFrequency);
+    setSourcingAreaPreference(profile.sourcingAreaPreference);
+    setFulfillmentPreference(profile.fulfillmentPreference);
+    setFarmerActivities(profile.farmerActivities);
+    setFarmerActivityOther(profile.farmerActivityOther);
+    setFarmScale(profile.farmScale);
+    setFarmerPreferences(profile.farmerPreferences);
+    setDealerActivities(profile.dealerActivities);
+    setDealerActivityOther(profile.dealerActivityOther);
+    setDealerCustomerTypes(profile.dealerCustomerTypes);
+    setDealerCustomerTypeOther(profile.dealerCustomerTypeOther);
+    setSalesModel(profile.salesModel);
+    setRestockingFrequency(profile.restockingFrequency);
+    setSourcingQuantity(profile.sourcingQuantity);
+    setLocalSourcingPreference(profile.localSourcingPreference);
+    setDeliveryNeeded(profile.deliveryNeeded);
+    setOperatingArea(profile.operatingArea);
+    setDeliveryCoverage(profile.deliveryCoverage);
+    setDealerPreferences(profile.dealerPreferences);
+    setProviderEquipment(profile.providerEquipment);
+    setProviderEquipmentOther(profile.providerEquipmentOther);
+    setServiceDeliveryMode(profile.serviceDeliveryMode);
+    setServiceDeliveryModeOther(profile.serviceDeliveryModeOther);
+    setProviderCustomerTypes(profile.providerCustomerTypes);
+    setProviderCustomerTypeOther(profile.providerCustomerTypeOther);
+    setServiceOperatingArea(profile.serviceOperatingArea);
+    setServiceAreaDetails(profile.serviceAreaDetails);
+    setPricingModel(profile.pricingModel);
+    setAvailability(profile.availability);
+    setServiceCapacity(profile.serviceCapacity);
+  }, [profile, categories, profileQ.isFetched, categoriesQ.isFetched, taxQ.isFetched]);
 
   const groupOptions: TaxonomyOption[] = useMemo(() => {
     if (!user || !taxonomy) return [];
@@ -268,6 +265,7 @@ export default function PersonalizationWizardPage() {
 
   async function handleSkip() {
     await skipPersonalization();
+    void queryClient.invalidateQueries({ queryKey: ['personalization', 'me'] });
     navigate('/account');
   }
 
@@ -303,7 +301,10 @@ export default function PersonalizationWizardPage() {
       pricingModel, availability, serviceCapacity,
     });
     setSaving(false);
-    if (result) navigate('/account');
+    if (result) {
+      void queryClient.invalidateQueries({ queryKey: ['personalization', 'me'] });
+      navigate('/account');
+    }
   }
 
   function goNext() {

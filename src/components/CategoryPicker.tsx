@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { getCategories, getChildren, getSections } from '../lib/categories';
-import type { Category } from '../types';
+import { useEffect, useMemo, useState } from 'react';
+import { useCategories } from '../hooks/queries/useCategories';
+import { getChildren, getSections } from '../lib/categories';
 
 interface CategoryPickerProps {
   /** Restrict the section dropdown to these section codes (e.g. a farmer only sees Farm Produce/Livestock). Omit for no restriction. */
@@ -11,25 +11,13 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ allowedSections, value, onChange }: CategoryPickerProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const categoriesQ = useCategories();
+  const categories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
+  const loading = categoriesQ.isPending;
+  const failed = categoriesQ.isFetched && categories.length === 0;
   const [sectionId, setSectionId] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string>('');
   const [subcategoryId, setSubcategoryId] = useState<string>('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setFailed(false);
-    const data = await getCategories();
-    setCategories(data);
-    setLoading(false);
-    if (data.length === 0) setFailed(true);
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // Reconstruct the section/category chain from an externally-set value (e.g. editing an existing listing).
   useEffect(() => {
@@ -106,7 +94,7 @@ export function CategoryPicker({ allowedSections, value, onChange }: CategoryPic
           <span>Couldn't load the category list. Check your connection and try again.</span>
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => void categoriesQ.refetch()}
             className="btn-outline btn-sm btn-inline"
           >
             <i className="fa-solid fa-rotate-right"></i> Retry

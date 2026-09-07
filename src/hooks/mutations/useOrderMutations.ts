@@ -22,7 +22,7 @@ export function useConfirmPayment() {
     onSuccess: (ok, { orderId }) => {
       if (ok) {
         void queryClient.invalidateQueries({ queryKey: ['orders'] });
-        void queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+        void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', orderId] });
       }
     },
   });
@@ -35,7 +35,7 @@ export function useVerifyPayment() {
     onSuccess: (ok, orderId) => {
       if (ok) {
         void queryClient.invalidateQueries({ queryKey: ['orders'] });
-        void queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+        void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', orderId] });
       }
     },
   });
@@ -48,7 +48,7 @@ export function useUpdateOrderStatus() {
     onSuccess: (ok, { orderId }) => {
       if (ok) {
         void queryClient.invalidateQueries({ queryKey: ['orders'] });
-        void queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+        void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', orderId] });
       }
     },
   });

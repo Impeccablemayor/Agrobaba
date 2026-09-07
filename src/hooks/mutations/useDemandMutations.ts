@@ -32,7 +32,7 @@ export function useRespondDemand() {
       respondToDemand(demandId, responseData),
     onSuccess: (ok, { demandId }) => {
       if (ok) {
-        void queryClient.invalidateQueries({ queryKey: ['demands', demandId] });
+        void queryClient.invalidateQueries({ queryKey: ['demands', 'detail', demandId] });
       }
     },
   });
@@ -46,7 +46,7 @@ export function useAcceptDemandResponse() {
     onSuccess: (order, { demandId }) => {
       if (order) {
         void queryClient.invalidateQueries({ queryKey: ['demands'] });
-        void queryClient.invalidateQueries({ queryKey: ['demands', demandId] });
+        void queryClient.invalidateQueries({ queryKey: ['demands', 'detail', demandId] });
         void queryClient.invalidateQueries({ queryKey: ['orders'] });
       }
     },

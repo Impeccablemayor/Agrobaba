@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { confirmPayment, getOrderById } from '../../lib/orders';
+import { useOrder } from '../../hooks/queries/useOrders';
+import { useConfirmPayment } from '../../hooks/mutations/useOrderMutations';
 import { showToast } from '../../lib/toastBus';
 
 export default function ConfirmPaymentPage() {
@@ -15,16 +16,15 @@ export default function ConfirmPaymentPage() {
   const [paymentDate, setPaymentDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const { data: order } = useOrder(orderId);
+  const confirmPaymentMutation = useConfirmPayment();
+
+  // Prefill invoice + amount once the (cached) order arrives
   useEffect(() => {
-    let active = true;
-    if (!orderId) return undefined;
-    void getOrderById(orderId).then((data) => {
-      if (!active || !data) return;
-      setInvoiceNumber(data.invoiceNumber);
-      setAmount(String(data.total));
-    });
-    return () => { active = false; };
-  }, [orderId]);
+    if (!order) return;
+    setInvoiceNumber(order.invoiceNumber);
+    setAmount(String(order.total));
+  }, [order]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,14 +34,18 @@ export default function ConfirmPaymentPage() {
       return;
     }
     setSubmitting(true);
-    const success = await confirmPayment(orderId, {
-      paymentMode, paymentDate, transactionNumber, amount: Number(amount),
-    });
-    if (success) {
-      navigate('/account/my-orders');
-      return;
-    }
-    setSubmitting(false);
+    confirmPaymentMutation.mutate(
+      { orderId, paymentData: { paymentMode, paymentDate, transactionNumber, amount: Number(amount) } },
+      {
+        onSuccess: (success) => {
+          if (success) {
+            navigate('/account/my-orders');
+            return;
+          }
+          setSubmitting(false);
+        },
+      }
+    );
   }
 
   return (

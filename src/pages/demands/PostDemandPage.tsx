@@ -1,27 +1,23 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addDemand } from '../../lib/demands';
-import { getCategories, findCategory, hasChildren } from '../../lib/categories';
+import { findCategory, hasChildren } from '../../lib/categories';
+import { useCategories } from '../../hooks/queries/useCategories';
 import { showToast } from '../../lib/toastBus';
 import { CategoryPicker } from '../../components/CategoryPicker';
-import type { Category } from '../../types';
 
 export default function PostDemandPage() {
   const { user } = useAuth();
+  const { data: categories = [] } = useCategories();
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [quantity, setQuantity] = useState('');
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

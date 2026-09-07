@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { addProduct } from '../../lib/products';
 import { UNIT_TYPES, unitLabel, type UnitType } from '../../lib/units';
-import { getAllowedSectionCodesForRole, getCategories, findCategory, hasChildren } from '../../lib/categories';
+import { getAllowedSectionCodesForRole, findCategory, hasChildren } from '../../lib/categories';
+import { useCategories } from '../../hooks/queries/useCategories';
 import { showToast } from '../../lib/toastBus';
 import { CategoryPicker } from '../../components/CategoryPicker';
-import type { Category, ProductType, Role } from '../../types';
+import type { ProductType, Role } from '../../types';
 
 interface RoleConfig {
   type: ProductType;
@@ -89,7 +90,7 @@ export default function PostListingPage() {
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: categories = [] } = useCategories();
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('');
@@ -105,10 +106,6 @@ export default function PostListingPage() {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
 
   if (!user) return null;
 

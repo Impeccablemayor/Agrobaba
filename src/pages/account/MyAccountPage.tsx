@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyProducts } from '../../lib/products';
-import { getMyOrders, getMySales } from '../../lib/orders';
-import { getMyDemands } from '../../lib/demands';
-import { getMyConversations } from '../../lib/messages';
+import { useMyProducts } from '../../hooks/queries/useProducts';
+import { useMyOrders, useSalesOrders } from '../../hooks/queries/useOrders';
+import { useMyDemands } from '../../hooks/queries/useDemands';
+import { useMyConversations } from '../../hooks/queries/useMessages';
+import { useMyVerificationStatus } from '../../hooks/queries/useVerification';
+import { useProviderBookings } from '../../hooks/queries/useBookings';
+import { useRecommendedProducts, useMatchingDemands } from '../../hooks/queries/useHome';
+import { useMyProfileStatus } from '../../hooks/queries/usePersonalization';
 import { getCartCount } from '../../lib/cart';
-import { getMyVerificationStatus } from '../../lib/verification';
-import { getMyProviderBookings } from '../../lib/bookings';
-import { getRecommendedProducts, getMatchingDemands } from '../../lib/home';
-import { getMyPersonalizationProfile } from '../../lib/personalization';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
-import type { Demand, Order, Product, Role, Conversation, ServiceBooking, ProfileStatus } from '../../types';
+import type { Role } from '../../types';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 interface MenuLink { href: string; icon: string; label: string; active?: boolean; danger?: boolean; }
@@ -129,55 +128,33 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
 
 export default function MyAccountPage() {
   const { user } = useAuth();
-  const [myProducts, setMyProducts] = useState<Product[]>([]);
-  const [myOrders, setMyOrders] = useState<Order[]>([]);
-  const [mySales, setMySales] = useState<Order[]>([]);
-  const [myDemands, setMyDemands] = useState<Demand[]>([]);
-  const [myConvs, setMyConvs] = useState<Conversation[]>([]);
-  const [myBookings, setMyBookings] = useState<ServiceBooking[]>([]);
-  const [verified, setVerified] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [recommendedCount, setRecommendedCount] = useState(0);
-  const [matchingDemandsCount, setMatchingDemandsCount] = useState(0);
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const productsQ = useMyProducts();
+  const ordersQ = useMyOrders();
+  const salesQ = useSalesOrders();
+  const demandsQ = useMyDemands();
+  const convsQ = useMyConversations();
+  const verificationQ = useMyVerificationStatus(Boolean(user));
+  const bookingsQ = useProviderBookings(user?.role === 'service-provider');
+  const recommendedQ = useRecommendedProducts();
+  const matchingQ = useMatchingDemands(Boolean(user) && user?.role !== 'buyer');
+  const profileQ = useMyProfileStatus(Boolean(user));
 
-    async function loadData() {
-      if (!user) return;
-      setLoading(true);
-      const isSupplier = user.role !== 'buyer';
-      const [products, orders, sales, demands, conversations, verification, bookings, recommended, matchingDemands, personalizationProfile] = await Promise.all([
-        getMyProducts(),
-        getMyOrders(),
-        getMySales(),
-        getMyDemands(),
-        getMyConversations(),
-        getMyVerificationStatus(),
-        user.role === 'service-provider' ? getMyProviderBookings() : Promise.resolve([]),
-        getRecommendedProducts(),
-        isSupplier ? getMatchingDemands() : Promise.resolve([]),
-        getMyPersonalizationProfile(),
-      ]);
+  const myProducts = productsQ.data ?? [];
+  const myOrders = ordersQ.data ?? [];
+  const mySales = salesQ.data ?? [];
+  const myDemands = demandsQ.data ?? [];
+  const myConvs = convsQ.data ?? [];
+  const verification = verificationQ.data;
+  const myBookings = bookingsQ.data ?? [];
+  const recommended = recommendedQ.data ?? [];
+  const matchingDemands = matchingQ.data ?? [];
+  const personalizationProfile = profileQ.data;
 
-      if (!active) return;
-      setMyProducts(products);
-      setMyOrders(orders);
-      setMySales(sales);
-      setMyDemands(demands);
-      setMyConvs(conversations);
-      setVerified(verification?.verified ?? user.verified);
-      setMyBookings(bookings);
-      setRecommendedCount(recommended.length);
-      setMatchingDemandsCount(matchingDemands.length);
-      setProfileStatus(personalizationProfile?.status ?? null);
-      setLoading(false);
-    }
-
-    void loadData();
-    return () => { active = false; };
-  }, [user]);
+  // Full-page spinner only on a genuinely cold cache - cached data renders instantly
+  const loading =
+    productsQ.isPending && ordersQ.isPending && salesQ.isPending &&
+    demandsQ.isPending && convsQ.isPending;
 
   if (!user) return null;
   const isSupplier = user.role !== 'buyer';
@@ -185,6 +162,10 @@ export default function MyAccountPage() {
   const bookingRevenue = myBookings
     .filter((b) => ['paid', 'in_progress', 'completed'].includes(b.status))
     .reduce((s, b) => s + b.quotedAmount, 0);
+  const verified = verification?.verified ?? user.verified ?? false;
+  const recommendedCount = recommended.length;
+  const matchingDemandsCount = matchingDemands.length;
+  const profileStatus = personalizationProfile?.status ?? null;
 
   const menuLinks = [...ROLE_LINKS[user.role], ...COMMON_LINKS(unread)];
 

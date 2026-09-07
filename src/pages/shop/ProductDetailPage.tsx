@@ -7,7 +7,7 @@ import { isLoggedIn } from '../../lib/auth';
 import { showToast } from '../../lib/toastBus';
 import { formatDate, formatPrice, starString } from '../../lib/format';
 import { formatUnitQuantity, resolveUnitPrice } from '../../lib/units';
-import { requestQuote } from '../../lib/quotes';
+import { useRequestQuote } from '../../hooks/mutations/useQuoteMutations';
 import { ProductCard } from '../../components/ProductCard';
 import type { Review } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
@@ -28,6 +28,7 @@ export default function ProductDetailPage() {
 
   const { data: product, isLoading: loading } = useProduct(id);
   const { data: categoryProducts = [] } = useProducts({ category: product?.category });
+  const requestQuote = useRequestQuote();
 
   const related = categoryProducts.filter((item) => item.id !== product?.id).slice(0, 6);
 
@@ -105,7 +106,7 @@ export default function ProductDetailPage() {
     }
     const p = product!;
     void (async () => {
-      const result = await requestQuote({
+      const result = await requestQuote.mutateAsync({
         productId: p.id,
         requestedQuantity: quantity || null,
         buyerNotes,

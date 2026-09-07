@@ -25,15 +25,11 @@ function mapCategory(c: ApiCategory): Category {
   };
 }
 
-let cache: Category[] | null = null;
-
-/** Categories are static reference data for the session - fetched once and cached. */
+/** Fetches fresh categories every call. Caching is delegated to TanStack Query (see useCategories). */
 export async function getCategories(): Promise<Category[]> {
-  if (cache) return cache;
   try {
     const data = await api.get<ApiCategory[]>('/api/categories');
-    cache = (data || []).map(mapCategory).sort((a, b) => a.sortOrder - b.sortOrder);
-    return cache;
+    return (data || []).map(mapCategory).sort((a, b) => a.sortOrder - b.sortOrder);
   } catch {
     return [];
   }

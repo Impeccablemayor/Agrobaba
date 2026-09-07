@@ -10,10 +10,11 @@ export function useMyBookings() {
   });
 }
 
-export function useProviderBookings() {
+export function useProviderBookings(enabled = true) {
   return useQuery({
     queryKey: ['bookings', 'provider'],
     queryFn: () => getMyProviderBookings(),
+    enabled,
     staleTime: 60 * 1000,
     placeholderData: keepPreviousData,
   });
@@ -21,7 +22,7 @@ export function useProviderBookings() {
 
 export function useBooking(id?: string) {
   return useQuery({
-    queryKey: ['bookings', id],
+    queryKey: ['bookings', 'detail', id],
     queryFn: () => (id ? getBookingById(id) : Promise.resolve(null)),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1000,

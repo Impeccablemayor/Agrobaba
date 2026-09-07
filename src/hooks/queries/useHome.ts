@@ -9,10 +9,11 @@ export function useRecommendedProducts() {
   });
 }
 
-export function useMatchingDemands() {
+export function useMatchingDemands(enabled = true) {
   return useQuery({
     queryKey: ['home', 'matchingDemands'],
     queryFn: () => getMatchingDemands(),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 }

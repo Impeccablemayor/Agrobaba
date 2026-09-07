@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminTickets } from '../../hooks/queries/useAdmin';
-import { updateTicketStatus } from '../../lib/tickets';
+import { useUpdateTicketStatus } from '../../hooks/mutations/useAdminMutations';
 import { timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ActionMenu } from '../../components/ActionMenu';
@@ -16,9 +16,9 @@ export default function AdminTicketsPage() {
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [search, setSearch] = useState('');
-  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const updateTicketStatus = useUpdateTicketStatus();
 
-  const { data: tickets = [], isLoading: loading, refetch } = useAdminTickets();
+  const { data: tickets = [], isLoading: loading } = useAdminTickets();
 
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
@@ -35,14 +35,8 @@ export default function AdminTicketsPage() {
   if (user.role !== 'admin') return <Navigate to="/account" replace />;
 
   async function handleStatusChange(ticket: Ticket, status: TicketStatus) {
-    if (updatingStatus) return;
-    setUpdatingStatus(true);
-    const ok = await updateTicketStatus(ticket.id, status);
-    setUpdatingStatus(false);
-    if (ok) {
-      void refetch();
-      if (detail?.id === ticket.id) setDetail({ ...ticket, status });
-    }
+    const ok = await updateTicketStatus.mutateAsync({ id: ticket.id, status });
+    if (ok && detail?.id === ticket.id) setDetail((prev) => (prev ? { ...prev, status } : prev));
   }
 
   const statusOptions: TicketStatus[] = ['open', 'in_progress', 'resolved'];
@@ -124,7 +118,7 @@ export default function AdminTicketsPage() {
                   <button
                     key={s}
                     className={`status-tab ${detail.status === s ? 'active' : ''}`}
-                    disabled={updatingStatus}
+                    disabled={updateTicketStatus.isPending}
                     onClick={() => handleStatusChange(detail, s)}
                   >
                     {STATUS_LABEL[s]}

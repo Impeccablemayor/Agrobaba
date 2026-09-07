@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminCoupons } from '../../hooks/queries/useAdmin';
-import { createCoupon, deleteCoupon } from '../../lib/coupons';
+import { useCreateCoupon, useDeleteCoupon } from '../../hooks/mutations/useAdminMutations';
 import { showToast } from '../../lib/toastBus';
 import { timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -25,7 +25,9 @@ export default function AdminCouponsPage() {
   const [maxUses, setMaxUses] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
 
-  const { data: coupons = [], isLoading: loading, refetch } = useAdminCoupons();
+  const { data: coupons = [], isLoading: loading } = useAdminCoupons();
+  const createMutation = useCreateCoupon();
+  const deleteMutation = useDeleteCoupon();
 
   const filtered = useMemo(() => {
     return coupons.filter((c) => {
@@ -46,7 +48,7 @@ export default function AdminCouponsPage() {
   async function handleCreate() {
     if (!code.trim()) { showToast('Please enter a coupon code.', 'error'); return; }
     if (!discountValue || Number(discountValue) <= 0) { showToast('Please enter a valid discount value.', 'error'); return; }
-    const result = await createCoupon({
+    const result = await createMutation.mutateAsync({
       code: code.trim().toUpperCase(),
       discountType,
       discountValue: Number(discountValue),
@@ -56,13 +58,12 @@ export default function AdminCouponsPage() {
     if (result) {
       resetForm();
       setCreateOpen(false);
-      void refetch();
     }
   }
 
   async function handleDelete() {
     if (!toDelete) return;
-    if (await deleteCoupon(toDelete.id)) { setToDelete(null); void refetch(); }
+    if (await deleteMutation.mutateAsync(toDelete.id)) setToDelete(null);
   }
 
   return (

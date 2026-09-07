@@ -5,9 +5,9 @@ import { useProducts } from '../hooks/queries/useProducts';
 import { useCategories } from '../hooks/queries/useCategories';
 import { useDemands } from '../hooks/queries/useDemands';
 import { useMatchingDemands, useRecommendedProducts } from '../hooks/queries/useHome';
-import { getActiveFlashSale } from '../lib/flashSales';
+import { useActiveFlashSale } from '../hooks/queries/useFlashSales';
+import { useMyProfileStatus } from '../hooks/queries/usePersonalization';
 import { getSectionIdByCode } from '../lib/categories';
-import { getMyPersonalizationProfile } from '../lib/personalization';
 import { recordEvent } from '../lib/behaviorEvents';
 import { showToast } from '../lib/toastBus';
 import { ProductCard } from '../components/ProductCard';
@@ -16,7 +16,7 @@ import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
 import { CategorySidebar } from '../components/CategorySidebar';
 import type { Suggestion } from '../lib/search';
-import type { FlashSale, Product, ProfileStatus } from '../types';
+import type { Product } from '../types';
 
 function useCountdown(endAt: string | null) {
   const [remaining, setRemaining] = useState(0);
@@ -44,8 +44,9 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [heroQuery, setHeroQuery] = useState('');
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
-  const [flashSale, setFlashSale] = useState<FlashSale | null>(null);
+  const { data: flashSale = null } = useActiveFlashSale();
+  const { data: personalizationProfile } = useMyProfileStatus(Boolean(user));
+  const profileStatus = personalizationProfile?.status ?? null;
   const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
   const isSupplier = !!user && user.role !== 'buyer';
@@ -61,17 +62,6 @@ export default function HomePage() {
   useEffect(() => {
     setFilteredRecommended(initialRecommended);
   }, [initialRecommended]);
-
-  useEffect(() => {
-    void (async () => {
-      const activeFlashSale = await getActiveFlashSale();
-      setFlashSale(activeFlashSale);
-      if (user) {
-        const personalizationProfile = await getMyPersonalizationProfile();
-        setProfileStatus(personalizationProfile?.status ?? null);
-      }
-    })();
-  }, [user]);
 
   const featuredProducts = products.slice(0, 8);
   const recommendedIds = new Set(filteredRecommended.map((p) => p.id));

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuote } from '../../hooks/queries/useQuotes';
-import { sendOffer, acceptOffer, rejectOffer, cancelQuote } from '../../lib/quotes';
+import { useAcceptOffer, useCancelQuote, useRejectOffer, useSendOffer } from '../../hooks/mutations/useQuoteMutations';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { formatUnitQuantity } from '../../lib/units';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,25 +10,23 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { QuoteOffer } from '../../types';
 
-function SendOfferForm({ quoteId, productUnit, onSent }: { quoteId: string; productUnit: string | null; onSent: () => void }) {
+function SendOfferForm({ quoteId, productUnit }: { quoteId: string; productUnit: string | null }) {
   const [quantity, setQuantity] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [additionalFees, setAdditionalFees] = useState('');
   const [notes, setNotes] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const sendOffer = useSendOffer();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!quantity || !pricePerUnit) return;
-    setSubmitting(true);
-    const result = await sendOffer(quoteId, {
+    const result = await sendOffer.mutateAsync({ quoteId, input: {
       quantity, pricePerUnit, deliveryFee, additionalFees, notes,
       expiresAt: expiresAt ? `${expiresAt}T00:00:00` : null,
-    });
-    setSubmitting(false);
-    if (result) onSent();
+    }});
+    if (result) return;
   }
 
   return (
@@ -56,8 +54,8 @@ function SendOfferForm({ quoteId, productUnit, onSent }: { quoteId: string; prod
       <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} style={{ marginBottom: 8 }} />
       <label style={{ fontSize: 11 }}>Notes</label>
       <textarea rows={2} placeholder="Terms, delivery timing, specifications..." value={notes} onChange={(e) => setNotes(e.target.value)} style={{ marginBottom: 10 }} />
-      <button type="submit" className="btn-primary btn-sm btn-inline" disabled={submitting}>
-        {submitting ? 'Sending…' : 'Send Offer'}
+      <button type="submit" className="btn-primary btn-sm btn-inline" disabled={sendOffer.isPending}>
+        {sendOffer.isPending ? 'Sending…' : 'Send Offer'}
       </button>
     </form>
   );
@@ -91,10 +89,12 @@ export default function QuoteDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  const { data: quote, isLoading: loading, refetch } = useQuote(id);
+  const { data: quote, isLoading: loading } = useQuote(id);
+  const acceptOffer = useAcceptOffer();
+  const rejectOffer = useRejectOffer();
+  const cancelQuote = useCancelQuote();
 
   if (loading && !quote) return <PageLoadingSpinner message="Loading quote request…" />;
 
@@ -122,28 +122,18 @@ export default function QuoteDetailPage() {
   };
 
   async function handleAccept() {
-    setBusy(true);
-    const accepted = await acceptOffer(quote!.id);
-    setBusy(false);
+    const accepted = await acceptOffer.mutateAsync(quote!.id);
     if (accepted) navigate('/cart');
   }
 
   async function handleReject() {
-    setBusy(true);
-    const result = await rejectOffer(quote!.id);
-    setBusy(false);
-    if (result) void refetch();
+    await rejectOffer.mutateAsync(quote!.id);
   }
 
   async function handleCancel() {
     if (!quote) return;
-    setBusy(true);
-    const result = await cancelQuote(quote.id);
-    setBusy(false);
-    if (result) {
-      setCancelOpen(false);
-      void refetch();
-    }
+    const result = await cancelQuote.mutateAsync(quote.id);
+    if (result) setCancelOpen(false);
   }
 
   return (
@@ -161,7 +151,7 @@ export default function QuoteDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span className="demand-chip"><i className="fa-solid fa-file-invoice-dollar"></i> {STATUS_LABELS[quote.status] || quote.status}</span>
                 {canCancel && (
-                  <button onClick={() => setCancelOpen(true)} disabled={busy} className="btn-danger btn-sm btn-inline">
+                  <button onClick={() => setCancelOpen(true)} disabled={cancelQuote.isPending} className="btn-danger btn-sm btn-inline">
                     <i className="fa-solid fa-xmark"></i> Cancel Request
                   </button>
                 )}
@@ -222,7 +212,7 @@ export default function QuoteDetailPage() {
                   ) : canSendOffer ? (
                     <>
                       {quote.status === 'rejected' && <p className="sub">The buyer rejected your last offer. You can send a revised one below.</p>}
-                      <SendOfferForm quoteId={quote.id} productUnit={quote.productUnit} onSent={() => void refetch()} />
+                      <SendOfferForm quoteId={quote.id} productUnit={quote.productUnit} />
                     </>
                   ) : (
                     <p className="sub">Waiting on the buyer's decision.</p>
@@ -244,10 +234,10 @@ export default function QuoteDetailPage() {
                     <>
                       <p className="sub">Review the latest offer and accept or reject it.</p>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={handleAccept} disabled={busy} className="btn-primary btn-sm btn-inline" style={{ flex: 1 }}>
+                        <button onClick={handleAccept} disabled={acceptOffer.isPending} className="btn-primary btn-sm btn-inline" style={{ flex: 1 }}>
                           <i className="fa-solid fa-check"></i> Accept
                         </button>
-                        <button onClick={handleReject} disabled={busy} className="btn-outline btn-sm btn-inline" style={{ flex: 1 }}>
+                        <button onClick={handleReject} disabled={rejectOffer.isPending} className="btn-outline btn-sm btn-inline" style={{ flex: 1 }}>
                           <i className="fa-solid fa-xmark"></i> Reject
                         </button>
                       </div>
@@ -270,7 +260,7 @@ export default function QuoteDetailPage() {
         message="The seller will be notified that you're no longer interested. This cannot be undone."
         confirmLabel="Cancel Request"
         destructive
-        busy={busy}
+        busy={cancelQuote.isPending}
         onConfirm={handleCancel}
         onCancel={() => setCancelOpen(false)}
       />

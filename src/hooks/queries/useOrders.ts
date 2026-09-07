@@ -31,7 +31,7 @@ export function useAdminOrders() {
 
 export function useOrder(id?: string) {
   return useQuery<Order | null>({
-    queryKey: ['orders', id],
+    queryKey: ['orders', 'detail', id],
     queryFn: () => (id ? getOrderById(id) : Promise.resolve(null)),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1000,

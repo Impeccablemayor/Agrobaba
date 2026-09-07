@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCategories, getSectionIdByCode } from '../../lib/categories';
+import { useCategories } from '../../hooks/queries/useCategories';
+import { getSectionIdByCode } from '../../lib/categories';
 import type { Category, Role } from '../../types';
 
 interface CatLink {
@@ -69,14 +70,10 @@ const roleLinks: Record<Role, CatLink[]> = {
 export function CategoryBar({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
   const location = useLocation();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: categories = [] } = useCategories();
   const scrollRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-
-  useEffect(() => {
-    void getCategories().then(setCategories);
-  }, []);
 
   const sectionLinks = buildSectionLinks(categories);
   const quickLabels = ['All', 'Produce', 'Services', 'Demand Board'];

@@ -1,7 +1,9 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyVerificationStatus, submitVerification, type SubmitVerificationInput } from '../../lib/verification';
+import { submitVerification, type SubmitVerificationInput } from '../../lib/verification';
+import { useMyVerificationStatus } from '../../hooks/queries/useVerification';
 import { showToast } from '../../lib/toastBus';
 import { formatDate } from '../../lib/format';
 import type { VerificationStatusInfo } from '../../types';
@@ -77,6 +79,7 @@ function FileField({ label, hint, required, value, onChange }: {
 
 export default function VerifyAccountPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [status, setStatus] = useState<VerificationStatusInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,33 +100,29 @@ export default function VerifyAccountPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const { data: verificationStatus, isLoading } = useMyVerificationStatus(Boolean(user));
+
+  // Sync the local status + prefill the form once the (cached) verification record arrives
   useEffect(() => {
-    let active = true;
-    (async () => {
-      const data = await getMyVerificationStatus();
-      if (active) {
-        setStatus(data);
-        if (data) {
-          setForm((f) => ({
-            ...f,
-            idNumber: data.idNumber || '',
-            bankAccountName: data.bankAccountName || '',
-            bankAccountNumber: data.bankAccountNumber || '',
-            bankName: data.bankName || '',
-            farmName: data.farmName || '',
-            cropsOrLivestock: data.cropsOrLivestock || '',
-            businessName: data.businessName || '',
-            businessAddress: data.businessAddress || '',
-            productCategoriesSold: data.productCategoriesSold || '',
-            cacNumber: data.cacNumber || '',
-          }));
-          setShowCac(!!(data.cacNumber || data.cacDocument));
-        }
-        setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+    setLoading(isLoading);
+    if (verificationStatus) {
+      setStatus(verificationStatus);
+      setShowCac(!!(verificationStatus.cacNumber || verificationStatus.cacDocument));
+      setForm((f) => ({
+        ...f,
+        idNumber: verificationStatus.idNumber || '',
+        bankAccountName: verificationStatus.bankAccountName || '',
+        bankAccountNumber: verificationStatus.bankAccountNumber || '',
+        bankName: verificationStatus.bankName || '',
+        farmName: verificationStatus.farmName || '',
+        cropsOrLivestock: verificationStatus.cropsOrLivestock || '',
+        businessName: verificationStatus.businessName || '',
+        businessAddress: verificationStatus.businessAddress || '',
+        productCategoriesSold: verificationStatus.productCategoriesSold || '',
+        cacNumber: verificationStatus.cacNumber || '',
+      }));
+    }
+  }, [verificationStatus, isLoading]);
 
   if (!user) return null;
 
@@ -157,7 +156,10 @@ export default function VerifyAccountPage() {
     setSubmitting(true);
     const result = await submitVerification(form);
     setSubmitting(false);
-    if (result) setStatus(result);
+    if (result) {
+      setStatus(result);
+      void queryClient.invalidateQueries({ queryKey: ['verification', 'me'] });
+    }
   }
 
   if (loading) {

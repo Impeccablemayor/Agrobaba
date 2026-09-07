@@ -1,4 +1,3 @@
-import { KEYS, getStore, setStore } from './storage';
 import { showToast } from './toastBus';
 import { getCurrentUser } from './auth';
 import { getCart, clearCart } from './cart';
@@ -110,9 +109,6 @@ export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Orde
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);
     const order = mapOrder(response);
     clearCart();
-    const orders = getStore<Order>(KEYS.orders);
-    orders.push(order);
-    setStore(KEYS.orders, orders);
     showToast('Order placed successfully!', 'success');
     return order;
   } catch (error) {
@@ -128,16 +124,11 @@ export async function getMyOrders(): Promise<Order[]> {
   try {
     const response = await api.get<BackendOrderResponse[]>('/api/orders/me');
     const orders = (response || []).map(mapOrder);
-    const localOrders = getStore<Order>(KEYS.orders);
-    localOrders.push(...orders.filter((o) => !localOrders.some((existing) => existing.id === o.id)));
-    setStore(KEYS.orders, localOrders);
     return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load orders';
     showToast(message, 'error');
-    return getStore<Order>(KEYS.orders)
-      .filter((o) => o.buyerId === user.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [];
   }
 }
 
