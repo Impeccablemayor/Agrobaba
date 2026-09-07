@@ -51,7 +51,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="container" style={{ padding: '40px 24px' }}>
+    <div className="auth-page-container">
 
       <div className="auth-wrapper">
         <div className="auth-panel">

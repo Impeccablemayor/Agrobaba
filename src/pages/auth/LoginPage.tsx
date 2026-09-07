@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container" style={{ padding: '40px 24px' }}>
+    <div className="auth-page-container">
       {/* <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item"><Link to="/">Home</Link></li>

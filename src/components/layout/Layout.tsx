@@ -5,7 +5,7 @@ import { CategoryBar } from './CategoryBar';
 import { Footer } from './Footer';
 import { useAuth } from '../../contexts/AuthContext';
 
-const AUTH_ROUTES = ['/login', '/register', '/portal-77x-admin'];
+const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/portal-77x-admin'];
 
 export function Layout() {
   const { pathname } = useLocation();
@@ -32,7 +32,7 @@ export function Layout() {
       <main>
         <Outlet />
       </main>
-      <Footer />
+      {!isAuthPage && <Footer />}
     </>
   );
 }

@@ -34,8 +34,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg-soft)' }}>
-      <div style={{ width: '100%', maxWidth: 380, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 32 }}>
+    <div className="auth-page-container">
+      <div className="auth-single-card">
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <i className="fa-solid fa-lock-open" style={{ fontSize: 28, color: 'var(--text)', marginBottom: 10, display: 'block' }}></i>
           <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Set a new password</h2>
