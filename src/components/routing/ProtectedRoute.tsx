@@ -5,21 +5,26 @@ import { BackendUnavailable } from '../BackendUnavailable';
 import { PageLoadingSpinner } from '../LoadingSpinner';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, status, verifyAuth } = useAuth();
+  const { user, phase, identity, verifyAuth } = useAuth();
   const location = useLocation();
 
-  // Backend can't confirm the session - never let the protected page render as if it were live.
-  if (status === 'serverUnavailable') {
-    return <BackendUnavailable onRetry={() => void verifyAuth()} />;
+  // Restoring: we cannot yet say who the user is - show a spinner, never a "login" prompt.
+  if (phase === 'restoring' || identity === 'unknown') {
+    return <PageLoadingSpinner message="Checking your session…" />;
   }
 
+  // Re-authentication pending: identity is still known, so render the page beneath the global
+  // re-auth overlay (Phase C) rather than bouncing the user to a bare login page.
   if (user) {
     return <>{children}</>;
   }
 
-  if (status === 'initializing') {
-    return <PageLoadingSpinner message="Checking your session…" />;
+  // Degraded but NO identity: cannot show a protected page. The global banner plus the silent
+  // renewal loop recover automatically; this guard just holds the protected view until then.
+  if (phase === 'degraded') {
+    return <BackendUnavailable onRetry={() => void verifyAuth()} />;
   }
 
+  // Genuinely not signed in.
   return <Navigate to="/login" state={{ from: location }} replace />;
 }

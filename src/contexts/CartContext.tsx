@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as cartLib from '../lib/cart';
 import { isLoggedIn } from '../lib/auth';
@@ -21,6 +21,24 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>(() => cartLib.getCart());
   const navigate = useNavigate();
+
+  // Cross-tab cart sync (P1): the cart lives in localStorage, so each tab holds its own in-memory
+  // copy. When another tab adds/removes/clears items, the browser fires a `storage` event on every
+  // *other* tab - grab the fresh value and re-render so two tabs never show divergent carts
+  // (the source of "I removed it but it's still here" confusion).
+  useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== 'agrobaba_cart' || event.storageArea !== localStorage) return;
+      try {
+        const parsed = event.newValue ? JSON.parse(event.newValue) : [];
+        setCart(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        // Ignore garbage in the key; keep showing the current tab's cart.
+      }
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   function refresh(): void {
     setCart(cartLib.getCart());

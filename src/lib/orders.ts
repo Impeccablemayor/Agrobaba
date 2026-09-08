@@ -2,7 +2,21 @@ import { showToast } from './toastBus';
 import { getCurrentUser } from './auth';
 import { getCart, clearCart } from './cart';
 import { api } from './api';
+import { uid } from './format';
 import type { CartItem, Order, OrderStatus } from '../types';
+
+/** Key held in sessionStorage for the lifetime of one checkout attempt. Reused on retries (same
+ *  tab, same cart) so a retried "Place Order" is idempotent server-side; cleared once the order
+ *  actually lands, so the next genuinely-new order gets a fresh key. */
+const IDEMPOTENCY_KEY = 'agrobaba_checkout_idempotency';
+
+function checkoutIdempotencyKey(): string {
+  const existing = sessionStorage.getItem(IDEMPOTENCY_KEY);
+  if (existing && existing.trim().length > 0) return existing;
+  const fresh = uid();
+  sessionStorage.setItem(IDEMPOTENCY_KEY, fresh);
+  return fresh;
+}
 
 export interface DeliveryInput {
   address?: string;
@@ -104,11 +118,13 @@ export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Orde
       address: deliveryData.address || user.address || '',
       phone: deliveryData.phone || user.contact || '',
       couponCode: deliveryData.couponCode || null,
+      idempotencyKey: checkoutIdempotencyKey(),
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);
     const order = mapOrder(response);
     clearCart();
+    sessionStorage.removeItem(IDEMPOTENCY_KEY);
     showToast('Order placed successfully!', 'success');
     return order;
   } catch (error) {

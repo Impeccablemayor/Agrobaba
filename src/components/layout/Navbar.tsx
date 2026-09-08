@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import type { Suggestion } from '../../lib/search';
 
 export function Navbar({ compact = false }: { compact?: boolean }) {
-  const { user, status, logout } = useAuth();
+  const { user, phase, logout } = useAuth();
   const { count } = useCart();
   const { unreadCount } = useMessagesBadge();
   const navigate = useNavigate();
@@ -71,7 +71,7 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
         )}
 
         <div className="nav-actions" id="auth-links">
-          {status === 'initializing' ? (
+          {phase === 'restoring' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 12 }}>
               <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i>
               Checking session…

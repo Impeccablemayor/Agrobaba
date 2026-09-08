@@ -5,6 +5,7 @@ import {
   DEFAULT_REFRESH_PATH,
   DEFAULT_TOKEN_KEY,
   isSessionRevokedMessage,
+  decodeJwtExp,
   type RefreshCoordinator,
 } from './refresh';
 import { authLog } from './authEvents';
@@ -143,7 +144,36 @@ authBus.listen((message) => {
   if (isSessionRevokedMessage(message)) authRefresher.signalSessionInvalid();
 });
 
+/** True when the access token is already expired or within the proactive-renewal skew window of
+ *  expiring - the signal to silently renew BEFORE sending rather than waiting for a 401. Never on
+ *  the refresh-exempt endpoints (login/register/refresh have no token to guard). */
+const PRE_REQUEST_SKEW_MS = 60_000;
+
+function accessTokenStale(): boolean {
+  const token = authRefresher.getToken();
+  if (!token) return false;
+  const expSeconds = decodeJwtExp(token);
+  if (expSeconds === null) return true; // unreadable token -> treat as needing a fresh one
+  return expSeconds * 1000 - Date.now() <= PRE_REQUEST_SKEW_MS;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Phase B: silently renew BEFORE the request whenever the access token is close to expiring, so
+  // the happy path never round-trips a 401. refresh() is single-flight (coordinator), so a burst of
+  // simultaneous stale requests share ONE refresh and all continue on the rotated token.
+  if (!isRefreshExempt(path) && accessTokenStale()) {
+    const renewal = await authRefresher.refresh();
+    if (renewal.ok && renewal.token) {
+      authLog('AUTH_PRE_REQUEST_RENEW', { path });
+    } else if (renewal.cause === 'session') {
+      // The session is genuinely dead - surface the global re-auth/signed-out transition exactly
+      // once through the same event the 401 path uses.
+      authRefresher.signalSessionInvalid();
+    }
+    // cause 'infra': leave the (possibly stale) token in place; the request will fail as a network
+    // error or a 401 -> refresh retry below, both of which are handled gracefully.
+  }
+
   const token = authRefresher.getToken();
   const headers = new Headers(init.headers || {});
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -169,8 +199,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       authLog('AUTH_RETRY', { path, status: 401 });
       response = await fetch(url.toString(), { ...init, headers });
     } else if (outcome.cause === 'session') {
-      // The backend rejected the refresh cookie itself (401). signalSessionInvalid() has already
-      // fired once; every in-flight request now surfaces as an auth rejection.
+      // The backend rejected the refresh cookie itself (401): the session is genuinely dead. Fire
+      // the global re-auth/signed-out transition exactly once (guarded by the coordinator's
+      // once-only guard), then surface the 401 to the caller.
+      authRefresher.signalSessionInvalid();
       await throwApiError(response);
     } else {
       // Network/server trouble while refreshing. This is NOT a logout - leave local credentials

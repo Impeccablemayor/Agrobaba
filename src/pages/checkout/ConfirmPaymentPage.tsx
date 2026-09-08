@@ -1,10 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOrder } from '../../hooks/queries/useOrders';
 import { useConfirmPayment } from '../../hooks/mutations/useOrderMutations';
 import { showToast } from '../../lib/toastBus';
 
 export default function ConfirmPaymentPage() {
+  const { phase, renewSession } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const orderId = searchParams.get('orderId') || '';
@@ -15,6 +17,9 @@ export default function ConfirmPaymentPage() {
   const [transactionNumber, setTransactionNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const isLive = () => phaseRef.current === 'live';
 
   const { data: order } = useOrder(orderId);
   const confirmPaymentMutation = useConfirmPayment();
@@ -32,6 +37,20 @@ export default function ConfirmPaymentPage() {
     if (!orderId) {
       showToast('Missing order reference. Please start again from your order.', 'error');
       return;
+    }
+    // Auth gate (Phase 5): never submit/verify a payment without confirmed auth. A reauth prompt,
+    // degraded banner, or restoring spinner takes precedence over an uncertain payment POST.
+    if (!isLive()) {
+      await renewSession();
+      if (!isLive()) {
+        showToast(
+          phaseRef.current === 'reauth'
+            ? 'Please confirm your session to finish submitting your payment.'
+            : 'We could not confirm your session yet. Please try again in a moment.',
+          'error'
+        );
+        return;
+      }
     }
     setSubmitting(true);
     confirmPaymentMutation.mutate(
@@ -80,7 +99,8 @@ export default function ConfirmPaymentPage() {
 
           <div className="field">
             <label>Amount Paid (₦) <span className="req">*</span></label>
-            <input type="number" required min="0" step="0.01" placeholder="e.g. 25000" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <input type="number" required min="0" step="0.01" readOnly value={amount} onChange={(e) => setAmount(e.target.value)}
+              style={{ background: 'var(--bg-soft)', cursor: 'not-allowed' }} title="Amount is fixed to your order total" />
           </div>
 
           <div className="field">

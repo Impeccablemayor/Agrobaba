@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProduct } from '../../hooks/queries/useProducts';
 import { useCategories } from '../../hooks/queries/useCategories';
@@ -12,8 +12,11 @@ import { Breadcrumb } from '../../components/Breadcrumb';
 export default function ServiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, phase, renewSession } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const isLive = () => phaseRef.current === 'live';
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -54,6 +57,19 @@ export default function ServiceDetailPage() {
   async function handleBook(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // Auth gate (Phase 5): never create a booking without confirmed auth.
+    if (!isLive()) {
+      await renewSession();
+      if (!isLive()) {
+        showToast(
+          phaseRef.current === 'reauth'
+            ? 'Please confirm your session to book this service.'
+            : 'We could not confirm your session yet. Please try again in a moment.',
+          'error'
+        );
+        return;
+      }
+    }
     setSubmitting(true);
     const booking = await createBooking({
       serviceId: product!.id,

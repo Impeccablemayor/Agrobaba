@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PageLoadingSpinner } from '../LoadingSpinner';
 
 export function GuestOnlyRoute({ children }: { children: ReactNode }) {
-  const { user, status } = useAuth();
+  const { user, phase } = useAuth();
   // Captured once, the first time loading resolves - deliberately NOT reactive to every `user`
   // change. Otherwise a fresh login/register on this very page (which sets `user` while still
   // mounted here) races this guard's redirect against the page's own post-success navigate(),
@@ -13,7 +13,7 @@ export function GuestOnlyRoute({ children }: { children: ReactNode }) {
   // who was ALREADY signed in before landing on /login or /register.
   const wasAlreadyAuthenticated = useRef<boolean | null>(null);
 
-  if (status === 'initializing') {
+  if (phase === 'restoring') {
     return <PageLoadingSpinner message="Checking your session…" />;
   }
 

@@ -9,16 +9,18 @@ import type { Role } from '../../types';
  *  the real authorization on every admin endpoint regardless of this check - this only stops a
  *  non-admin user from briefly seeing the admin page's layout before its data calls fail. */
 export function RoleProtectedRoute({ role, children }: { role: Role; children: ReactNode }) {
-  const { user, status, verifyAuth } = useAuth();
+  const { user, phase, identity, verifyAuth } = useAuth();
   const location = useLocation();
 
-  if (status === 'serverUnavailable') {
-    return <BackendUnavailable onRetry={() => void verifyAuth()} />;
+  if (phase === 'restoring' || identity === 'unknown') {
+    return <PageLoadingSpinner message="Checking your session…" />;
   }
 
   if (!user) {
-    if (status === 'initializing') {
-      return <PageLoadingSpinner message="Checking your session…" />;
+    if (phase === 'degraded') {
+      // No identity + backend down: hold the protected view; the global banner + renewal loop
+      // recover automatically.
+      return <BackendUnavailable onRetry={() => void verifyAuth()} />;
     }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

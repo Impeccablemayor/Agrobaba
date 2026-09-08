@@ -4,16 +4,23 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { placeOrder } from '../../lib/orders';
 import { previewCoupon } from '../../lib/coupons';
+import { getProductById } from '../../lib/products';
+import { resolveUnitPrice } from '../../lib/units';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice } from '../../lib/format';
 import { groupCartBySeller } from '../../lib/cart';
 import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
-  const { user } = useAuth();
+  const { user, phase, renewSession } = useAuth();
   const { cart, total } = useCart();
   const navigate = useNavigate();
   const orderPlaced = useRef(false);
+  // Latest phase for the async submit handler (the closure must not read a stale phase after an
+  // awaited renewSession()).
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const isLive = () => phaseRef.current === 'live';
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.contact || '');
@@ -25,10 +32,50 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [priceChanges, setPriceChanges] = useState<string[]>([]);
+  const [stockShortages, setStockShortages] = useState<string[]>([]);
 
   useEffect(() => {
     if (cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
   }, [cart.length, navigate]);
+
+  // Stale-pricing + inventory check (P1): the server is the final source of truth for unit price
+  // and stock, but a cart snapshot goes stale the moment a seller edits a listing. On checkout we
+  // re-fetch every non-quote line's live data and (a) warn about any price that changed so the
+  // buyer isn't surprised by what the seller charges, and (b) flag requested quantities that now
+  // exceed remaining stock so the buyer can adjust before the server rejects the order. The
+  // server still re-validates on the POST - these banners are a UX head-start, not the check.
+  // Accepted-quote lines are skipped - their price/quantity are locked by design.
+  useEffect(() => {
+    let active = true;
+    async function checkCart() {
+      const liveItems = cart.filter((i) => !i.acceptedQuoteId);
+      const results = await Promise.allSettled(
+        liveItems.map((item) => getProductById(item.productId))
+      );
+      if (!active) return;
+      const changed: string[] = [];
+      const shortages: string[] = [];
+      liveItems.forEach((item, idx) => {
+        const result = results[idx];
+        if (result.status !== 'fulfilled' || !result.value) return;
+        const live = resolveUnitPrice(
+          { price: result.value.price, priceTiers: result.value.priceTiers },
+          item.quantity
+        );
+        if (Math.abs(live - item.price) > 0.004) {
+          changed.push(`${item.name} (₦${formatPrice(live)})`);
+        }
+        if (result.value.quantity != null && item.quantity > result.value.quantity) {
+          shortages.push(`${item.name} (only ${result.value.quantity} left, you have ${item.quantity})`);
+        }
+      });
+      setPriceChanges(changed);
+      setStockShortages(shortages);
+    }
+    if (cart.some((i) => !i.acceptedQuoteId)) checkCart();
+    return () => { active = false; };
+  }, [cart]);
 
   if (cart.length === 0 && !orderPlaced.current) return null;
 
@@ -56,6 +103,20 @@ export default function CheckoutPage() {
     if (!name.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in your name, phone number and delivery address.', 'error');
       return;
+    }
+    // Auth gate (Phase 5): never create an order without a confirmed 'live' session. If we're not
+    // yet live, try a silent renewal once; otherwise block and let the state machine decide
+    // (reauth overlay, degraded banner, or restoring spinner) rather than firing a doomed POST.
+    if (!isLive()) {
+      await renewSession();
+      if (!isLive()) {
+        if (phaseRef.current === 'reauth') {
+          showToast('Please confirm your session to continue with your order.', 'error');
+        } else {
+          showToast('We could not confirm your session yet. Please try again in a moment.', 'error');
+        }
+        return;
+      }
     }
     setPlacingOrder(true);
     const addr = [address.trim(), city.trim(), state.trim()].filter(Boolean).join(', ');
@@ -85,7 +146,29 @@ export default function CheckoutPage() {
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>Enter your delivery details to place the order.</p>
         </div>
 
-        <div className="row g-4">
+          <div className="row g-4">
+          {priceChanges.length > 0 && (
+            <div className="col-12">
+              <div className="escrow-hint" style={{ borderColor: '#e0a800', background: 'var(--warning-soft)', color: 'var(--text)' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ color: '#a06000' }}></i>
+                <span>
+                  Some prices changed since you added them to your cart and the seller will charge
+                  the new amount: <strong>{priceChanges.join(', ')}</strong>.
+                </span>
+              </div>
+            </div>
+          )}
+          {stockShortages.length > 0 && (
+            <div className="col-12">
+              <div className="escrow-hint" style={{ borderColor: '#d9534f', background: 'var(--danger-soft)', color: 'var(--text)' }}>
+                <i className="fa-solid fa-box-open" style={{ color: '#d9534f' }}></i>
+                <span>
+                  These items no longer have enough stock for your order - please adjust quantities
+                  before placing it: <strong>{stockShortages.join('; ')}</strong>.
+                </span>
+              </div>
+            </div>
+          )}
           <div className="col-lg-8">
             <div className="checkout-card">
               <h3><i className="fa-solid fa-truck-fast"></i> Delivery Details</h3>
