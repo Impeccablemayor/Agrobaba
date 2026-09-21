@@ -8,7 +8,7 @@ import type { ServiceBooking } from '../../types';
 
 const STATUS_LABELS: Record<string, string> = {
   requested: 'Awaiting Response',
-  accepted: 'Accepted — Awaiting Payment',
+  accepted: 'Accepted',
   declined: 'Declined',
   paid: 'Paid',
   in_progress: 'In Progress',
@@ -18,9 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function BookingRow({ booking, otherPartyLabel, onOpen }: { booking: ServiceBooking; otherPartyLabel: string; onOpen: () => void }) {
   const statusColor = ['paid', 'in_progress', 'completed'].includes(booking.status) ? 'delivered' : 'pending';
-  const label = booking.status === 'accepted' && booking.paymentSubmitted
-    ? 'Payment Submitted — Verifying'
-    : STATUS_LABELS[booking.status] || booking.status;
+  const label = STATUS_LABELS[booking.status] || booking.status;
   return (
     <tr style={{ cursor: 'pointer' }} onClick={onOpen}>
       <td style={{ fontWeight: 600 }}>{booking.serviceName}</td>

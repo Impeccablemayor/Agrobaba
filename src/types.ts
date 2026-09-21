@@ -347,7 +347,20 @@ export interface CartItem {
   acceptedQuoteId?: string | null;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed' | 'cancelled';
+
+/** Backend PaymentStatus (see com.agrobaba.entity.enums.PaymentStatus). Only PaymentService
+ *  moves a payment through this machine — sellers/admin never write it directly. */
+export type PaymentStatus =
+  | 'PENDING'
+  | 'INITIATED'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'ABANDONED'
+  | 'REVERSED'
+  | 'REFUND_PENDING'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUNDED';
 
 export type BookingStatus = 'requested' | 'accepted' | 'declined' | 'paid' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -369,10 +382,6 @@ export interface ServiceBooking {
   quotedAmount: number;
   status: BookingStatus;
   declineReason: string | null;
-  paymentSubmitted: boolean;
-  paymentMode: string | null;
-  transactionRef: string | null;
-  paymentDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -396,15 +405,22 @@ export interface Order {
   buyerAddress: string;
   buyerPhone: string | null;
   status: OrderStatus;
-  paid: boolean;
-  paymentSubmitted: boolean;
-  paymentMode: string | null;
-  paymentDate: string | null;
-  transactionRef: string | null;
   couponCode: string | null;
   discountAmount: number;
   createdAt: string;
   updatedAt: string;
+  /** Current payment status for this order (null when no payment attempt exists yet). */
+  paymentStatus: PaymentStatus | null;
+  /** Paystack reference of the active checkout (null before a checkout was started). */
+  paymentReference: string | null;
+  /** Authorization URL returned by Paystack when a checkout was just initiated. Null on
+   *  list views — the frontend calls POST /api/payments/initialize on demand when the
+   *  buyer clicks "Pay now". */
+  paymentAuthorizationUrl: string | null;
+  /** True when the backend attempted to start a checkout but the gateway was unreachable.
+   *  The order itself is still recoverable; the customer can retry payment from the order
+   *  detail page. */
+  paymentInitializationFailed: boolean;
 }
 
 export interface FlashSaleItem {
@@ -493,16 +509,6 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-export interface PaymentSubmission {
-  orderId: string;
-  invoiceNumber: string;
-  buyerName: string;
-  total: number;
-  paymentMode: string | null;
-  transactionRef: string | null;
-  paymentDate: string | null;
-}
-
 export interface FlashSaleSoon {
   id: string;
   title: string;
@@ -513,8 +519,6 @@ export interface FlashSaleSoon {
 
 export interface AdminOverview {
   pendingVerificationsCount: number;
-  paymentSubmissionsCount: number;
-  paymentSubmissions: PaymentSubmission[];
   openTicketsCount: number;
   flashSalesSoon: FlashSaleSoon[];
   recentActions: AuditLogEntry[];

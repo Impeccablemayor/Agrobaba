@@ -25,9 +25,3 @@ export const DEMAND_CATEGORY_ICONS: Record<string, string> = {
   'Equipment Hire': 'fa-tractor',
   default: 'fa-clipboard-list',
 };
-
-export const BANK_DETAILS = {
-  accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME ,
-  bankName: import.meta.env.VITE_BANK_NAME,
-  accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER ,
-};

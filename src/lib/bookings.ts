@@ -20,10 +20,6 @@ interface ApiBooking {
   quotedAmount: number;
   status: string;
   declineReason: string | null;
-  paymentSubmitted: boolean;
-  paymentMode: string | null;
-  transactionRef: string | null;
-  paymentDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,10 +43,6 @@ function mapBooking(b: ApiBooking): ServiceBooking {
     quotedAmount: b.quotedAmount,
     status: b.status as BookingStatus,
     declineReason: b.declineReason,
-    paymentSubmitted: b.paymentSubmitted,
-    paymentMode: b.paymentMode,
-    transactionRef: b.transactionRef,
-    paymentDate: b.paymentDate,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   };
@@ -125,42 +117,6 @@ export async function declineBooking(id: string, reason: string): Promise<Servic
     return booking;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to decline booking';
-    showToast(message, 'error');
-    return false;
-  }
-}
-
-export interface BookingPaymentInput {
-  paymentMode: string;
-  paymentDate: string;
-  transactionNumber: string;
-  amount: number;
-}
-
-export async function confirmBookingPayment(id: string, data: BookingPaymentInput): Promise<ServiceBooking | false> {
-  try {
-    const booking = mapBooking(await api.put<ApiBooking>(`/api/bookings/${id}/confirm-payment`, {
-      paymentMode: data.paymentMode,
-      paymentDate: data.paymentDate,
-      transactionNumber: data.transactionNumber,
-      amount: data.amount,
-    }));
-    showToast('Payment details submitted! The provider will verify before starting work.', 'success');
-    return booking;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to submit payment details';
-    showToast(message, 'error');
-    return false;
-  }
-}
-
-export async function verifyBookingPayment(id: string): Promise<ServiceBooking | false> {
-  try {
-    const booking = mapBooking(await api.put<ApiBooking>(`/api/bookings/${id}/verify-payment`));
-    showToast('Payment verified. You can now begin work.', 'success');
-    return booking;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to verify payment';
     showToast(message, 'error');
     return false;
   }

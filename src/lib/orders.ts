@@ -3,7 +3,7 @@ import { getCurrentUser } from './auth';
 import { getCart, clearCart } from './cart';
 import { api } from './api';
 import { uid } from './format';
-import type { CartItem, Order, OrderStatus } from '../types';
+import type { CartItem, Order, OrderStatus, PaymentStatus } from '../types';
 
 /** Key held in sessionStorage for the lifetime of one checkout attempt. Reused on retries (same
  *  tab, same cart) so a retried "Place Order" is idempotent server-side; cleared once the order
@@ -46,15 +46,14 @@ interface BackendOrderResponse {
   buyerAddress: string;
   buyerPhone: string | null;
   status: string;
-  paid: boolean;
-  paymentSubmitted: boolean;
-  paymentMode: string | null;
-  paymentDate: string | null;
-  transactionRef: string | null;
   couponCode: string | null;
   discountAmount: number;
   createdAt: string;
   updatedAt: string;
+  paymentStatus: string | null;
+  paymentReference: string | null;
+  paymentAuthorizationUrl: string | null;
+  paymentInitializationFailed: boolean;
 }
 
 function mapOrder(response: BackendOrderResponse): Order {
@@ -82,15 +81,14 @@ function mapOrder(response: BackendOrderResponse): Order {
     buyerAddress: response.buyerAddress,
     buyerPhone: response.buyerPhone,
     status: (response.status as OrderStatus) || 'pending',
-    paid: response.paid,
-    paymentSubmitted: response.paymentSubmitted,
-    paymentMode: response.paymentMode,
-    paymentDate: response.paymentDate,
-    transactionRef: response.transactionRef,
     couponCode: response.couponCode,
     discountAmount: response.discountAmount,
     createdAt: response.createdAt,
     updatedAt: response.updatedAt,
+    paymentStatus: (response.paymentStatus as PaymentStatus) || null,
+    paymentReference: response.paymentReference || null,
+    paymentAuthorizationUrl: response.paymentAuthorizationUrl || null,
+    paymentInitializationFailed: Boolean(response.paymentInitializationFailed),
   };
 }
 
@@ -181,42 +179,6 @@ export async function getOrderById(id: string): Promise<Order | null> {
     const message = error instanceof Error ? error.message : 'Unable to load order';
     showToast(message, 'error');
     return null;
-  }
-}
-
-export interface PaymentInput {
-  paymentMode: string;
-  paymentDate: string;
-  transactionNumber: string;
-  amount: number;
-}
-
-export async function confirmPayment(orderId: string, paymentData: PaymentInput): Promise<boolean> {
-  try {
-    await api.put(`/api/orders/${orderId}/confirm-payment`, {
-      paymentMode: paymentData.paymentMode,
-      paymentDate: paymentData.paymentDate,
-      transactionNumber: paymentData.transactionNumber,
-      amount: paymentData.amount,
-    });
-    showToast('Payment details submitted! The seller will verify and release your order.', 'success');
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to submit payment details';
-    showToast(message, 'error');
-    return false;
-  }
-}
-
-export async function verifyOrderPayment(orderId: string): Promise<boolean> {
-  try {
-    await api.put(`/api/orders/${orderId}/verify-payment`);
-    showToast('Payment verified. You can now fulfill this order.', 'success');
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to verify payment';
-    showToast(message, 'error');
-    return false;
   }
 }
 

@@ -222,14 +222,14 @@ export default function MyAccountPage() {
     recentActivity.push({
       icon: 'fa-box', color: 'var(--primary)',
       text: `Order placed — ${formatPrice(o.total)}`,
-      sub: o.invoiceNumber, time: timeAgo(o.createdAt), status: o.paid ? 'paid' : 'pending',
+      sub: o.invoiceNumber, time: timeAgo(o.createdAt), status: o.status,
     })
   );
   mySales.slice(0, 3).forEach((o) =>
     recentActivity.push({
       icon: 'fa-coins', color: 'var(--accent)',
       text: `Sale received from ${o.buyerName}`,
-      sub: o.invoiceNumber, time: timeAgo(o.createdAt), status: o.paid ? 'paid' : 'unpaid',
+      sub: o.invoiceNumber, time: timeAgo(o.createdAt), status: o.status,
     })
   );
   recentActivity.sort((a, b) => b.time.localeCompare(a.time));
@@ -370,7 +370,7 @@ export default function MyAccountPage() {
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>{a.time}</div>
-                  <span className={`status-${a.status === 'paid' ? 'delivered' : 'pending'}`} style={{ fontSize: 10 }}>{a.status}</span>
+                  <span className={`status-${a.status === 'delivered' ? 'delivered' : 'pending'}`} style={{ fontSize: 10 }}>{a.status}</span>
                 </div>
               </div>
             ))

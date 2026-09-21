@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAdminOverview } from '../../hooks/queries/useAdmin';
-import { formatPrice, timeAgo } from '../../lib/format';
+import { timeAgo } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 
 function StatCard({ to, icon, color, value, label }: { to: string; icon: string; color: string; value: number | string; label: string }) {
@@ -24,7 +24,7 @@ export default function AdminOverviewPage() {
   if (loading && !data) return <PageLoadingSpinner message="Loading overview…" />;
   if (!data) return <p className="text-muted">Unable to load the overview right now.</p>;
 
-  const nothingNeedsAttention = data.paymentSubmissionsCount === 0 && data.pendingVerificationsCount === 0
+  const nothingNeedsAttention = data.pendingVerificationsCount === 0
     && data.openTicketsCount === 0 && data.flashSalesSoon.length === 0;
 
   return (
@@ -35,7 +35,6 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="admin-stats-row">
-        <StatCard to="/admin/orders?tab=payments" icon="fa-money-check-dollar" color="#b9770e" value={data.paymentSubmissionsCount} label="Payment submissions awaiting review" />
         <StatCard to="/admin/verifications" icon="fa-user-check" color="var(--primary)" value={data.pendingVerificationsCount} label="Verification requests awaiting review" />
         <StatCard to="/admin/tickets" icon="fa-headset" color="#1d4ed8" value={data.openTicketsCount} label="Open support tickets" />
         <StatCard to="/admin/flash-sales" icon="fa-fire" color="var(--danger)" value={data.flashSalesSoon.length} label="Flash sales starting/ending soon" />
@@ -45,32 +44,7 @@ export default function AdminOverviewPage() {
         <div className="admin-panel" style={{ textAlign: 'center', padding: '32px 20px' }}>
           <i className="fa-solid fa-circle-check" style={{ fontSize: 26, color: 'var(--primary)', marginBottom: 8, display: 'block' }}></i>
           <p style={{ fontWeight: 700, marginBottom: 2 }}>Nothing needs attention right now.</p>
-          <p style={{ color: 'var(--muted)', fontSize: 12.5 }}>Payment reviews, verifications, tickets and flash sales are all caught up.</p>
-        </div>
-      )}
-
-      {data.paymentSubmissionsCount > 0 && (
-        <div className="admin-panel">
-          <div className="admin-panel-hdr">
-            <h3>Payment submissions awaiting review</h3>
-            <Link to="/admin/orders?tab=payments" className="see-all" style={{ fontSize: 12 }}>Review all <i className="fa-solid fa-chevron-right"></i></Link>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>Invoice</th><th>Buyer</th><th>Total</th><th>Payment mode</th><th>Submitted</th></tr></thead>
-              <tbody>
-                {data.paymentSubmissions.slice(0, 6).map((p) => (
-                  <tr key={p.orderId} onClick={() => { window.location.href = `/admin/orders?tab=payments&search=${encodeURIComponent(p.invoiceNumber)}`; }}>
-                    <td style={{ fontFamily: 'monospace' }}>{p.invoiceNumber}</td>
-                    <td>{p.buyerName}</td>
-                    <td style={{ fontWeight: 700 }}>{formatPrice(p.total)}</td>
-                    <td>{p.paymentMode || '—'}</td>
-                    <td>{p.paymentDate ? timeAgo(p.paymentDate) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5 }}>Verifications, tickets and flash sales are all caught up.</p>
         </div>
       )}
 

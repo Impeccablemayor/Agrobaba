@@ -25,8 +25,7 @@ import MyMessagesPage from './pages/messages/MyMessagesPage';
 import ChatPage from './pages/messages/ChatPage';
 import CartPage from './pages/checkout/CartPage';
 import CheckoutPage from './pages/checkout/CheckoutPage';
-import PayOfflinePage from './pages/checkout/PayOfflinePage';
-import ConfirmPaymentPage from './pages/checkout/ConfirmPaymentPage';
+import PaymentCallbackPage from './pages/checkout/PaymentCallbackPage';
 import MyAccountPage from './pages/account/MyAccountPage';
 import EditAccountPage from './pages/account/EditAccountPage';
 import ChangePasswordPage from './pages/account/ChangePasswordPage';
@@ -45,6 +44,7 @@ import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminTicketsPage from './pages/admin/AdminTicketsPage';
@@ -81,8 +81,7 @@ function App() {
 
         <Route path="cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
         <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-        <Route path="pay-offline" element={<ProtectedRoute><PayOfflinePage /></ProtectedRoute>} />
-        <Route path="confirm-payment" element={<ProtectedRoute><ConfirmPaymentPage /></ProtectedRoute>} />
+        <Route path="payment/callback" element={<PaymentCallbackPage />} />
 
         <Route path="account" element={<ProtectedRoute><MyAccountPage /></ProtectedRoute>} />
         <Route path="account/edit" element={<ProtectedRoute><EditAccountPage /></ProtectedRoute>} />
@@ -106,6 +105,7 @@ function App() {
         <Route path="admin" element={<AdminOverviewPage />} />
         <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
+        <Route path="admin/payments" element={<AdminPaymentsPage />} />
         <Route path="admin/verifications" element={<AdminVerificationsPage />} />
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
         <Route path="admin/coupons" element={<AdminCouponsPage />} />

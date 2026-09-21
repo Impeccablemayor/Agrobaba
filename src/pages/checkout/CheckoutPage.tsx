@@ -123,8 +123,23 @@ export default function CheckoutPage() {
     const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
-      showToast('Order placed! Complete payment to confirm.', 'success');
-      navigate(`/pay-offline?orderId=${encodeURIComponent(order.id)}`);
+      // Payment redirect: the backend starts a Paystack checkout and returns the authorization
+      // URL. The browser must navigate to it for the hosted payment page — not an SPA push.
+      if (order.paymentInitializationFailed) {
+        showToast(
+          'Order placed, but we could not start payment right now. You can retry from My Orders.',
+          'warning',
+        );
+        navigate('/account/my-orders');
+        return;
+      }
+      if (order.paymentAuthorizationUrl) {
+        window.location.assign(order.paymentAuthorizationUrl);
+        return;
+      }
+      // ALREADY_PAID (or any other status where no redirect is needed):
+      showToast('Order placed! Track it from My Orders.', 'success');
+      navigate('/account/my-orders');
       return;
     }
     setPlacingOrder(false);
@@ -284,7 +299,7 @@ export default function CheckoutPage() {
                 {placingOrder && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
                 {placingOrder ? 'Placing Order…' : (<><i className="fa-solid fa-lock"></i> Place Order</>)}
               </button>
-              <p className="pay-note"><i className="fa-solid fa-shield-halved"></i> Payment via secure bank transfer (mock escrow)</p>
+              <p className="pay-note"><i className="fa-solid fa-shield-halved"></i> Your order is placed securely with Agrobaba.</p>
             </div>
           </div>
         </div>

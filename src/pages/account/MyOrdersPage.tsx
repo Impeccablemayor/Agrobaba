@@ -2,12 +2,35 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMyOrders } from '../../hooks/queries/useOrders';
+import { beginCheckout } from '../../lib/payments';
 import { createReview } from '../../lib/reviews';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order } from '../../types';
 
-type Filter = 'all' | 'unpaid' | 'paid' | 'delivered';
+type Filter = 'all' | 'delivered';
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending',
+  INITIATED: 'Checkout started',
+  SUCCESS: 'Paid',
+  FAILED: 'Failed',
+  ABANDONED: 'Abandoned',
+  REVERSED: 'Reversed',
+  REFUND_PENDING: 'Refund pending',
+  PARTIALLY_REFUNDED: 'Partially refunded',
+  REFUNDED: 'Refunded',
+};
+
+function paymentLabel(order: Order): string {
+  if (order.paymentStatus && PAYMENT_STATUS_LABELS[order.paymentStatus]) return PAYMENT_STATUS_LABELS[order.paymentStatus];
+  if (order.status === 'cancelled') return '—';
+  return 'Not started';
+}
+
+function isUnpaid(order: Order): boolean {
+  return order.status !== 'cancelled' && order.paymentStatus !== 'SUCCESS';
+}
 
 function ReviewForm({ orderId, productId, onSubmitted }: { orderId: string; productId: string; onSubmitted: () => void }) {
   const [rating, setRating] = useState(0);
@@ -63,26 +86,31 @@ export default function MyOrdersPage() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [reviewedProductIds, setReviewedProductIds] = useState<Set<string>>(new Set());
   const [reviewingProductId, setReviewingProductId] = useState<string | null>(null);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
 
   const { data: orders = [], isLoading: loading } = useMyOrders();
 
   if (!user) return null;
 
-  const paid = orders.filter((o) => o.paid).length;
-  const unpaid = orders.filter((o) => !o.paid).length;
-  const totalSpent = orders.filter((o) => o.paid).reduce((s, o) => s + o.total, 0);
+  async function handlePay(orderId: string) {
+    setPayingOrderId(orderId);
+    await beginCheckout(orderId);
+    setPayingOrderId(null);
+  }
+
+  const inTransit = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  const delivered = orders.filter((o) => o.status === 'delivered').length;
+  const totalSpent = orders.reduce((s, o) => s + o.total, 0);
 
   const stats = [
     { icon: 'fa-box', label: 'Total Orders', value: orders.length, color: 'var(--primary)' },
-    { icon: 'fa-clock', label: 'Unpaid', value: unpaid, color: 'var(--accent)' },
-    { icon: 'fa-circle-check', label: 'Paid', value: paid, color: 'var(--success)' },
+    { icon: 'fa-truck', label: 'In Transit', value: inTransit, color: 'var(--accent)' },
+    { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
     { icon: 'fa-naira-sign', label: 'Total Spent', value: formatPrice(totalSpent), color: 'var(--primary)' },
   ];
 
   let filtered = orders;
-  if (filter === 'unpaid') filtered = orders.filter((o) => !o.paid);
-  else if (filter === 'paid') filtered = orders.filter((o) => o.paid && o.status !== 'delivered');
-  else if (filter === 'delivered') filtered = orders.filter((o) => o.status === 'delivered');
+  if (filter === 'delivered') filtered = orders.filter((o) => o.status === 'delivered');
 
   return (
     <div className="section">
@@ -115,7 +143,7 @@ export default function MyOrdersPage() {
           </div>
 
           <div className="shop-tabs">
-            {(['all', 'unpaid', 'paid', 'delivered'] as const).map((f) => (
+            {(['all', 'delivered'] as const).map((f) => (
               <button key={f} className={`shop-tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
                 {f === 'all' ? 'All Orders' : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
@@ -137,13 +165,14 @@ export default function MyOrdersPage() {
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Invoice</th><th>Items</th><th>Total</th><th>Date</th><th>Payment</th><th>Status</th><th>Action</th>
+                    <th>#</th><th>Invoice</th><th>Items</th><th>Total</th><th>Date</th><th>Status</th><th>Payment</th><th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((order, i) => {
                     const itemCount = order.items ? order.items.reduce((s, it) => s + it.quantity, 0) : 0;
-                    const statusClass = order.status === 'delivered' ? 'delivered' : order.paid ? 'delivered' : 'pending';
+                    const statusClass = order.status === 'delivered' ? 'delivered' : 'pending';
+                    const unpaid = isUnpaid(order);
                     return (
                       <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => setActiveOrder(order)}>
                         <td>#{i + 1}</td>
@@ -151,18 +180,26 @@ export default function MyOrdersPage() {
                         <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
                         <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
                         <td>{formatDate(order.createdAt)}</td>
-                        <td>
-                          <span className={`status-${order.paid ? 'delivered' : 'pending'}`}>
-                            {order.paid ? 'Paid' : order.paymentSubmitted ? 'Submitted' : 'Unpaid'}
-                          </span>
-                        </td>
                         <td><span className={`status-${statusClass}`} style={{ textTransform: 'capitalize' }}>{order.status}</span></td>
+                        <td style={{ fontSize: 12, color: order.paymentStatus === 'SUCCESS' ? 'var(--success)' : unpaid ? 'var(--accent)' : 'var(--muted)' }}>
+                          {paymentLabel(order)}
+                        </td>
                         <td onClick={(e) => e.stopPropagation()}>
-                          {!order.paid && !order.paymentSubmitted ? (
-                            <Link to={`/pay-offline?orderId=${order.id}`} className="btn-secondary btn-sm btn-inline" style={{ padding: '5px 10px' }}>Pay Now</Link>
-                          ) : (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {unpaid && (
+                              <button
+                                onClick={() => handlePay(order.id)}
+                                disabled={payingOrderId === order.id}
+                                className="btn-primary btn-sm btn-inline"
+                                style={{ padding: '5px 10px', fontSize: 11 }}
+                              >
+                                {payingOrderId === order.id
+                                  ? <><i className="fa-solid fa-spinner fa-spin"></i> Paying…</>
+                                  : <><i className="fa-solid fa-credit-card"></i> Pay</>}
+                              </button>
+                            )}
                             <button onClick={() => setActiveOrder(order)} className="btn-outline btn-sm btn-inline" style={{ padding: '5px 10px' }}>View</button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -198,9 +235,9 @@ export default function MyOrdersPage() {
                   <span style={{ fontSize: 12, fontWeight: 600 }}>{formatDate(activeOrder.createdAt)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Payment Status</span>
-                  <span className={`status-${activeOrder.paid ? 'delivered' : 'pending'}`}>
-                    {activeOrder.paid ? 'Paid' : activeOrder.paymentSubmitted ? 'Submitted — awaiting seller confirmation' : 'Unpaid'}
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Payment</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: activeOrder.paymentStatus === 'SUCCESS' ? 'var(--success)' : 'var(--accent)' }}>
+                    {paymentLabel(activeOrder)}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -208,6 +245,16 @@ export default function MyOrdersPage() {
                   <span className={`status-${activeOrder.status === 'delivered' ? 'delivered' : 'pending'}`} style={{ textTransform: 'capitalize' }}>{activeOrder.status}</span>
                 </div>
               </div>
+
+              {isUnpaid(activeOrder) && (
+                <div className="escrow-hint" style={{ marginBottom: 16, background: 'var(--warning-soft)', borderColor: '#e0a800' }}>
+                  <i className="fa-solid fa-credit-card" style={{ color: '#a06000' }}></i>
+                  <span>
+                    This order hasn't been paid yet. Your seller will only fulfill it once payment
+                    is confirmed.
+                  </span>
+                </div>
+              )}
 
               <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>Items</h4>
               {activeOrder.items.map((item) => (
@@ -252,18 +299,17 @@ export default function MyOrdersPage() {
                 <span style={{ fontSize: 18, fontWeight: 900, color: 'var(--primary)' }}>{formatPrice(activeOrder.total)}</span>
               </div>
 
-              {activeOrder.paid ? (
-                <div style={{ marginTop: 20, padding: 14, background: 'var(--primary-light)', borderRadius: 'var(--radius-sm)', textAlign: 'center', fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>
-                  <i className="fa-solid fa-circle-check"></i> Payment confirmed on {formatDate(activeOrder.paymentDate || activeOrder.updatedAt)}
-                </div>
-              ) : activeOrder.paymentSubmitted ? (
-                <div style={{ marginTop: 20, padding: 14, background: 'var(--accent-light, #fdf1de)', borderRadius: 'var(--radius-sm)', textAlign: 'center', fontSize: 12, color: 'var(--accent, #b5720b)', fontWeight: 600 }}>
-                  <i className="fa-solid fa-clock"></i> Payment submitted — awaiting seller confirmation
-                </div>
-              ) : (
-                <Link to={`/pay-offline?orderId=${activeOrder.id}`} className="btn-primary w-100" style={{ marginTop: 20 }}>
-                  <i className="fa-solid fa-credit-card"></i> Complete Payment
-                </Link>
+              {isUnpaid(activeOrder) && (
+                <button
+                  className="btn-primary btn-inline"
+                  disabled={payingOrderId === activeOrder.id}
+                  onClick={() => handlePay(activeOrder.id)}
+                  style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
+                >
+                  {payingOrderId === activeOrder.id
+                    ? <><i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Opening Paystack…</>
+                    : <><i className="fa-solid fa-credit-card"></i> Pay Now</>}
+                </button>
               )}
             </div>
           </div>

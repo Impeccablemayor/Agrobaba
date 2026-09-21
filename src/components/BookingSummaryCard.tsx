@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  acceptBooking, cancelBooking, confirmBookingPayment, declineBooking, updateBookingStatus, verifyBookingPayment,
+  acceptBooking, cancelBooking, declineBooking, updateBookingStatus,
 } from '../lib/bookings';
 import { formatPrice, formatDate } from '../lib/format';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -8,7 +8,7 @@ import type { ServiceBooking } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
   requested: 'Awaiting Response',
-  accepted: 'Accepted — Awaiting Payment',
+  accepted: 'Accepted',
   declined: 'Declined',
   paid: 'Paid',
   in_progress: 'In Progress',
@@ -17,7 +17,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function statusLabel(booking: ServiceBooking): string {
-  if (booking.status === 'accepted' && booking.paymentSubmitted) return 'Payment Submitted — Verifying';
   return STATUS_LABELS[booking.status] || booking.status;
 }
 
@@ -40,12 +39,8 @@ interface Props {
 export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props) {
   const isProvider = booking.providerId === currentUserId;
   const isCustomer = booking.customerId === currentUserId;
-  const [showPayForm, setShowPayForm] = useState(false);
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
-  const [paymentMode, setPaymentMode] = useState('Bank Transfer');
-  const [paymentDate, setPaymentDate] = useState('');
-  const [transactionNumber, setTransactionNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -63,26 +58,9 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
     if (result) { onUpdated(result); setShowDeclineForm(false); }
   }
 
-  async function handlePay(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    const result = await confirmBookingPayment(booking.id, {
-      paymentMode, paymentDate, transactionNumber, amount: booking.quotedAmount,
-    });
-    setBusy(false);
-    if (result) { onUpdated(result); setShowPayForm(false); }
-  }
-
   async function handleStatus(status: 'in_progress' | 'completed') {
     setBusy(true);
     const result = await updateBookingStatus(booking.id, status);
-    setBusy(false);
-    if (result) onUpdated(result);
-  }
-
-  async function handleVerifyPayment() {
-    setBusy(true);
-    const result = await verifyBookingPayment(booking.id);
     setBusy(false);
     if (result) onUpdated(result);
   }
@@ -167,42 +145,7 @@ export function BookingSummaryCard({ booking, currentUserId, onUpdated }: Props)
         </div>
       )}
 
-      {isCustomer && booking.status === 'accepted' && booking.paymentSubmitted && (
-        <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-          <i className="fa-regular fa-clock"></i> Payment details submitted — waiting for the provider to verify and start work.
-        </p>
-      )}
-
-      {isCustomer && booking.status === 'accepted' && !booking.paymentSubmitted && !showPayForm && (
-        <button onClick={() => setShowPayForm(true)} className="btn-primary btn-sm btn-inline">
-          <i className="fa-solid fa-lock"></i> Pay for Booking
-        </button>
-      )}
-
-      {isProvider && booking.status === 'accepted' && booking.paymentSubmitted && (
-        <button onClick={handleVerifyPayment} disabled={busy} className="btn-primary btn-sm btn-inline">
-          <i className="fa-solid fa-check"></i> Confirm Payment Received
-        </button>
-      )}
-
-      {isCustomer && !booking.paymentSubmitted && showPayForm && (
-        <form onSubmit={handlePay} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-          <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} style={{ border: '1.5px solid var(--border-mid)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
-            <option>Bank Transfer</option>
-            <option>USSD Transfer</option>
-            <option>Cash Deposit</option>
-            <option>Mobile Money</option>
-          </select>
-          <input type="date" required value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} style={{ border: '1.5px solid var(--border-mid)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }} />
-          <input type="text" required placeholder="Transaction reference" value={transactionNumber} onChange={(e) => setTransactionNumber(e.target.value)} style={{ border: '1.5px solid var(--border-mid)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" disabled={busy} className="btn-primary btn-sm btn-inline">Confirm Payment ({formatPrice(booking.quotedAmount)})</button>
-            <button type="button" onClick={() => setShowPayForm(false)} className="btn-outline btn-sm btn-inline">Cancel</button>
-          </div>
-        </form>
-      )}
-
-      {isProvider && booking.status === 'paid' && (
+      {isProvider && ['accepted', 'paid'].includes(booking.status) && (
         <button onClick={() => handleStatus('in_progress')} disabled={busy} className="btn-primary btn-sm btn-inline">
           <i className="fa-solid fa-play"></i> Mark In Progress
         </button>

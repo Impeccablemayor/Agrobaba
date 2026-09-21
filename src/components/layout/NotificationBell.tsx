@@ -9,7 +9,6 @@ const TYPE_ICONS: Record<string, string> = {
   message: 'fa-comment',
   demand_response: 'fa-reply',
   order_placed: 'fa-receipt',
-  payment_confirmed: 'fa-circle-check',
   order_status: 'fa-truck',
   verification: 'fa-user-check',
   listing_match: 'fa-tag',

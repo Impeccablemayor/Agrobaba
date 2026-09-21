@@ -2,16 +2,6 @@ import { showToast } from './toastBus';
 import { api } from './api';
 import type { AdminOverview, AuditLogEntry } from '../types';
 
-interface ApiPaymentSubmission {
-  orderId: number;
-  invoiceNumber: string;
-  buyerName: string;
-  total: number;
-  paymentMode: string | null;
-  transactionRef: string | null;
-  paymentDate: string | null;
-}
-
 interface ApiFlashSaleSoon {
   id: number;
   title: string;
@@ -30,8 +20,6 @@ interface ApiAuditLogEntry {
 
 interface ApiOverview {
   pendingVerificationsCount: number;
-  paymentSubmissionsCount: number;
-  paymentSubmissions: ApiPaymentSubmission[];
   openTicketsCount: number;
   flashSalesSoon: ApiFlashSaleSoon[];
   recentActions: ApiAuditLogEntry[];
@@ -44,16 +32,6 @@ function mapAuditEntry(e: ApiAuditLogEntry): AuditLogEntry {
 function mapOverview(data: ApiOverview): AdminOverview {
   return {
     pendingVerificationsCount: data.pendingVerificationsCount,
-    paymentSubmissionsCount: data.paymentSubmissionsCount,
-    paymentSubmissions: data.paymentSubmissions.map((p) => ({
-      orderId: String(p.orderId),
-      invoiceNumber: p.invoiceNumber,
-      buyerName: p.buyerName,
-      total: p.total,
-      paymentMode: p.paymentMode,
-      transactionRef: p.transactionRef,
-      paymentDate: p.paymentDate,
-    })),
     openTicketsCount: data.openTicketsCount,
     flashSalesSoon: data.flashSalesSoon.map((f) => ({
       id: String(f.id), title: f.title, startAt: f.startAt, endAt: f.endAt, phase: f.phase,

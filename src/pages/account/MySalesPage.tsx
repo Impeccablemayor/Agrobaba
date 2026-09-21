@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSalesOrders } from '../../hooks/queries/useOrders';
-import { useUpdateOrderStatus, useVerifyPayment } from '../../hooks/mutations/useOrderMutations';
+import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order, OrderStatus } from '../../types';
 
-type Filter = 'all' | 'unpaid' | 'paid' | 'processing';
+type Filter = 'all' | 'delivered';
 
 export default function MySalesPage() {
   const { user } = useAuth();
@@ -15,7 +15,6 @@ export default function MySalesPage() {
 
   const { data: sales = [], isLoading: loading } = useSalesOrders();
   const updateStatusMutation = useUpdateOrderStatus();
-  const verifyPaymentMutation = useVerifyPayment();
 
   if (!user) return null;
 
@@ -50,29 +49,22 @@ export default function MySalesPage() {
     return order.items.filter((it) => it.sellerId === user!.id).reduce((s, it) => s + it.price * it.quantity, 0);
   }
 
-  const paidSales = sales.filter((o) => o.paid);
-  const totalEarnings = paidSales.reduce((s, o) => s + getMyEarnings(o), 0);
-  const pending = sales.filter((o) => !o.paid).length;
-  const toFulfill = sales.filter((o) => o.paid && o.status !== 'delivered').length;
+  const totalEarnings = sales.reduce((s, o) => s + getMyEarnings(o), 0);
+  const toFulfill = sales.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  const delivered = sales.filter((o) => o.status === 'delivered').length;
 
   const stats = [
     { icon: 'fa-cart-shopping', label: 'Total Sales', value: sales.length, color: 'var(--primary)' },
     { icon: 'fa-naira-sign', label: 'Earnings', value: formatPrice(totalEarnings), color: 'var(--success)' },
-    { icon: 'fa-clock', label: 'Awaiting Pay', value: pending, color: 'var(--accent)' },
-    { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--danger)' },
+    { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--accent)' },
+    { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
   ];
 
   let filtered = sales;
-  if (filter === 'unpaid') filtered = sales.filter((o) => !o.paid);
-  else if (filter === 'paid') filtered = sales.filter((o) => o.paid);
-  else if (filter === 'processing') filtered = sales.filter((o) => o.paid && o.status !== 'delivered');
+  if (filter === 'delivered') filtered = sales.filter((o) => o.status === 'delivered');
 
   function handleStatusChange(orderId: string, status: OrderStatus) {
     updateStatusMutation.mutate({ orderId, status });
-  }
-
-  function handleVerifyPayment(orderId: string) {
-    verifyPaymentMutation.mutate(orderId);
   }
 
   return (
@@ -106,9 +98,9 @@ export default function MySalesPage() {
           </div>
 
           <div className="shop-tabs">
-            {(['all', 'unpaid', 'paid', 'processing'] as const).map((f) => (
+            {(['all', 'delivered'] as const).map((f) => (
               <button key={f} className={`shop-tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'All Sales' : f === 'unpaid' ? 'Awaiting Payment' : f === 'paid' ? 'Paid' : 'To Fulfill'}
+                {f === 'all' ? 'All Sales' : 'Delivered'}
               </button>
             ))}
           </div>
@@ -128,7 +120,7 @@ export default function MySalesPage() {
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Earnings</th><th>Date</th><th>Payment</th><th>Fulfillment</th>
+                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Earnings</th><th>Date</th><th>Fulfillment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -143,37 +135,21 @@ export default function MySalesPage() {
                       <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(getMyEarnings(order))}</td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>
-                        {order.paid ? (
-                          <span className="status-delivered">Paid</span>
-                        ) : order.paymentSubmitted ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                            <span className="status-pending">Submitted — verify</span>
-                            <button
-                              onClick={() => handleVerifyPayment(order.id)}
-                              className="btn-primary btn-sm btn-inline"
-                              style={{ padding: '4px 8px', fontSize: 11 }}
-                            >
-                              <i className="fa-solid fa-check"></i> Confirm Received
-                            </button>
-                          </div>
+                        {order.status === 'cancelled' ? (
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>Cancelled</span>
+                        ) : order.status === 'delivered' ? (
+                          <span className="status-delivered">Delivered</span>
                         ) : (
-                          <span className="status-pending">Unpaid</span>
-                        )}
-                      </td>
-                      <td>
-                        {order.paid ? (
                           <select
                             value={order.status}
                             onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
                             style={{ border: '1.5px solid var(--border-mid)', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
                           >
+                            <option value="pending" disabled>Pending</option>
                             <option value="confirmed">Confirmed</option>
-                            <option value="processing">Processing</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
                           </select>
-                        ) : (
-                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>Awaiting payment</span>
                         )}
                       </td>
                     </tr>

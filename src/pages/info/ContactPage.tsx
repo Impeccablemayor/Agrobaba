@@ -7,7 +7,7 @@ const FAQS = [
   ['How do I become a verified seller?', "After registering, complete your profile and contact our support team. We'll verify your identity and business details. Verified sellers get a badge and appear higher in search results."],
   ['Can anyone post a demand?', 'Yes! Any registered user can post a demand — whether you\'re a buyer, restaurant, supermarket or individual. Simply register, go to Post a Demand and describe what you need.'],
   ['Is registration free?', 'Yes! Registration is completely free for all user types — farmers, buyers, agro-dealers and service providers. We only charge a small 5% commission on completed transactions.'],
-  ['What payment methods are accepted?', 'Currently we accept bank transfer (GTBank), Flutterwave, Paystack, and PayPal. More payment options coming soon.'],
+  ['What payment methods are accepted?', 'Orders are placed securely with Agrobaba, and payment options will be announced here as they go live. More payment options coming soon.'],
 ];
 
 export default function ContactPage() {
