@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { showToast } from '../../lib/toastBus';
+import { isValidPhoneNumber, normalizePhoneNumber, PHONE_INPUT_PATTERN } from '../../lib/validation';
 
 export default function EditAccountPage() {
   const { user, updateUser } = useAuth();
@@ -20,8 +22,20 @@ export default function EditAccountPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    if (contact && !isValidPhoneNumber(contact)) {
+      showToast('Please enter a valid phone number (e.g. 08012345678 or +2348012345678).', 'error');
+      return;
+    }
     setSubmitting(true);
-    const ok = await updateUser({ name, contact, businessName, address, city, country, bio });
+    const ok = await updateUser({
+      name,
+      contact: contact ? normalizePhoneNumber(contact) : contact,
+      businessName,
+      address,
+      city,
+      country,
+      bio,
+    });
     if (ok) {
       navigate('/account');
       return;
@@ -71,7 +85,15 @@ export default function EditAccountPage() {
             <div className="col-md-6">
               <div className="field">
                 <label>Phone Number <span className="req">*</span></label>
-                <input type="tel" placeholder="e.g. 08012345678" required value={contact} onChange={(e) => setContact(e.target.value)} />
+                <input
+                  type="tel"
+                  placeholder="e.g. 08012345678 or +2348012345678"
+                  required
+                  pattern={PHONE_INPUT_PATTERN}
+                  title="Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678)"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                />
               </div>
             </div>
             <div className="col-md-6">

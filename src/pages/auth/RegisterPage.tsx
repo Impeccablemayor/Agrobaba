@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
+import { isValidPhoneNumber, normalizePhoneNumber, PHONE_INPUT_PATTERN } from '../../lib/validation';
 import type { Role } from '../../types';
 
 const ROLE_OPTIONS: { role: Role; icon: string; label: string; blurb: string }[] = [
@@ -33,8 +34,12 @@ export default function RegisterPage() {
       showToast('Please accept the Terms of Service to continue.', 'error');
       return;
     }
-    if (!form.name || !form.email || !form.password) {
+    if (!form.name || !form.email || !form.password || !form.contact) {
       showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    if (!isValidPhoneNumber(form.contact)) {
+      showToast('Please enter a valid phone number (e.g. 08012345678 or +2348012345678).', 'error');
       return;
     }
     if (form.password.length < 8) {
@@ -42,7 +47,11 @@ export default function RegisterPage() {
       return;
     }
     setSubmitting(true);
-    const success = await register({ ...form, role });
+    const success = await register({
+      ...form,
+      contact: normalizePhoneNumber(form.contact),
+      role,
+    });
     if (success) {
       navigate('/onboarding');
       return;
@@ -142,7 +151,16 @@ export default function RegisterPage() {
               <div className="col-md-6">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Phone Number <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input type="tel" placeholder="+234..." required autoComplete="tel" value={form.contact} onChange={(e) => update('contact', e.target.value)} />
+                  <input
+                    type="tel"
+                    placeholder="+234... or 080..."
+                    required
+                    autoComplete="tel"
+                    pattern={PHONE_INPUT_PATTERN}
+                    title="Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678)"
+                    value={form.contact}
+                    onChange={(e) => update('contact', e.target.value)}
+                  />
                 </div>
               </div>
               <div className="col-md-6">
