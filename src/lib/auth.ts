@@ -47,18 +47,30 @@ export interface RegisterInput {
   password: string;
   role?: Role;
   country?: string;
+  state?: string;
   city?: string;
   contact?: string;
   address?: string;
+  acceptedTerms?: boolean;
 }
 
 export async function registerUser(data: RegisterInput): Promise<boolean> {
   try {
-    const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/register', {
+    const response = await api.post<{
+      token: string; id: number; role: string; name: string; email: string;
+      country?: string | null; state?: string | null; city?: string | null;
+      contact?: string | null; address?: string | null;
+    }>('/api/auth/register', {
       name: data.name,
       email: data.email.toLowerCase(),
       password: data.password,
       role: data.role || 'buyer',
+      country: data.country || '',
+      state: data.state || '',
+      city: data.city || '',
+      contact: data.contact || '',
+      address: data.address || '',
+      acceptedTerms: data.acceptedTerms === true,
     });
 
     setAuthToken(response.token);
@@ -68,10 +80,11 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
       name: response.name,
       email: response.email,
       role: response.role as Role,
-      country: data.country || '',
-      city: data.city || '',
-      contact: data.contact || '',
-      address: data.address || '',
+      country: response.country ?? data.country ?? '',
+      state: response.state ?? data.state ?? '',
+      city: response.city ?? data.city ?? '',
+      contact: response.contact ?? data.contact ?? '',
+      address: response.address ?? data.address ?? '',
       verified: false,
       businessVerified: false,
       joinedAt: new Date().toISOString(),
@@ -202,6 +215,7 @@ interface ProfileResponse {
   email: string;
   role: string;
   country: string | null;
+  state: string | null;
   city: string | null;
   contact: string | null;
   address: string | null;
@@ -219,6 +233,7 @@ function mapProfileToSafeUser(profile: ProfileResponse): SafeUser {
     email: profile.email,
     role: profile.role as Role,
     country: profile.country || '',
+    state: profile.state || '',
     city: profile.city || '',
     contact: profile.contact || '',
     address: profile.address || '',

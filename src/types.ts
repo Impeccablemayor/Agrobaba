@@ -176,6 +176,7 @@ export interface User {
   password: string;
   role: Role;
   country: string;
+  state?: string;
   city: string;
   contact: string;
   address: string;

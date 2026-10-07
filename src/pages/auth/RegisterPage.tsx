@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const [termsChecked, setTermsChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
-    name: '', email: '', password: '', contact: '', country: 'Nigeria', city: '', address: '',
+    name: '', email: '', password: '', contact: '', country: 'Nigeria', state: '', city: '', address: '',
   });
 
   function update(field: keyof typeof form, value: string) {
@@ -34,7 +34,7 @@ export default function RegisterPage() {
       showToast('Please accept the Terms of Service to continue.', 'error');
       return;
     }
-    if (!form.name || !form.email || !form.password || !form.contact) {
+    if (!form.name || !form.email || !form.password || !form.contact || !form.country || !form.state || !form.city) {
       showToast('Please fill in all required fields.', 'error');
       return;
     }
@@ -51,6 +51,7 @@ export default function RegisterPage() {
       ...form,
       contact: normalizePhoneNumber(form.contact),
       role,
+      acceptedTerms: termsChecked,
     });
     if (success) {
       navigate('/onboarding');
@@ -163,16 +164,22 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Country <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input type="text" placeholder="Nigeria" required value={form.country} onChange={(e) => update('country', e.target.value)} />
                 </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>City / State <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input type="text" placeholder="e.g. Ibadan, Oyo" required value={form.city} onChange={(e) => update('city', e.target.value)} />
+                  <label>State <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input type="text" placeholder="e.g. Lagos" required value={form.state} onChange={(e) => update('state', e.target.value)} />
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>City <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input type="text" placeholder="e.g. Ikeja" required value={form.city} onChange={(e) => update('city', e.target.value)} />
                 </div>
               </div>
               <div className="col-12">
