@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { placeOrder } from '../../lib/orders';
@@ -9,6 +10,8 @@ import { resolveUnitPrice } from '../../lib/units';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice } from '../../lib/format';
 import { groupCartBySeller } from '../../lib/cart';
+import { prefillFromUser } from '../../lib/locationSelect';
+import { locationLine, type LocationSelection } from '../../lib/locations';
 import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
@@ -25,8 +28,15 @@ export default function CheckoutPage() {
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.contact || '');
   const [address, setAddress] = useState(user?.address || '');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
+  const [location, setLocation] = useState<LocationSelection>(() => {
+    const prefill = prefillFromUser(user);
+    return {
+      stateId: prefill.stateId ?? null,
+      stateName: prefill.stateName ?? null,
+      cityId: prefill.cityId ?? null,
+      cityName: prefill.cityName ?? null,
+    };
+  });
   const [note, setNote] = useState('');
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -119,7 +129,7 @@ export default function CheckoutPage() {
       }
     }
     setPlacingOrder(true);
-    const addr = [address.trim(), city.trim(), state.trim()].filter(Boolean).join(', ');
+    const addr = [address.trim(), locationLine(location.cityName, location.stateName)].filter(Boolean).join(', ');
     const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
@@ -209,18 +219,13 @@ export default function CheckoutPage() {
               </div>
 
               <div className="row">
-                <div className="col-md-6">
-                  <div className="field">
-                    <label>City / Town</label>
-                    <input type="text" placeholder="e.g. Ibadan" value={city} onChange={(e) => setCity(e.target.value)} />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="field">
-                    <label>State</label>
-                    <input type="text" placeholder="e.g. Oyo State" value={state} onChange={(e) => setState(e.target.value)} />
-                  </div>
-                </div>
+                <StateCitySelect
+                  idPrefix="checkout"
+                  fieldClassName="field"
+                  wrapperClassName="col-md-6"
+                  initial={prefillFromUser(user)}
+                  onChange={setLocation}
+                />
               </div>
 
               <div className="field" style={{ marginBottom: 0 }}>

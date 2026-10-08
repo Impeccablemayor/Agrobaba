@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
+import { prefillFromUser } from '../../lib/locationSelect';
+import { buildLocationPayload, type LocationSelection } from '../../lib/locations';
 import { isValidPhoneNumber, normalizePhoneNumber, PHONE_INPUT_PATTERN } from '../../lib/validation';
 
 export default function EditAccountPage() {
@@ -12,9 +15,17 @@ export default function EditAccountPage() {
   const [contact, setContact] = useState(user?.contact || '');
   const [businessName, setBusinessName] = useState(user?.businessName || '');
   const [address, setAddress] = useState(user?.address || '');
-  const [city, setCity] = useState(user?.city || '');
   const [country, setCountry] = useState(user?.country || '');
   const [bio, setBio] = useState(user?.bio || '');
+  const [location, setLocation] = useState<LocationSelection>(() => {
+    const prefill = prefillFromUser(user);
+    return {
+      stateId: prefill.stateId ?? null,
+      stateName: null,
+      cityId: prefill.cityId ?? null,
+      cityName: null,
+    };
+  });
   const [submitting, setSubmitting] = useState(false);
 
   if (!user) return null;
@@ -26,15 +37,20 @@ export default function EditAccountPage() {
       showToast('Please enter a valid phone number (e.g. 08012345678 or +2348012345678).', 'error');
       return;
     }
+    const locationIds = buildLocationPayload(location);
+    if (location.stateId !== null && !locationIds) {
+      showToast('Please select a city for the chosen state.', 'error');
+      return;
+    }
     setSubmitting(true);
     const ok = await updateUser({
       name,
       contact: contact ? normalizePhoneNumber(contact) : contact,
       businessName,
       address,
-      city,
       country,
       bio,
+      ...(locationIds ?? {}),
     });
     if (ok) {
       navigate('/account');
@@ -113,18 +129,18 @@ export default function EditAccountPage() {
           </div>
 
           <div className="row">
-            <div className="col-md-6">
-              <div className="field">
-                <label>City / Town</label>
-                <input type="text" placeholder="e.g. Ibadan" value={city} onChange={(e) => setCity(e.target.value)} />
-              </div>
-            </div>
-            <div className="col-md-6">
-              <div className="field">
-                <label>Country</label>
-                <input type="text" placeholder="e.g. Nigeria" value={country} onChange={(e) => setCountry(e.target.value)} />
-              </div>
-            </div>
+            <StateCitySelect
+              idPrefix="edit-account"
+              fieldClassName="field"
+              wrapperClassName="col-md-6"
+              initial={prefillFromUser(user)}
+              onChange={setLocation}
+            />
+          </div>
+
+          <div className="field">
+            <label>Country</label>
+            <input type="text" placeholder="e.g. Nigeria" value={country} onChange={(e) => setCountry(e.target.value)} />
           </div>
 
           <div className="field" style={{ marginBottom: 0 }}>

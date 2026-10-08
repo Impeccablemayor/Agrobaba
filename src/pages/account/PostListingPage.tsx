@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
 import { addProduct } from '../../lib/products';
 import { UNIT_TYPES, unitLabel, type UnitType } from '../../lib/units';
@@ -7,6 +8,8 @@ import { getAllowedSectionCodesForRole, findCategory, hasChildren } from '../../
 import { useCategories } from '../../hooks/queries/useCategories';
 import { showToast } from '../../lib/toastBus';
 import { CategoryPicker } from '../../components/CategoryPicker';
+import { prefillFromUser } from '../../lib/locationSelect';
+import { locationLine, type LocationSelection } from '../../lib/locations';
 import type { ProductType, Role } from '../../types';
 
 interface RoleConfig {
@@ -101,7 +104,15 @@ export default function PostListingPage() {
   const [priceTiers, setPriceTiers] = useState<{ minQuantity: string; pricePerUnit: string }[]>([]);
   const [negotiated, setNegotiated] = useState(false);
   const [size, setSize] = useState('Standard');
-  const [location, setLocation] = useState(user ? [user.city, user.country].filter(Boolean).join(', ') : '');
+  const [location, setLocation] = useState<LocationSelection>(() => {
+    const prefill = prefillFromUser(user);
+    return {
+      stateId: prefill.stateId ?? null,
+      stateName: prefill.stateName ?? null,
+      cityId: prefill.cityId ?? null,
+      cityName: prefill.cityName ?? null,
+    };
+  });
   const [discount, setDiscount] = useState('0');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<string | null>(null);
@@ -181,11 +192,16 @@ export default function PostListingPage() {
       showToast('Please set a price, or mark this listing as negotiated.', 'error');
       return;
     }
+    const locationText = locationLine(location.cityName, location.stateName);
+    if (!location.cityName || !location.stateName) {
+      showToast('Please select your state and city.', 'error');
+      return;
+    }
     setSubmitting(true);
     const listingKind = selected.allowedListingKinds[0];
     const result = await addProduct({
       name, categoryId, listingKind, price: price || undefined, quantity, unit: effectiveUnit,
-      size: c.showSize ? size : 'Standard', location, discount, description,
+      size: c.showSize ? size : 'Standard', location: locationText, discount, description,
       type: c.type, image,
       unitType: unitType || null,
       minOrderQuantity: minOrderQuantity || null,
@@ -354,12 +370,18 @@ export default function PostListingPage() {
                 </div>
               </div>
             )}
-            <div className={c.showSize ? 'col-md-6' : 'col-md-12'}>
-              <div className="form-group">
-                <label>Location <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input type="text" placeholder="e.g. Ibadan, Oyo State" required value={location} onChange={(e) => setLocation(e.target.value)} />
-              </div>
-            </div>
+          </div>
+
+          <div className="row g-3">
+            <StateCitySelect
+              idPrefix="post-listing"
+              fieldClassName="form-group"
+              wrapperClassName="col-md-6"
+              initial={prefillFromUser(user)}
+              required
+              cityLabel="City"
+              onChange={setLocation}
+            />
           </div>
 
           <div className="form-group">

@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
+import { buildLocationPayload, EMPTY_LOCATION, type LocationSelection } from '../../lib/locations';
 import { isValidPhoneNumber, normalizePhoneNumber, PHONE_INPUT_PATTERN } from '../../lib/validation';
 import type { Role } from '../../types';
 
@@ -20,8 +22,9 @@ export default function RegisterPage() {
   const [termsChecked, setTermsChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
-    name: '', email: '', password: '', contact: '', country: 'Nigeria', state: '', city: '', address: '',
+    name: '', email: '', password: '', contact: '', country: 'Nigeria', address: '',
   });
+  const [location, setLocation] = useState<LocationSelection>(EMPTY_LOCATION);
 
   function update(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -34,8 +37,13 @@ export default function RegisterPage() {
       showToast('Please accept the Terms of Service to continue.', 'error');
       return;
     }
-    if (!form.name || !form.email || !form.password || !form.contact || !form.country || !form.state || !form.city) {
+    if (!form.name || !form.email || !form.password || !form.contact || !form.country) {
       showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    const locationIds = buildLocationPayload(location);
+    if (!locationIds) {
+      showToast('Please select your state and city.', 'error');
       return;
     }
     if (!isValidPhoneNumber(form.contact)) {
@@ -52,6 +60,8 @@ export default function RegisterPage() {
       contact: normalizePhoneNumber(form.contact),
       role,
       acceptedTerms: termsChecked,
+      stateId: locationIds.stateId,
+      cityId: locationIds.cityId,
     });
     if (success) {
       navigate('/onboarding');
@@ -170,18 +180,15 @@ export default function RegisterPage() {
                   <input type="text" placeholder="Nigeria" required value={form.country} onChange={(e) => update('country', e.target.value)} />
                 </div>
               </div>
-              <div className="col-md-4">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>State <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input type="text" placeholder="e.g. Lagos" required value={form.state} onChange={(e) => update('state', e.target.value)} />
-                </div>
-              </div>
-              <div className="col-md-4">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>City <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input type="text" placeholder="e.g. Ikeja" required value={form.city} onChange={(e) => update('city', e.target.value)} />
-                </div>
-              </div>
+              <StateCitySelect
+                idPrefix="register"
+                fieldClassName="form-group"
+                wrapperClassName="col-md-4"
+                wrapperStyle={{ marginBottom: 0 }}
+                required
+                cityLabel="City"
+                onChange={setLocation}
+              />
               <div className="col-12">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Delivery / Business Address</label>

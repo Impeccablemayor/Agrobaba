@@ -49,6 +49,9 @@ export interface RegisterInput {
   country?: string;
   state?: string;
   city?: string;
+  /** Dropdown clients send the validated catalogue pair; the backend then ignores any strings. */
+  stateId?: number;
+  cityId?: number;
   contact?: string;
   address?: string;
   acceptedTerms?: boolean;
@@ -59,6 +62,7 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
     const response = await api.post<{
       token: string; id: number; role: string; name: string; email: string;
       country?: string | null; state?: string | null; city?: string | null;
+      stateId?: number | null; cityId?: number | null;
       contact?: string | null; address?: string | null;
     }>('/api/auth/register', {
       name: data.name,
@@ -68,6 +72,7 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
       country: data.country || '',
       state: data.state || '',
       city: data.city || '',
+      ...(data.stateId != null && data.cityId != null ? { stateId: data.stateId, cityId: data.cityId } : {}),
       contact: data.contact || '',
       address: data.address || '',
       acceptedTerms: data.acceptedTerms === true,
@@ -83,6 +88,8 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
       country: response.country ?? data.country ?? '',
       state: response.state ?? data.state ?? '',
       city: response.city ?? data.city ?? '',
+      stateId: response.stateId ?? null,
+      cityId: response.cityId ?? null,
       contact: response.contact ?? data.contact ?? '',
       address: response.address ?? data.address ?? '',
       verified: false,
@@ -217,6 +224,8 @@ interface ProfileResponse {
   country: string | null;
   state: string | null;
   city: string | null;
+  stateId: number | null;
+  cityId: number | null;
   contact: string | null;
   address: string | null;
   businessName: string | null;
@@ -235,6 +244,8 @@ function mapProfileToSafeUser(profile: ProfileResponse): SafeUser {
     country: profile.country || '',
     state: profile.state || '',
     city: profile.city || '',
+    stateId: profile.stateId ?? null,
+    cityId: profile.cityId ?? null,
     contact: profile.contact || '',
     address: profile.address || '',
     businessName: profile.businessName || undefined,
@@ -261,14 +272,18 @@ export async function updateUser(updatedData: Partial<User>): Promise<boolean> {
   if (!currentUser) return false;
 
   try {
+    // Location travels only as a matched stateId/cityId pair - and only when BOTH dropdowns were
+    // chosen. Sending neither ids nor strings makes the backend leave the stored location alone,
+    // which is right when a legacy city text has no catalogue match yet.
+    const hasLocationIds = updatedData.stateId != null && updatedData.cityId != null;
     const profile = await api.put<ProfileResponse>('/api/auth/profile', {
       name: updatedData.name,
       country: updatedData.country,
-      city: updatedData.city,
       contact: updatedData.contact,
       address: updatedData.address,
       businessName: updatedData.businessName,
       bio: updatedData.bio,
+      ...(hasLocationIds ? { stateId: updatedData.stateId, cityId: updatedData.cityId } : {}),
     });
 
     const safeUser = mapProfileToSafeUser(profile);

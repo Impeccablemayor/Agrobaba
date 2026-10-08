@@ -178,6 +178,10 @@ export interface User {
   country: string;
   state?: string;
   city: string;
+  /** Catalogue-backed State -> City pair chosen from the dropdowns; null while unlinked (legacy
+   *  text-only accounts) until the user re-selects both. Always travels as a matched pair. */
+  stateId?: number | null;
+  cityId?: number | null;
   contact: string;
   address: string;
   businessName?: string;
