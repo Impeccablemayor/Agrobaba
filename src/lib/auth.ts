@@ -336,6 +336,31 @@ export async function resetPassword(token: string, newPassword: string): Promise
   }
 }
 
+export async function verifyEmail(token: string): Promise<boolean> {
+  try {
+    await api.post('/api/auth/verify-email', { token });
+    showToast('Email verified. Your account is now fully active.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to verify this email link';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+/** Re-sends the verification email to the signed-in user. Requires an active session. */
+export async function resendVerificationEmail(): Promise<boolean> {
+  try {
+    await api.post('/api/auth/verify-email/resend');
+    showToast('Verification email sent. Please check your inbox.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to resend the verification email';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
 export async function deleteAccount(password: string): Promise<boolean> {
   const currentUser = getCurrentUser();
   if (!currentUser) return false;
@@ -354,4 +379,3 @@ export async function deleteAccount(password: string): Promise<boolean> {
     return false;
   }
 }
-

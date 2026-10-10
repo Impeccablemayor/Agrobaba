@@ -11,6 +11,7 @@ import AdminLoginPage from './pages/auth/AdminLoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import AboutPage from './pages/info/AboutPage';
 import ContactPage from './pages/info/ContactPage';
 import ServicesPage from './pages/info/ServicesPage';
@@ -61,6 +62,9 @@ function App() {
         <Route path="register" element={<GuestOnlyRoute><RegisterPage /></GuestOnlyRoute>} />
         <Route path="forgot-password" element={<GuestOnlyRoute><ForgotPasswordPage /></GuestOnlyRoute>} />
         <Route path="reset-password" element={<GuestOnlyRoute><ResetPasswordPage /></GuestOnlyRoute>} />
+        {/* Reachable by both guests and signed-in users: the link arrives by email and must work
+            regardless of the current session state. */}
+        <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="portal-77x-admin" element={<GuestOnlyRoute><AdminLoginPage /></GuestOnlyRoute>} />
 
         <Route path="about" element={<AboutPage />} />
