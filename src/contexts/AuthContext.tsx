@@ -153,6 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPhase('restoring');
     }
     try {
+      // A previous visit asked to log out but the server never confirmed it (offline, tab closed
+      // mid-flight). Settle that FIRST and unconditionally - complete the cookie-based revocation
+      // and go signed-out. Without this check, a still-live refresh cookie (or a surviving token)
+      // would silently restore the session the user explicitly ended.
+      if (authLib.hasUnconfirmedLogout()) {
+        const revoked = await authLib.revokePendingLogout();
+        if (revoked) authLib.confirmLogoutRevoked();
+        authLog('AUTH_PENDING_LOGOUT_SETTLED', { confirmed: revoked });
+        enterSignedOut();
+        return;
+      }
       if (authLib.hasStoredToken()) {
         const profile = await authLib.fetchProfile();
         setLive(profile);
@@ -315,7 +326,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout(): void {
-    void authLib.logoutBackend();
+    // Record the intent FIRST (in case the browser closes before the server call lands), then
+    // revoke on the server. Only a confirmed server-side revocation clears the marker.
+    authLib.requestLogout();
+    void authLib.logoutBackend().then((revoked) => {
+      if (revoked) authLib.confirmLogoutRevoked();
+    });
     authLib.logoutUser();
     setUser(null);
     writeReturnTo(null);

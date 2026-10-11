@@ -1,7 +1,8 @@
 import { KEYS, getItem, setItem } from './storage';
 import { showToast } from './toastBus';
-import { api, ApiError, authRefresher, setAuthToken } from './api';
-import { decodeJwtExp } from './refresh';
+import { api, ApiError, authRefresher, getApiBaseUrl, setAuthToken } from './api';
+import { decodeJwtExp, REFRESH_PROTECTION_HEADER, REFRESH_PROTECTION_VALUE } from './refresh';
+import { clearPendingRevoke, hasPendingRevoke, markPendingRevoke } from './pendingRevoke';
 import { authLog } from './authEvents';
 import type { Role, SafeUser, User } from '../types';
 
@@ -14,6 +15,9 @@ const PROACTIVE_RETRY_DELAY_MS = 60_000;
 const PROACTIVE_MAX_DELAY_MS = 60 * 60 * 1000;
 
 let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
+/* The logout POST currently in flight, if any, so a subsequent login can wait it out (never race a
+ * fresh cookie against a logout's Set-Cookie clear). */
+let logoutInFlight: Promise<boolean> | null = null;
 
 export function getCurrentUser(): SafeUser | null {
   return getItem<SafeUser>(KEYS.user);
@@ -59,6 +63,7 @@ export interface RegisterInput {
 
 export async function registerUser(data: RegisterInput): Promise<boolean> {
   try {
+    await settlePendingLogout();
     const response = await api.post<{
       token: string; id: number; role: string; name: string; email: string;
       country?: string | null; state?: string | null; city?: string | null;
@@ -79,6 +84,8 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
     });
 
     setAuthToken(response.token);
+    // A fresh, credential-proven session supersedes any pending logout intent.
+    clearPendingRevoke();
 
     const safeUser = {
       id: String(response.id),
@@ -110,8 +117,11 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
 
 export async function loginUser(email: string, password: string): Promise<boolean> {
   try {
+    await settlePendingLogout();
     const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/login', { email, password });
     setAuthToken(response.token);
+    // A fresh, credential-proven session supersedes any pending logout intent.
+    clearPendingRevoke();
 
     const safeUser = {
       id: String(response.id),
@@ -150,13 +160,75 @@ export function logoutUser(): void {
 /** Best-effort server-side session revocation (calls /api/auth/logout, which deletes the session
  *  row and clears the HttpOnly refresh cookie). Fire-and-forget on purpose: local logout must never
  *  be blocked by the network or the backend auth cache. The POST is issued while the token is still
- *  present so the Authorization header is attached. */
-export async function logoutBackend(): Promise<void> {
+ *  present so the Authorization header is attached. Resolves true when the server confirmed the
+ *  session is revoked and the cookie is gone. */
+export async function logoutBackend(): Promise<boolean> {
+  const run = (async () => {
+    try {
+      await api.post('/api/auth/logout');
+      return true;
+    } catch {
+      // Server-side logout is best-effort; the pending-revoke marker (see pendingRevoke.ts) makes
+      // sure the next app start completes the revocation instead of silently restoring the session.
+      return false;
+    }
+  })();
+  logoutInFlight = run;
   try {
-    await api.post('/api/auth/logout');
-  } catch {
-    // Server-side logout is best-effort; the browser-side refresh cookie dies on its next 401.
+    return await run;
+  } finally {
+    if (logoutInFlight === run) logoutInFlight = null;
   }
+}
+
+/** Await any logout POST still in flight before starting/rotating a session, so a slow logout can
+ *  never race a fresh login and clear the NEW cookie with its own Set-Cookie. */
+async function settlePendingLogout(): Promise<void> {
+  const pending = logoutInFlight;
+  if (pending) {
+    try {
+      await pending;
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
+/** Cookie-authenticated logout: revokes the session solely from the HttpOnly refresh cookie (using
+ *  the same X-Refresh-Protection CSRF defense as /refresh), so it works even after the short-lived
+ *  access token is gone. Returns true when the server responded - at which point it has revoked the
+ *  session (if ownership matched) and cleared the cookie. Called on boot when a logout was requested
+ *  but never confirmed by the server. */
+export async function revokePendingLogout(): Promise<boolean> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Records that the user asked to log out but the server has not yet confirmed the revocation, so a
+ *  re-opened browser can never silently log the session back in (see pendingRevoke.ts). */
+export function requestLogout(): void {
+  markPendingRevoke();
+}
+
+/** True when the previous visit never confirmed an explicit logout - the boot flow MUST settle it
+ *  before attempting any silent session restore. */
+export function hasUnconfirmedLogout(): boolean {
+  return hasPendingRevoke();
+}
+
+/** Called after the server confirmed revocation of a pending logout. */
+export function confirmLogoutRevoked(): void {
+  clearPendingRevoke();
 }
 
 function armProactiveTimer(delayMs: number, note?: Record<string, unknown>): void {
