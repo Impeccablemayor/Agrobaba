@@ -37,12 +37,14 @@ export interface PaymentStatusResponse {
 // Customer API helpers
 // ------------------------------------------------------------------
 
-/** Start a Paystack checkout for an order. The caller should redirect the browser to the
+/** Start a Flutterwave checkout for an order. The caller should redirect the browser to the
  *  returned authorizationUrl (or toast the init failure). Never throws — gateway failures
  *  surface as an INIT_FAILED status in the response instead. */
 export async function initializePayment(orderId: string): Promise<PaymentInitResult | null> {
   try {
-    return await api.post<PaymentInitResult>('/api/payments/initialize', { orderId: Number(orderId) });
+    return await api.post<PaymentInitResult>('/api/payments/initialize', {
+      orderId: Number(orderId),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to start payment';
     showToast(message, 'error');
@@ -50,7 +52,7 @@ export async function initializePayment(orderId: string): Promise<PaymentInitRes
   }
 }
 
-/** Verify a checkout with Paystack (informational — the webhook is the source of truth).
+/** Verify a checkout with the gateway (informational — the webhook is the source of truth).
  *  Returns null when the gateway is unreachable instead of throwing, so the callback page
  *  can fall back to polling getOrderPaymentStatus. */
 export async function verifyPayment(reference: string): Promise<PaymentVerifyResponse | null> {
@@ -76,8 +78,9 @@ export async function getOrderPaymentStatus(
   }
 }
 
-/** One-shot checkout redirect: start the payment and hand off to Paystack. Returns true
- *  when the redirect was initiated, false on failure (caller should show a retry CTA). */
+/** One-shot checkout redirect: start the Flutterwave payment and hand off to the gateway.
+ *  Returns true when the redirect was initiated, false on failure (caller should show a retry
+ *  CTA). */
 export async function beginCheckout(orderId: string): Promise<boolean> {
   const result = await initializePayment(orderId);
   if (!result) return false;
@@ -108,6 +111,7 @@ export interface PaymentAdminSummary {
   orderStatus: string | null;
   amountNaira: number;
   currency: string;
+  provider: string;
   status: string;
   channel: string | null;
   reference: string | null;
@@ -121,6 +125,7 @@ export interface AttemptView {
   id: number;
   attemptNumber: number;
   reference: string;
+  provider: string;
   status: string;
   amountNaira: number;
   channel: string | null;
@@ -219,7 +224,7 @@ export async function getAdminPaymentDetail(id: number): Promise<PaymentAdminDet
 export async function adminVerifyPayment(id: number): Promise<PaymentVerifyResponse | null> {
   try {
     const result = await api.post<PaymentVerifyResponse>(`/api/admin/payments/${id}/verify`);
-    showToast('Payment verified against Paystack.', 'success');
+    showToast('Payment verified against the provider.', 'success');
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Verification failed';
@@ -235,7 +240,7 @@ export async function adminRefundPayment(
 ): Promise<boolean> {
   try {
     await api.post(`/api/admin/payments/${id}/refund`, { amount, reason });
-    showToast('Refund request sent to Paystack.', 'success');
+    showToast('Refund request sent to the provider.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Refund failed';

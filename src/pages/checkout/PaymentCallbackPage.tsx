@@ -23,7 +23,10 @@ function statusLabel(raw: string | null | undefined): string {
 
 export default function PaymentCallbackPage() {
   const [searchParams] = useSearchParams();
-  const reference = searchParams.get('reference') || searchParams.get('trxref');
+  // Flutterwave appends ?tx_ref= (plus status/transaction_id, which we deliberately ignore —
+  // the backend verify is authoritative). reference/trxref are accepted as harmless fallbacks.
+  const reference =
+    searchParams.get('reference') || searchParams.get('trxref') || searchParams.get('tx_ref');
   const [phase, setPhase] = useState<Phase>(reference ? 'loading' : 'no-reference');
   const [data, setData] = useState<PaymentVerifyResponse | null>(null);
 
@@ -32,7 +35,7 @@ export default function PaymentCallbackPage() {
     let cancelled = false;
 
     async function run() {
-      // Give Paystack a short grace period before the first verify call — the redirect
+      // Give the gateway a short grace period before the first verify call — the redirect
       // sometimes arrives before the webhook has a chance to settle.
       await new Promise((r) => setTimeout(r, 1200));
       const result = await verifyPayment(reference!);
@@ -76,7 +79,7 @@ export default function PaymentCallbackPage() {
             <>
               <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: 32, color: 'var(--primary)', marginBottom: 16 }}></i>
               <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Confirming your payment…</h2>
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Please wait while we verify your transaction with Paystack.</p>
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Please wait while we verify your transaction with the payment provider.</p>
             </>
           )}
 
@@ -111,7 +114,7 @@ export default function PaymentCallbackPage() {
               <i className="fa-solid fa-hourglass-half" style={{ fontSize: 32, color: 'var(--accent, #d97706)', marginBottom: 16 }}></i>
               <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{statusLabel(data?.status)}</h2>
               <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
-                {data?.message || 'Your payment is being processed by Paystack. This may take a few seconds.'}
+                {data?.message || 'Your payment is being processed by the provider. This may take a few seconds.'}
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link to="/account/my-orders" className="btn-primary btn-inline btn-sm">
@@ -155,7 +158,7 @@ export default function PaymentCallbackPage() {
               <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>No payment reference found</h2>
               <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
                 We could not identify the payment you are looking for. If you just completed
-                a checkout, check your email from Paystack or view your order status below.
+                a checkout, check your email from the payment provider or view your order status below.
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link to="/account/my-orders" className="btn-primary btn-inline btn-sm">

@@ -112,7 +112,7 @@ export default function AdminPaymentsPage() {
     <div>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Payments</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Every Paystack payment on Agrobaba, with verification and refunds.</p>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Every payment on Agrobaba (via Flutterwave), with verification and refunds.</p>
       </div>
 
       {analytics && (
@@ -253,8 +253,11 @@ export default function AdminPaymentsPage() {
                     Status: <span className={`chip ${STATUS_CHIP[detail.payment.status] || ''}`} style={{ textTransform: 'capitalize' }}>{detail.payment.status.toLowerCase().replace('_', ' ')}</span>
                     {detail.payment.requiresReview && <span className="chip chip-danger">Needs review</span>}
                   </p>
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    Gateway: <strong style={{ textTransform: 'capitalize' }}>{detail.payment.provider || 'flutterwave'}</strong>
+                  </p>
                   {detail.payment.providerTransactionId && (
-                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>Paystack tx: <code>{detail.payment.providerTransactionId}</code></p>
+                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>Provider tx: <code>{detail.payment.providerTransactionId}</code></p>
                   )}
                   {detail.payment.paidAt && <p style={{ fontSize: 12, color: 'var(--muted)' }}>Paid {formatDate(detail.payment.paidAt)}</p>}
                 </div>
@@ -310,7 +313,7 @@ export default function AdminPaymentsPage() {
 
                 <div className="admin-drawer-section" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button className="btn-outline btn-inline btn-sm" onClick={() => setConfirmAction('verify')} disabled={verifyMutation.isPending}>
-                    <i className="fa-solid fa-rotate"></i> {verifyMutation.isPending ? 'Verifying…' : 'Verify with Paystack'}
+                    <i className="fa-solid fa-rotate"></i> {verifyMutation.isPending ? 'Verifying…' : 'Verify with provider'}
                   </button>
                   {canRefund && (
                     <button className="btn-outline btn-inline btn-sm" onClick={() => { setRefundAmount(String(maxRefundable || '')); setRefundReason(''); setRefundOpen(true); }}>
@@ -352,7 +355,7 @@ export default function AdminPaymentsPage() {
                 <textarea rows={2} placeholder="e.g. Seller couldn't fulfill the order" value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />
               </div>
               <button className="btn-primary btn-inline btn-sm" disabled={refundMutation.isPending} onClick={handleRefund}>
-                <i className="fa-solid fa-money-bill-transfer"></i> {refundMutation.isPending ? 'Sending refund…' : 'Send refund to Paystack'}
+                <i className="fa-solid fa-money-bill-transfer"></i> {refundMutation.isPending ? 'Sending refund…' : 'Send refund to provider'}
               </button>
             </div>
           </div>
@@ -362,7 +365,7 @@ export default function AdminPaymentsPage() {
       <ConfirmDialog
         open={confirmAction === 'verify'}
         title="Verify payment now?"
-        message={`Check this payment against Paystack and apply the true outcome (idempotent — safe to re-run).`}
+        message={`Check this payment against its provider and apply the true outcome (idempotent — safe to re-run).`}
         confirmLabel="Verify"
         onConfirm={handleVerify}
         onCancel={() => setConfirmAction(null)}

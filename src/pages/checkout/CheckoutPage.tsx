@@ -133,8 +133,9 @@ export default function CheckoutPage() {
     const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
-      // Payment redirect: the backend starts a Paystack checkout and returns the authorization
-      // URL. The browser must navigate to it for the hosted payment page — not an SPA push.
+      // Payment redirect: the backend starts a hosted checkout with the chosen gateway and
+      // returns the authorization URL. The browser must navigate to it for the hosted payment
+      // page — not an SPA push.
       if (order.paymentInitializationFailed) {
         showToast(
           'Order placed, but we could not start payment right now. You can retry from My Orders.',

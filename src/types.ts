@@ -416,9 +416,9 @@ export interface Order {
   updatedAt: string;
   /** Current payment status for this order (null when no payment attempt exists yet). */
   paymentStatus: PaymentStatus | null;
-  /** Paystack reference of the active checkout (null before a checkout was started). */
+  /** Gateway reference of the active checkout (null before a checkout was started). */
   paymentReference: string | null;
-  /** Authorization URL returned by Paystack when a checkout was just initiated. Null on
+  /** Authorization URL returned by the gateway when a checkout was just initiated. Null on
    *  list views — the frontend calls POST /api/payments/initialize on demand when the
    *  buyer clicks "Pay now". */
   paymentAuthorizationUrl: string | null;

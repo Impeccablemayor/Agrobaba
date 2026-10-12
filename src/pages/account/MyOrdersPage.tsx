@@ -307,7 +307,7 @@ export default function MyOrdersPage() {
                   style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
                 >
                   {payingOrderId === activeOrder.id
-                    ? <><i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Opening Paystack…</>
+                    ? <><i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Opening checkout…</>
                     : <><i className="fa-solid fa-credit-card"></i> Pay Now</>}
                 </button>
               )}
