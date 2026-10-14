@@ -19,6 +19,12 @@ interface ApiErrorShape {
 
 const MAX_RETRIES = 2;
 
+/** Hard ceiling for any single API request. A cold backend (e.g. a Render instance waking from
+ *  sleep) can otherwise leave a fetch pending until the platform drops the connection, which would
+ *  keep the app's session check spinning indefinitely. Bounded so callers always get a result and
+ *  can fall back to a recoverable (never "logged out") state. */
+const REQUEST_TIMEOUT_MS = 20_000;
+
 /** Error with an HTTP status, thrown whenever the backend responds but not with 2xx. This lets
  *  callers distinguish "backend rejected the request (status)" from "backend unreachable", which
  *  throws the raw fetch TypeError instead. */
@@ -45,16 +51,59 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** One fetch guarded by a hard timeout. The caller's own AbortSignal (e.g. a superseded search) is
+ *  still honored: aborting it aborts this fetch too, but it must never be retried. */
+async function fetchOnce(url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
+  const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+  const external = init.signal ?? null;
+  const onExternalAbort = () => controller?.abort();
+  if (controller && external) {
+    if (external.aborted) controller.abort();
+    else external.addEventListener('abort', onExternalAbort);
+  }
+  const timer =
+    controller && timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    return await fetch(url, { ...init, ...(controller ? { signal: controller.signal } : {}) });
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+    external?.removeEventListener('abort', onExternalAbort);
+  }
+}
+
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const external = init.signal ?? null;
   for (let attempt = 0; ; attempt++) {
+    let callerAborted = false;
+    const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+    const onExternalAbort = () => {
+      callerAborted = true;
+      controller?.abort();
+    };
+    if (controller && external) {
+      if (external.aborted) {
+        callerAborted = true;
+        controller.abort();
+      } else {
+        external.addEventListener('abort', onExternalAbort);
+      }
+    }
+    const timer =
+      controller && REQUEST_TIMEOUT_MS > 0
+        ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+        : null;
     try {
-      return await fetch(url, init);
+      return await fetch(url, { ...init, ...(controller ? { signal: controller.signal } : {}) });
     } catch (error) {
-      // An intentional abort (e.g. a newer search superseding this one) is not a failure - never retry it.
-      if (error instanceof DOMException && error.name === 'AbortError') throw error;
-      // Only retry a genuine network failure (server unreachable) — never a real HTTP error response.
+      // A caller-initiated abort (e.g. a newer search superseding this one) is not a failure and is
+      // never retried. A timeout or network failure IS retried, bounded, so a cold backend that
+      // temporarily refuses connections still gets a few chances.
+      if (callerAborted) throw error;
       if (attempt >= MAX_RETRIES) throw error;
       await sleep(300 * 2 ** attempt);
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+      external?.removeEventListener('abort', onExternalAbort);
     }
   }
 }
@@ -197,7 +246,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       // original request EXACTLY ONCE with the fresh token. No further 401 handling (no loop).
       headers.set('Authorization', `Bearer ${outcome.token}`);
       authLog('AUTH_RETRY', { path, status: 401 });
-      response = await fetch(url.toString(), { ...init, headers });
+      response = await fetchOnce(url.toString(), { ...init, headers });
     } else if (outcome.cause === 'session') {
       // The backend rejected the refresh cookie itself (401): the session is genuinely dead. Fire
       // the global re-auth/signed-out transition exactly once (guarded by the coordinator's

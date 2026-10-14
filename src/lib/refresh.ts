@@ -61,6 +61,11 @@ export const DEFAULT_LOCK_KEY = 'agrobaba-refresh-lock';
 export const DEFAULT_CHANNEL_NAME = 'agrobaba-auth';
 export const DEFAULT_UNAUTHORIZED_EVENT = 'agrobaba:unauthorized';
 
+// A refresh POST is the first request a cold backend sees, so it is given the widest window; still
+// strictly bounded, so a hung connection (e.g. a Render instance that never finishes booting) can
+// never leave the app in an infinite "checking session" state.
+export const DEFAULT_REFRESH_TIMEOUT_MS = 30_000;
+
 export const REFRESH_PROTECTION_HEADER = 'X-Refresh-Protection';
 export const REFRESH_PROTECTION_VALUE = 'agrobaba-auth-refresh-1';
 
@@ -110,6 +115,7 @@ export interface RefreshCoordinatorOptions {
   broadcast?: (message: unknown) => void;
   sleep?: (ms: number) => Promise<void>;
   locksPollMs?: number;
+  timeoutMs?: number;
 }
 
 export interface RefreshCoordinator {
@@ -190,6 +196,7 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
   const broadcast = options?.broadcast ?? (() => undefined);
   const sleep = options?.sleep ?? defaultSleep;
   const pollMs = options?.locksPollMs ?? LOCK_POLL_MS;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_REFRESH_TIMEOUT_MS;
   const maxFallbackWaits = options?.locksPollMs === undefined ? LOCK_ATTEMPTS : Math.max(1, Math.round((LOCK_ATTEMPTS * LOCK_POLL_MS) / Math.max(1, pollMs)));
 
   const url = buildRefreshUrl(refreshPath);
@@ -212,6 +219,11 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
   }
 
   async function performRefreshPost(): Promise<RefreshOutcome> {
+    const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+    const timer =
+      controller && timeoutMs > 0 && typeof setTimeout !== 'undefined'
+        ? setTimeout(() => controller.abort(), timeoutMs)
+        : null;
     try {
       const response = await fetchImpl(url, {
         method: 'POST',
@@ -220,6 +232,7 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
           'Content-Type': 'application/json',
           [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
         },
+        ...(controller ? { signal: controller.signal } : {}),
       });
 
       if (response.ok) {
@@ -242,9 +255,12 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
       // 403/5xx/anything else is NOT a valid "session over" signal and must not log the user out.
       return { ok: false, cause: 'infra' };
     } catch {
-      // Network failure / CORS timeout / connection refused - never let an infra problem destroy a
-      // valid session. The caller retries later (proactive scheduler / next request).
+      // Network failure / CORS timeout / connection refused / our own timeout abort - never let an
+      // infra problem destroy a valid session. The caller retries later (proactive scheduler /
+      // next request / the boot recovery loop).
       return { ok: false, cause: 'infra' };
+    } finally {
+      if (timer !== null) clearTimeout(timer);
     }
   }
 

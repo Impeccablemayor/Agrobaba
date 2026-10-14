@@ -147,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyAuth = useCallback(async (): Promise<void> => {
     authLog('AUTH_INITIALIZING');
+    const startedAt = Date.now();
     // Only show the restoring phase on a cold boot / explicit re-verify. In-flight refreshes from
     // the renewal loop keep whatever phase they're in; we just silently succeed or recover.
     if (stateRef.current.phase === 'signedOut') {
@@ -194,6 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Backend unreachable. Not a logout - keep identity for in-place recovery.
         enterDegraded();
       }
+    } finally {
+      // How long the boot/explicit session check took and how it settled. Lets the cold-start
+      // hypothesis be measured in the field (VITE_AUTH_LOG) without server-side log access.
+      authLog('AUTH_RESTORE_SETTLED', {
+        durationMs: Date.now() - startedAt,
+        phase: stateRef.current.phase,
+        authenticated: !!stateRef.current.user,
+      });
     }
   }, [setLive, beginReauth, enterSignedOut, enterDegraded]);
 

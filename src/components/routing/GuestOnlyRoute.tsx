@@ -1,27 +1,25 @@
-import { useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCurrentUser } from '../../lib/auth';
 import { PageLoadingSpinner } from '../LoadingSpinner';
 
 export function GuestOnlyRoute({ children }: { children: ReactNode }) {
   const { user, phase } = useAuth();
-  // Captured once, the first time loading resolves - deliberately NOT reactive to every `user`
-  // change. Otherwise a fresh login/register on this very page (which sets `user` while still
-  // mounted here) races this guard's redirect against the page's own post-success navigate(),
-  // and this guard can win, sending a just-registered user to /account even when the page meant
-  // to send them elsewhere (e.g. RegisterPage -> /onboarding). This only needs to catch someone
-  // who was ALREADY signed in before landing on /login or /register.
-  const wasAlreadyAuthenticated = useRef<boolean | null>(null);
+  // Captured ONCE, synchronously at mount, from the locally cached (server-confirmed) user. This is
+  // deliberately a mount-time snapshot rather than the reactive `user`: a fresh login/register on
+  // this very page sets `user` while still mounted here and must NOT be treated as "was already
+  // signed in", or this guard's redirect races the page's own post-success navigate() (e.g.
+  // RegisterPage -> /onboarding). The snapshot predates any in-page login, so the race cannot occur.
+  const [hadSessionOnMount] = useState<boolean>(() => getCurrentUser() !== null);
 
-  if (phase === 'restoring') {
+  // Only hold the page while we are re-confirming a session we already know about. With no prior
+  // session, the form is shown immediately - session verification never blocks a public auth page.
+  if (hadSessionOnMount && phase === 'restoring') {
     return <PageLoadingSpinner message="Checking your session…" />;
   }
 
-  if (wasAlreadyAuthenticated.current === null) {
-    wasAlreadyAuthenticated.current = !!user;
-  }
-
-  if (wasAlreadyAuthenticated.current) {
+  if (hadSessionOnMount && user) {
     return <Navigate to="/account" replace />;
   }
 

@@ -348,3 +348,27 @@ test('refresh() after an infra failure keeps working when the network returns', 
   assert.equal(second.token, 'recovered');
   assert.equal(coord.getToken(), 'recovered');
 });
+
+test('a hung refresh POST is bounded by timeoutMs and reported as infra (never logs the user out)', async () => {
+  const coord = createRefreshCoordinator({
+    storage: memoryStorage({ agrobaba_token: 'old-token' }),
+    // A fetch that honors the abort signal but otherwise never settles, mimicking a cold backend
+    // that accepts the connection and stalls instead of responding.
+    fetchImpl: (_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = (init as RequestInit).signal ?? undefined;
+        const abort = () => reject(new Error('The operation was aborted'));
+        if (signal) {
+          if (signal.aborted) abort();
+          else signal.addEventListener('abort', abort, { once: true });
+        }
+      }),
+    lockManager: null,
+    timeoutMs: 20,
+  });
+
+  const outcome = await coord.refresh();
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.cause, 'infra');
+  assert.equal(coord.getToken(), 'old-token');
+});
