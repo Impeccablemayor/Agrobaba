@@ -553,3 +553,16 @@ export interface VerificationHistoryEntry {
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface EmailMessage {
+  id: number;
+  providerMessageId?: string | null;
+  recipient: string;
+  subject: string;
+  workflow?: string | null;
+  status: 'SENT' | 'DELIVERED' | 'BOUNCED' | 'COMPLAINED' | 'DELAYED' | 'FAILED';
+  attempts: number;
+  lastErrorCategory?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

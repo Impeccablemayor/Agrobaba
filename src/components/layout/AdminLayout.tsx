@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', isActive: (p) => p === '/admin/coupons' },
   { to: '/admin/tickets', icon: 'fa-headset', label: 'Support Tickets', isActive: (p) => p === '/admin/tickets' },
   { to: '/admin/activity', icon: 'fa-clock-rotate-left', label: 'Admin Activity', isActive: (p) => p === '/admin/activity' },
+  { to: '/admin/emails', icon: 'fa-envelope', label: 'Email Logs', isActive: (p) => p === '/admin/emails' || p.startsWith('/admin/emails') },
 ];
 
 /** Best-effort admin search - order invoice numbers are the most common lookup, so route there
