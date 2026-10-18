@@ -1,4 +1,5 @@
 import { KEYS, getItem, setItem } from './storage';
+import { purgeLegacySharedCart } from './cart';
 import { showToast } from './toastBus';
 import { api, ApiError, authRefresher, getApiBaseUrl, setAuthToken } from './api';
 import { decodeJwtExp, REFRESH_PROTECTION_HEADER, REFRESH_PROTECTION_VALUE } from './refresh';
@@ -151,9 +152,9 @@ export async function loginUser(email: string, password: string): Promise<boolea
 export function logoutUser(): void {
   cancelProactiveRefresh();
   localStorage.removeItem(KEYS.user);
-  /* The cart is deliberately preserved across logout/session expiry: it is the user's own shopping
-     record, and wiping it on a token expiry is exactly the data loss this silent-refresh system
-     is meant to prevent. */
+  /* The cart is NOT preserved here: it is server-side and scoped to the account. CartContext
+     clears the in-memory copy the moment the authenticated user disappears, so the next account
+     that logs in on this browser can only ever see its OWN server cart. */
   setAuthToken(null);
 }
 
@@ -441,7 +442,9 @@ export async function deleteAccount(password: string): Promise<boolean> {
     await api.delete('/api/auth/account', { password });
     cancelProactiveRefresh();
     localStorage.removeItem(KEYS.user);
-    localStorage.removeItem(KEYS.cart);
+    // Best-effort drop of the pre-fix browser-wide cart blob; the server already deleted this
+    // user's cart rows as part of account deletion.
+    purgeLegacySharedCart();
     setAuthToken(null);
     showToast('Account deleted. Goodbye!', 'info');
     return true;

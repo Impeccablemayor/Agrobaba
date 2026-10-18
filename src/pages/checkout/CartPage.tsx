@@ -6,7 +6,7 @@ import { formatUnitQuantity } from '../../lib/units';
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cart, total, removeFromCart, updateQuantity } = useCart();
+  const { cart, total, loading, removeFromCart, updateQuantity } = useCart();
   const sellerGroups = groupCartBySeller(cart);
 
   return (
@@ -25,6 +25,7 @@ export default function CartPage() {
         </div>
 
         {cart.length === 0 ? (
+          loading ? null : (
           <div className="empty-cart">
             <i className="fa-solid fa-cart-shopping"></i>
             <p>Your cart is empty. Browse the shop and add some produce, inputs or equipment.</p>
@@ -32,6 +33,7 @@ export default function CartPage() {
               <i className="fa-solid fa-store"></i> Browse Shop
             </Link>
           </div>
+          )
         ) : (
           <div className="row g-4">
             <div className="col-lg-8">

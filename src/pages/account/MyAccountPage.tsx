@@ -8,7 +8,7 @@ import { useMyVerificationStatus } from '../../hooks/queries/useVerification';
 import { useProviderBookings } from '../../hooks/queries/useBookings';
 import { useRecommendedProducts, useMatchingDemands } from '../../hooks/queries/useHome';
 import { useMyProfileStatus } from '../../hooks/queries/usePersonalization';
-import { getCartCount } from '../../lib/cart';
+import { useCart } from '../../contexts/CartContext';
 import { formatDate, formatPrice, timeAgo } from '../../lib/format';
 import type { Role } from '../../types';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -128,6 +128,7 @@ const QUICK_ACTIONS: Record<Role, { href: string; icon: string; label: string; s
 
 export default function MyAccountPage() {
   const { user } = useAuth();
+  const { count: cartCount } = useCart();
 
   const productsQ = useMyProducts();
   const ordersQ = useMyOrders();
@@ -191,7 +192,7 @@ export default function MyAccountPage() {
     buyer: [
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--primary)' },
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--accent)' },
-      { icon: 'fa-cart-shopping', label: 'Cart Items', value: getCartCount(), color: 'var(--primary)' },
+      { icon: 'fa-cart-shopping', label: 'Cart Items', value: cartCount, color: 'var(--primary)' },
       { icon: 'fa-comments', label: 'Unread Msgs', value: unread, color: 'var(--danger)' },
     ],
     admin: [

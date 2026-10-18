@@ -16,7 +16,7 @@ import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
   const { user, phase, renewSession } = useAuth();
-  const { cart, total } = useCart();
+  const { cart, total, loading, clearCart } = useCart();
   const navigate = useNavigate();
   const orderPlaced = useRef(false);
   // Latest phase for the async submit handler (the closure must not read a stale phase after an
@@ -46,8 +46,10 @@ export default function CheckoutPage() {
   const [stockShortages, setStockShortages] = useState<string[]>([]);
 
   useEffect(() => {
-    if (cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
-  }, [cart.length, navigate]);
+    // Wait for the server cart load before deciding the cart is empty - mid-load it is [] but
+    // the user's real cart may still be arriving.
+    if (!loading && cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
+  }, [loading, cart.length, navigate]);
 
   // Stale-pricing + inventory check (P1): the server is the final source of truth for unit price
   // and stock, but a cart snapshot goes stale the moment a seller edits a listing. On checkout we
@@ -87,6 +89,7 @@ export default function CheckoutPage() {
     return () => { active = false; };
   }, [cart]);
 
+  if (loading) return null;
   if (cart.length === 0 && !orderPlaced.current) return null;
 
   const discountAmount = appliedCoupon
@@ -130,9 +133,12 @@ export default function CheckoutPage() {
     }
     setPlacingOrder(true);
     const addr = [address.trim(), locationLine(location.cityName, location.stateName)].filter(Boolean).join(', ');
-    const order = await placeOrder({ address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
+    const order = await placeOrder(cart, { address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
     if (order) {
       orderPlaced.current = true;
+      // The order is on the server; clear the (server-side) cart so state and backend move
+      // together. Best-effort: the order itself already succeeded.
+      void clearCart();
       // Payment redirect: the backend starts a hosted checkout with the chosen gateway and
       // returns the authorization URL. The browser must navigate to it for the hosted payment
       // page — not an SPA push.

@@ -1,6 +1,5 @@
 import { showToast } from './toastBus';
 import { getCurrentUser } from './auth';
-import { getCart, clearCart } from './cart';
 import { api } from './api';
 import { uid } from './format';
 import type { CartItem, Order, OrderStatus, PaymentStatus } from '../types';
@@ -92,22 +91,25 @@ function mapOrder(response: BackendOrderResponse): Order {
   };
 }
 
-export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Order | false> {
+/** Places an order from the caller's cart snapshot (the cart itself is server-side and owned by
+ *  the authenticated user - the backend re-prices every line and re-validates stock; clients send
+ *  only productId/quantity/size/acceptedQuoteId). On success the server cart is cleared by the
+ *  caller via CartContext.clearCart() so React state and backend state move together. */
+export async function placeOrder(cartItems: CartItem[], deliveryData: DeliveryInput = {}): Promise<Order | false> {
   const user = getCurrentUser();
   if (!user) {
     showToast('Please login to place an order.', 'warning');
     return false;
   }
 
-  const cart = getCart();
-  if (cart.length === 0) {
+  if (cartItems.length === 0) {
     showToast('Your cart is empty!', 'warning');
     return false;
   }
 
   try {
     const payload = {
-      items: cart.map((item) => ({
+      items: cartItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         size: item.size,
@@ -121,7 +123,6 @@ export async function placeOrder(deliveryData: DeliveryInput = {}): Promise<Orde
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);
     const order = mapOrder(response);
-    clearCart();
     sessionStorage.removeItem(IDEMPOTENCY_KEY);
     showToast('Order placed successfully!', 'success');
     return order;

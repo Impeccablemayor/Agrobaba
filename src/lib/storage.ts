@@ -1,6 +1,5 @@
 export const KEYS = {
   user: 'agrobaba_user',
-  cart: 'agrobaba_cart',
 } as const;
 
 export function getStore<T>(key: string): T[] {
