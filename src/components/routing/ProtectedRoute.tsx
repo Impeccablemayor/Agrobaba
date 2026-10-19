@@ -13,8 +13,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return <PageLoadingSpinner message="Checking your session…" />;
   }
 
-  // Re-authentication pending: identity is still known, so render the page beneath the global
-  // re-auth overlay (Phase C) rather than bouncing the user to a bare login page.
+  // Known identity (live session, or degraded-but-recoverable): render the page beneath the
+  // global connection banner - a recoverable state must never bounce the customer to login.
   if (user) {
     return <>{children}</>;
   }

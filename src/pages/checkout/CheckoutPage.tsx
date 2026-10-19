@@ -119,12 +119,14 @@ export default function CheckoutPage() {
     }
     // Auth gate (Phase 5): never create an order without a confirmed 'live' session. If we're not
     // yet live, try a silent renewal once; otherwise block and let the state machine decide
-    // (reauth overlay, degraded banner, or restoring spinner) rather than firing a doomed POST.
+    // (signed-out redirect, degraded banner, or restoring spinner) rather than firing a doomed POST.
     if (!isLive()) {
       await renewSession();
       if (!isLive()) {
-        if (phaseRef.current === 'reauth') {
-          showToast('Please confirm your session to continue with your order.', 'error');
+        if (phaseRef.current === 'signedOut') {
+          // A confirmed dead session has already been ended gracefully by AuthContext (toast +
+          // one-time login-page notice); here we only name the interrupted action.
+          showToast('Please sign in again to complete your order.', 'warning');
         } else {
           showToast('We could not confirm your session yet. Please try again in a moment.', 'error');
         }

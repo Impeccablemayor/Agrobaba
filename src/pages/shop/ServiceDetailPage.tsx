@@ -62,10 +62,12 @@ export default function ServiceDetailPage() {
       await renewSession();
       if (!isLive()) {
         showToast(
-          phaseRef.current === 'reauth'
-            ? 'Please confirm your session to book this service.'
+          phaseRef.current === 'signedOut'
+            // A confirmed dead session was already ended gracefully by AuthContext; name the
+            // interrupted action here so the customer knows why they are being sent to login.
+            ? 'Please sign in again to book this service.'
             : 'We could not confirm your session yet. Please try again in a moment.',
-          'error'
+          phaseRef.current === 'signedOut' ? 'warning' : 'error'
         );
         return;
       }

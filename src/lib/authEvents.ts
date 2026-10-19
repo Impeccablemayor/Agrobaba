@@ -9,8 +9,8 @@ let enabled: boolean | null = null;
 
 function isEnabled(): boolean {
   if (enabled === null) {
-    const env = import.meta.env as Record<string, unknown>;
-    enabled = env.DEV === true || env.VITE_AUTH_LOG === 'true';
+    const env = (import.meta as { env?: Record<string, unknown> }).env;
+    enabled = env?.DEV === true || env?.VITE_AUTH_LOG === 'true';
   }
   return enabled;
 }

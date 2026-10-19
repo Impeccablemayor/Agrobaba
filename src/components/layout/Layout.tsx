@@ -3,7 +3,6 @@ import { TopBar } from './TopBar';
 import { Navbar } from './Navbar';
 import { CategoryBar } from './CategoryBar';
 import { Footer } from './Footer';
-import { ReauthModal } from '../ReauthModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/portal-77x-admin'];
@@ -34,7 +33,6 @@ export function Layout() {
         <Outlet />
       </main>
       {!isAuthPage && <Footer />}
-      <ReauthModal />
     </>
   );
 }

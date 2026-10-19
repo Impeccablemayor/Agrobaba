@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCurrentUser } from '../../lib/auth';
+import { consumeSessionEnded } from '../../lib/sessionNotice';
 import { showToast } from '../../lib/toastBus';
 
 interface LocationState {
@@ -21,6 +22,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // One-time explanation for an INVOLUNTARY sign-out (expiry / revocation). Consumed on mount -
+  // AuthContext wrote the marker when the session ended; it survives the redirect to this page and
+  // is never shown twice.
+  const [sessionEnded] = useState(() => consumeSessionEnded());
 
   const from = incoming?.from;
   const redirectTo = from ? from.pathname + from.search : '/account';
@@ -90,6 +95,20 @@ export default function LoginPage() {
         <div className="auth-form">
           <h2>Welcome Back</h2>
           <p className="form-subtitle">Log in to your Agrobaba account to continue trading.</p>
+
+          {sessionEnded && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+                background: 'color-mix(in srgb, #d97706 12%, transparent)',
+                color: 'var(--text)', border: '1px solid color-mix(in srgb, #d97706 35%, transparent)',
+              }}
+            >
+              <i className="fa-solid fa-clock-rotate-left" style={{ color: '#d97706', marginRight: 8 }}></i>
+              Your session has ended. Please sign in again to continue.
+            </div>
+          )}
 
           {incoming?.notice && (
             <div

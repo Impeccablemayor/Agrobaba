@@ -7,10 +7,12 @@ import {
   isSessionRevokedMessage,
   decodeJwtExp,
   type RefreshCoordinator,
-} from './refresh';
-import { authLog } from './authEvents';
+} from './refresh.ts';
+import { authLog } from './authEvents.ts';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+const API_BASE_URL = (
+  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL || 'http://localhost:8080'
+).replace(/\/$/, '');
 
 interface ApiErrorShape {
   message?: string;

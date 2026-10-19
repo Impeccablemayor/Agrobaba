@@ -12,6 +12,8 @@ import { isAuthRejection, type LoginOutcome } from '../lib/auth';
 import { authRefresher, RefreshUnavailableError } from '../lib/api';
 import { DEFAULT_UNAUTHORIZED_EVENT, decodeJwtExp } from '../lib/refresh';
 import { authLog } from '../lib/authEvents';
+import { markSessionEnded } from '../lib/sessionNotice';
+import { showToast } from '../lib/toastBus';
 import type { RegisterInput } from '../lib/auth';
 import type { SafeUser, User } from '../types';
 
@@ -23,16 +25,20 @@ import type { SafeUser, User } from '../types';
  * refresh are NEVER mistaken for "logged out".
  *
  *   identity = 'authenticated' | 'anonymous' | 'unknown'
- *   phase    = 'restoring' | 'live' | 'degraded' | 'reauth' | 'signedOut'
+ *   phase    = 'restoring' | 'live' | 'degraded' | 'signedOut'
  *
  * The ONLY genuine signed-out state is identity='anonymous' AND phase='signedOut' - reached
- * exclusively through an explicit logout, delete-account, or an irrecoverable session failure
- * with no user to re-authenticate. Everything else (back-end unavailable, refresh retrying,
- * session expired but identity known) keeps `user` and a recoverable phase so the UI never
- * shows a bare "Login" for a recoverable session.
+ * exclusively through an explicit logout, delete-account, or a confirmed dead session. A confirmed
+ * dead session ends GRACEFULLY: the customer is signed out, browsing continues anonymously, the
+ * server-side cart stays attached to the account, and a one-time "your session has ended" notice
+ * (toast + banner on the login page) explains what happened. The app never demands a password in
+ * a modal - the backend has no concept of password re-confirmation, and forcing one on ordinary
+ * inactivity is what made the old re-auth modal a problem. Everything else (back-end unavailable,
+ * refresh retrying) keeps `user` and a recoverable phase so the UI never shows a bare "Login" for
+ * a recoverable session.
  */
 export type AuthIdentity = 'authenticated' | 'anonymous' | 'unknown';
-export type AuthPhase = 'restoring' | 'live' | 'degraded' | 'reauth' | 'signedOut';
+export type AuthPhase = 'restoring' | 'live' | 'degraded' | 'signedOut';
 
 /** Kept only as a derived, backward-compatible projection used by a few straggler consumers.
  *  Prefer {@link AuthPhase} and {@link AuthIdentity}. */
@@ -44,15 +50,9 @@ interface AuthContextValue {
   identity: AuthIdentity;
   phase: AuthPhase;
   status: AuthStatus;
-  /** Where to return the user after a graceful re-authentication (a valid Cart/Checkout/route). */
-  returnTo: string | null;
   login: (email: string, password: string) => Promise<LoginOutcome>;
   register: (data: RegisterInput) => Promise<boolean>;
   logout: () => void;
-  /** Re-authenticate an already-identified user (Phase C graceful re-auth). */
-  reauthenticate: (password: string) => Promise<boolean>;
-  /** Dismiss the re-auth prompt and go to the signed-out state explicitly. */
-  dismissReauth: () => void;
   /** Re-verify the stored JWT against Spring Boot. Called on boot and by manual retry. */
   verifyAuth: () => Promise<void>;
   /** Phase B silent renewal: refresh near-expiry tokens in the background (single-flight), and
@@ -71,28 +71,10 @@ export function isHealthySession(identity: AuthIdentity, phase: AuthPhase): bool
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const UNAUTHORIZED_EVENT = DEFAULT_UNAUTHORIZED_EVENT;
-const REAUTH_RETURNTO_KEY = 'agrobaba_reauth_returnTo';
-
-function readReturnTo(): string | null {
-  try {
-    return sessionStorage.getItem(REAUTH_RETURNTO_KEY);
-  } catch {
-    return null;
-  }
-}
-function writeReturnTo(value: string | null): void {
-  try {
-    if (value) sessionStorage.setItem(REAUTH_RETURNTO_KEY, value);
-    else sessionStorage.removeItem(REAUTH_RETURNTO_KEY);
-  } catch {
-    /* ignore */
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SafeUser | null>(null);
   const [phase, setPhase] = useState<AuthPhase>('restoring');
-  const [returnTo, setReturnTo] = useState<string | null>(readReturnTo());
   // Ref so the global 401 handler and refocus/recovery loop can read the latest state without
   // re-registering listeners, and so we never close over a stale user.
   const stateRef = useRef<{ user: SafeUser | null; phase: AuthPhase }>({ user: null, phase: 'restoring' });
@@ -108,35 +90,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phase === 'restoring' ? 'initializing'
       : phase === 'degraded' ? 'serverUnavailable'
         : phase === 'signedOut' ? 'unauthenticated'
-          : 'authenticated'; // live || reauth both present the authenticated identity.
+          : 'authenticated';
 
   const setLive = useCallback((u: SafeUser) => {
     setUser(u);
     setPhase('live');
-    const saved = readReturnTo();
-    if (saved) {
-      writeReturnTo(null);
-      setReturnTo(saved);
-    } else {
-      writeReturnTo(null);
-      setReturnTo(null);
-    }
   }, []);
 
-  const beginReauth = useCallback(() => {
-    // Preserve current location as the post-reauth destination (Phase C) - never lose it.
-    const path = (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '') || '/account';
-    writeReturnTo(path);
-    setReturnTo(path);
-    setPhase('reauth');
-    // Keep user + phase only; don't clear the token (re-auth will replace it).
+  /** Confirmed session death (refresh rejected with 401, revocation, delete elsewhere). Ends the
+   *  session the way every mainstream storefront does: sign out, keep browsing anonymously, keep
+   *  the server-side cart attached to the account, and tell the customer ONCE (toast now + a
+   *  one-time banner on the login page via sessionNotice). Never a password modal - the backend
+   *  rejected the session, not the person, and re-entering a password restores nothing extra.
+   *
+   *  Idempotent: repeated 401s, cross-tab broadcasts and heartbeats racing through here together
+   *  produce exactly one transition and one notice. Known identity is checked against both live
+   *  state and the locally cached profile so a cold boot after an absolute expiry still explains
+   *  itself instead of silently redirecting to login. */
+  const endSessionGracefully = useCallback(() => {
+    const known = stateRef.current.user ?? authLib.getCurrentUser();
+    if (!known && stateRef.current.phase === 'signedOut') return; // already signed out - no loop
+    authLib.logoutUser();
+    setUser(null);
+    setPhase('signedOut');
+    if (known) {
+      markSessionEnded();
+      showToast('Your session has ended. Please sign in again.', 'info');
+      authLog('AUTH_SESSION_ENDED_GRACEFULLY', { email: known.email });
+    }
   }, []);
 
   const enterSignedOut = useCallback(() => {
     authLib.logoutUser();
     setUser(null);
-    writeReturnTo(null);
-    setReturnTo(null);
     setPhase('signedOut');
   }, []);
 
@@ -174,10 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = await authLib.fetchProfile();
           setLive(profile);
         } else if (outcome.cause === 'session') {
-          // Backend rejected the refresh token itself. If we still know the user, that is a
-          // graceful re-auth (identity preserved); otherwise it's a plain signed-out state.
-          if (stateRef.current.user) beginReauth();
-          else enterSignedOut();
+          // Backend rejected the refresh token itself: the session is genuinely dead. End it
+          // gracefully (one-time notice) instead of demanding a password.
+          endSessionGracefully();
         } else {
           enterDegraded();
         }
@@ -186,8 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       if (isAuthRejection(error)) {
         // 401 on /me or on the silent refresh -> the session is genuinely gone.
-        if (stateRef.current.user) beginReauth();
-        else enterSignedOut();
+        endSessionGracefully();
       } else if (error instanceof RefreshUnavailableError) {
         // A 401 on /me meant refresh, but the refresh itself could not complete. Not a logout.
         enterDegraded();
@@ -204,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authenticated: !!stateRef.current.user,
       });
     }
-  }, [setLive, beginReauth, enterSignedOut, enterDegraded]);
+  }, [setLive, endSessionGracefully, enterSignedOut, enterDegraded]);
 
   useEffect(() => {
     void verifyAuth();
@@ -213,8 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Phase B - the shared silent-renewal path used by the visibility/online/focus/heartbeat
   // triggers below. It refreshes atomically (the coordinator is single-flight) and routes every
-  // outcome into the state machine - a live refresh is silent, a dead session is a graceful
-  // re-auth (identity kept), an infra failure is a degraded (recoverable) state.
+  // outcome into the state machine - a live refresh is silent, a dead session ends gracefully
+  // (signed out + one-time notice), an infra failure is a degraded (recoverable) state.
   const renewSession = useCallback(async (): Promise<void> => {
     if (stateRef.current.phase === 'restoring') return; // boot flow owns this
     const token = authRefresher.getToken();
@@ -227,20 +211,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await authLib.fetchProfile();
         setLive(profile);
       } else if (outcome.cause === 'session') {
-        if (stateRef.current.user) beginReauth();
-        else enterSignedOut();
+        endSessionGracefully();
       } else {
         enterDegraded();
       }
     } catch (error) {
       if (isAuthRejection(error)) {
-        if (stateRef.current.user) beginReauth();
-        else enterSignedOut();
+        endSessionGracefully();
       } else {
         enterDegraded();
       }
     }
-  }, [setLive, beginReauth, enterDegraded, enterSignedOut]);
+  }, [setLive, endSessionGracefully, enterDegraded]);
 
   // Phase B - tab refocus, visibility, and reconnecting to the network are the moments a user most
   // often notices the app is "stuck". Hook them all into silent renewal so an expired-but-recoverable
@@ -265,17 +247,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [renewSession]);
 
-  // Single global cleanup path for session death (401 refresh rejection, revocation, delete).
-  // Mid-session 401s with a known user transition to 'reauth' (graceful), NOT signed-out.
+  // Single global cleanup path for session death (401 refresh rejection, revocation, logout in
+  // another tab). A dead session ends gracefully - signed out with a one-time notice - never a
+  // password re-entry prompt.
   useEffect(() => {
     function handleUnauthorized() {
       authLog('AUTH_UNAUTHORIZED', { hadUser: !!stateRef.current.user, phase: stateRef.current.phase });
-      if (stateRef.current.user) beginReauth();
-      else enterSignedOut();
+      endSessionGracefully();
     }
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
-  }, [beginReauth, enterSignedOut]);
+  }, [endSessionGracefully]);
 
   // Proactive (pre-expiry) silent renewal: armed for exactly one timer while live. The loop lives
   // in auth.ts (Phase B); AuthContext just turns it on/off with the phase.
@@ -306,27 +288,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authLib.registerUser(data);
   }
 
-  /** Phase C: re-authenticate an already-identified user from the graceful prompt. On success the
-   *  session returns to 'live' and the previously-captured returnTo resumes (see setLive). */
-  async function reauthenticate(password: string): Promise<boolean> {
-    const current = stateRef.current.user;
-    if (!current) return false;
-    const outcome = await authLib.loginUser(current.email, password);
-    if (outcome === 'success') {
-      authLog('AUTH_REAUTH_SUCCEEDED', { email: current.email });
-      const u = authLib.getCurrentUser();
-      if (u) setLive(u);
-      else setPhase('live');
-      return true;
-    }
-    setPhase('reauth');
-    return false;
-  }
-
-  function dismissReauth(): void {
-    enterSignedOut();
-  }
-
   function logout(): void {
     // Record the intent FIRST (in case the browser closes before the server call lands), then
     // revoke on the server. Only a confirmed server-side revocation clears the marker.
@@ -336,8 +297,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     authLib.logoutUser();
     setUser(null);
-    writeReturnTo(null);
-    setReturnTo(null);
     setPhase('signedOut');
   }
 
@@ -355,8 +314,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const ok = await authLib.deleteAccount(password);
     if (ok) {
       setUser(null);
-      writeReturnTo(null);
-      setReturnTo(null);
       setPhase('signedOut');
     }
     return ok;
@@ -367,12 +324,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     identity,
     phase,
     status,
-    returnTo,
     login,
     register,
     logout,
-    reauthenticate,
-    dismissReauth,
     verifyAuth,
     renewSession,
     updateUser,
