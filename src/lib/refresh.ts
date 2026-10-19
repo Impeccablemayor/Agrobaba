@@ -212,10 +212,17 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
   }
 
   function setToken(token: string | null): void {
-    if (token) storage.setItem(tokenKey, token);
-    else storage.removeItem(tokenKey);
-    // A new token means the session is valid again for this coordinator instance.
-    alreadyInvalidated = false;
+    if (token) {
+      storage.setItem(tokenKey, token);
+      // A new token means a new session is valid again for this coordinator instance, so a later
+      // genuine death can be signalled and refreshes may resume.
+      alreadyInvalidated = false;
+    } else {
+      // Clearing the token (logout / dead-session cleanup) must NOT re-arm. We have already
+      // confirmed the session is gone; re-arming here is exactly what let a signed-out app keep
+      // POSTing /api/auth/refresh in a loop. A new login re-arms via the branch above.
+      storage.removeItem(tokenKey);
+    }
   }
 
   async function performRefreshPost(): Promise<RefreshOutcome> {
@@ -356,6 +363,10 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
   }
 
   function refresh(): Promise<RefreshOutcome> {
+    // Once the session is confirmed dead, stop POSTing entirely until a new token re-arms us.
+    // Without this, the heartbeat/refocus renewal and every 401'd request kept minting fresh POSTs
+    // against a session the backend had already rejected.
+    if (alreadyInvalidated) return Promise.resolve({ ok: false, cause: 'session' });
     if (inflight) return inflight;
 
     const run = async (): Promise<RefreshOutcome> => {

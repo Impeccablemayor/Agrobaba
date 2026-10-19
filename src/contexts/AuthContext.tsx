@@ -80,6 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef<{ user: SafeUser | null; phase: AuthPhase }>({ user: null, phase: 'restoring' });
   stateRef.current = { user, phase };
 
+  // Guards endSessionGracefully so a burst of 401s / a re-dispatched unauthorized event collapses to
+  // exactly ONE signed-out transition and ONE notice. Re-armed whenever a new session goes live.
+  const endedRef = useRef(false);
+
   const identity: AuthIdentity = user
     ? 'authenticated'
     : phase === 'restoring'
@@ -93,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : 'authenticated';
 
   const setLive = useCallback((u: SafeUser) => {
+    endedRef.current = false; // a new live session may report its own death later
     setUser(u);
     setPhase('live');
   }, []);
@@ -108,8 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    *  state and the locally cached profile so a cold boot after an absolute expiry still explains
    *  itself instead of silently redirecting to login. */
   const endSessionGracefully = useCallback(() => {
+    if (endedRef.current) return; // once per confirmed death - no duplicate notice, no re-entry
+    endedRef.current = true;
+    // Tell the refresh coordinator to stop minting tokens for a session the backend already
+    // rejected; without this, later 401s on the unread badges kept POSTing /api/auth/refresh.
+    authRefresher.signalSessionInvalid();
     const known = stateRef.current.user ?? authLib.getCurrentUser();
-    if (!known && stateRef.current.phase === 'signedOut') return; // already signed out - no loop
     authLib.logoutUser();
     setUser(null);
     setPhase('signedOut');
@@ -201,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // (signed out + one-time notice), an infra failure is a degraded (recoverable) state.
   const renewSession = useCallback(async (): Promise<void> => {
     if (stateRef.current.phase === 'restoring') return; // boot flow owns this
+    if (stateRef.current.phase === 'signedOut') return; // dead session - never retry the refresh
     const token = authRefresher.getToken();
     const exp = token ? decodeJwtExp(token) : null;
     const fresh = exp !== null && exp * 1000 - Date.now() > 60_000;

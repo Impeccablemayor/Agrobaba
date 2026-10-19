@@ -96,7 +96,7 @@ function refreshCalls(): FetchCall[] {
 function reset(nextHandler: (url: string, init: RequestInit) => Response): void {
   calls = [];
   handler = nextHandler;
-  setAuthToken(null); // clears the stored token AND re-arms the once-only invalidation guard
+  setAuthToken(null); // clears the stored token; the coordinator re-arms when a token is set again
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,6 +239,24 @@ test('403 from refresh is infra, not session death - credentials are kept', asyn
 
   await assert.rejects(api.get('/api/cart'), RefreshUnavailableError);
   assert.equal(authRefresher.getToken(), FRESH_TOKEN, '403 must not log the customer out');
+});
+
+test('after a confirmed dead session, later 401s do not POST refresh again', async () => {
+  let posts = 0;
+  reset((url) => {
+    if (url === REFRESH_URL) {
+      posts += 1;
+      return json({ message: 'Session expired or invalid.' }, 401);
+    }
+    return json({ message: 'nope' }, 401);
+  });
+  setAuthToken(FRESH_TOKEN); // re-arm the coordinator for this test
+
+  await assert.rejects(api.get('/api/cart'), (e: unknown) => e instanceof ApiError && e.status === 401);
+  assert.equal(posts, 1, 'the first death performs exactly one refresh POST');
+
+  await assert.rejects(api.get('/api/messages'), (e: unknown) => e instanceof ApiError && e.status === 401);
+  assert.equal(posts, 1, 'a later 401 must reuse the dead-session verdict, not POST refresh again');
 });
 
 test('a retry that is still 401 terminates with ApiError - no infinite refresh loop', async () => {

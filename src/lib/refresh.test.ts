@@ -326,6 +326,53 @@ test('setToken re-arms the revocation guard for the next login', () => {
   assert.equal(broadcasts(), 2);
 });
 
+test('refresh() short-circuits once the session is signalled dead (no further POSTs)', async () => {
+  let posts = 0;
+  const coord = createRefreshCoordinator({
+    storage: memoryStorage({ agrobaba_token: 'old-token' }),
+    fetchImpl: async () => {
+      posts++;
+      return jsonResponse(401, { message: 'Session expired or invalid.' });
+    },
+    lockManager: null,
+  });
+
+  const first = await coord.refresh();
+  assert.equal(first.cause, 'session');
+  assert.equal(posts, 1);
+
+  coord.signalSessionInvalid();
+  const second = await coord.refresh();
+  assert.equal(second.ok, false);
+  assert.equal(second.cause, 'session');
+  assert.equal(posts, 1, 'no second POST once the session is known dead');
+});
+
+test('clearing the token does not re-arm refreshes; a new token does', async () => {
+  let posts = 0;
+  const coord = createRefreshCoordinator({
+    storage: memoryStorage({ agrobaba_token: 'old-token' }),
+    fetchImpl: async () => {
+      posts++;
+      return jsonResponse(200, { token: 'minted' });
+    },
+    lockManager: null,
+  });
+
+  coord.signalSessionInvalid();
+  await coord.refresh();
+  assert.equal(posts, 0, 'a dead session never POSTs');
+
+  coord.setToken(null); // logout / dead-session cleanup
+  await coord.refresh();
+  assert.equal(posts, 0, 'clearing the token must not re-arm the refresh loop');
+
+  coord.setToken('token-after-relogin');
+  const ok = await coord.refresh();
+  assert.equal(ok.ok, true);
+  assert.equal(posts, 1, 'a new login re-arms and refreshes again');
+});
+
 test('refresh() after an infra failure keeps working when the network returns', async () => {
   let failing = true;
   const coord = createRefreshCoordinator({
