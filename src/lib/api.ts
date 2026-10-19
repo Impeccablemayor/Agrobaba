@@ -116,7 +116,13 @@ function isRefreshExempt(path: string): boolean {
     path === '/api/auth/register' ||
     path === '/api/auth/refresh' ||
     path === '/api/auth/forgot-password' ||
-    path === '/api/auth/reset-password'
+    path === '/api/auth/reset-password' ||
+    // The OTP verification flow runs before any session exists (registration issues no token
+    // by policy), so these must never trigger the 401 -> refresh -> retry loop.
+    path === '/api/auth/verify-email' ||
+    path === '/api/auth/verify-email/otp' ||
+    path === '/api/auth/verify-email/resend' ||
+    path === '/api/auth/verify-email/status'
   );
 }
 

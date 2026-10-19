@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import * as authLib from '../lib/auth';
-import { isAuthRejection } from '../lib/auth';
+import { isAuthRejection, type LoginOutcome } from '../lib/auth';
 import { authRefresher, RefreshUnavailableError } from '../lib/api';
 import { DEFAULT_UNAUTHORIZED_EVENT, decodeJwtExp } from '../lib/refresh';
 import { authLog } from '../lib/authEvents';
@@ -46,7 +46,7 @@ interface AuthContextValue {
   status: AuthStatus;
   /** Where to return the user after a graceful re-authentication (a valid Cart/Checkout/route). */
   returnTo: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginOutcome>;
   register: (data: RegisterInput) => Promise<boolean>;
   logout: () => void;
   /** Re-authenticate an already-identified user (Phase C graceful re-auth). */
@@ -287,9 +287,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [phase]);
 
-  async function login(email: string, password: string): Promise<boolean> {
-    const ok = await authLib.loginUser(email, password);
-    if (ok) {
+  async function login(email: string, password: string): Promise<LoginOutcome> {
+    const outcome = await authLib.loginUser(email, password);
+    if (outcome === 'success') {
       const u = authLib.getCurrentUser();
       if (u) setLive(u);
       else {
@@ -297,20 +297,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPhase('live');
       }
     }
-    return ok;
+    return outcome;
   }
 
+  /** Registration no longer authenticates: the backend issues no token until the email OTP is
+   *  verified, so success only means "account created - go verify". */
   async function register(data: RegisterInput): Promise<boolean> {
-    const ok = await authLib.registerUser(data);
-    if (ok) {
-      const u = authLib.getCurrentUser();
-      if (u) setLive(u);
-      else {
-        setUser(u);
-        setPhase('live');
-      }
-    }
-    return ok;
+    return authLib.registerUser(data);
   }
 
   /** Phase C: re-authenticate an already-identified user from the graceful prompt. On success the
@@ -318,8 +311,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function reauthenticate(password: string): Promise<boolean> {
     const current = stateRef.current.user;
     if (!current) return false;
-    const ok = await authLib.loginUser(current.email, password);
-    if (ok) {
+    const outcome = await authLib.loginUser(current.email, password);
+    if (outcome === 'success') {
       authLog('AUTH_REAUTH_SUCCEEDED', { email: current.email });
       const u = authLib.getCurrentUser();
       if (u) setLive(u);

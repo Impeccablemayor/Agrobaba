@@ -6,26 +6,40 @@ import { showToast } from '../../lib/toastBus';
 
 interface LocationState {
   from?: { pathname: string; search: string };
+  /** Prefilled when arriving from registration or from the verification-required redirect. */
+  email?: string;
+  /** Shown once when the redirect explained WHY the user was sent here. */
+  notice?: string;
 }
 
 export default function LoginPage() {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
+  const incoming = location.state as LocationState | null;
+  const [email, setEmail] = useState(incoming?.email ?? '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = (location.state as LocationState | null)?.from;
+  const from = incoming?.from;
   const redirectTo = from ? from.pathname + from.search : '/account';
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    const ok = await login(email, password);
-    if (!ok) {
+    const outcome = await login(email, password);
+    // 403 from a correct password = the email is not verified yet. Route to the OTP screen
+    // with the address so the customer can finish verification instead of retrying a password
+    // that was actually right.
+    if (outcome === 'verification-required') {
+      navigate('/verify-email', {
+        state: { email: email.toLowerCase(), notice: 'Please verify your email address to continue.' },
+      });
+      return;
+    }
+    if (outcome !== 'success') {
       setSubmitting(false);
       return;
     }
@@ -76,6 +90,20 @@ export default function LoginPage() {
         <div className="auth-form">
           <h2>Welcome Back</h2>
           <p className="form-subtitle">Log in to your Agrobaba account to continue trading.</p>
+
+          {incoming?.notice && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+                background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                color: 'var(--text)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)',
+              }}
+            >
+              <i className="fa-solid fa-circle-info" style={{ color: 'var(--primary)', marginRight: 8 }}></i>
+              {incoming.notice}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">

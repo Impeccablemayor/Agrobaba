@@ -64,7 +64,9 @@ export default function RegisterPage() {
       cityId: locationIds.cityId,
     });
     if (success) {
-      navigate('/onboarding');
+      // Registration no longer signs the customer in - the account must verify its email
+      // first. Hand the address to the OTP screen so it knows which inbox received the code.
+      navigate('/verify-email', { state: { email: form.email.toLowerCase() } });
       return;
     }
     setSubmitting(false);

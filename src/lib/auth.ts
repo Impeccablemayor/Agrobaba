@@ -65,12 +65,7 @@ export interface RegisterInput {
 export async function registerUser(data: RegisterInput): Promise<boolean> {
   try {
     await settlePendingLogout();
-    const response = await api.post<{
-      token: string; id: number; role: string; name: string; email: string;
-      country?: string | null; state?: string | null; city?: string | null;
-      stateId?: number | null; cityId?: number | null;
-      contact?: string | null; address?: string | null;
-    }>('/api/auth/register', {
+    await api.post<{ emailVerificationRequired: boolean; email: string }>('/api/auth/register', {
       name: data.name,
       email: data.email.toLowerCase(),
       password: data.password,
@@ -84,30 +79,10 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
       acceptedTerms: data.acceptedTerms === true,
     });
 
-    setAuthToken(response.token);
-    // A fresh, credential-proven session supersedes any pending logout intent.
-    clearPendingRevoke();
-
-    const safeUser = {
-      id: String(response.id),
-      name: response.name,
-      email: response.email,
-      role: response.role as Role,
-      country: response.country ?? data.country ?? '',
-      state: response.state ?? data.state ?? '',
-      city: response.city ?? data.city ?? '',
-      stateId: response.stateId ?? null,
-      cityId: response.cityId ?? null,
-      contact: response.contact ?? data.contact ?? '',
-      address: response.address ?? data.address ?? '',
-      verified: false,
-      businessVerified: false,
-      joinedAt: new Date().toISOString(),
-      avatar: null,
-    } as SafeUser;
-
-    setItem(KEYS.user, safeUser);
-    showToast(`Welcome to Agrobaba, ${response.name}!`, 'success');
+    /* Registration is NO LONGER an authenticated action: the backend issues no token until the
+       email is verified, so there is deliberately no setAuthToken/user storage here. The caller
+       routes the customer to the OTP verification screen instead. */
+    showToast('Verification code sent - check your inbox to activate your account.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to create account';
@@ -116,7 +91,9 @@ export async function registerUser(data: RegisterInput): Promise<boolean> {
   }
 }
 
-export async function loginUser(email: string, password: string): Promise<boolean> {
+export type LoginOutcome = 'success' | 'error' | 'verification-required';
+
+export async function loginUser(email: string, password: string): Promise<LoginOutcome> {
   try {
     await settlePendingLogout();
     const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/login', { email, password });
@@ -141,11 +118,16 @@ export async function loginUser(email: string, password: string): Promise<boolea
 
     setItem(KEYS.user, safeUser);
     showToast(`Welcome back, ${response.name}!`, 'success');
-    return true;
+    return 'success';
   } catch (error) {
+    // 403 = the password was correct but the email is not verified yet (backend gate). The
+    // caller routes to the verification screen - NOT a credential error, so no toast here.
+    if (error instanceof ApiError && error.status === 403) {
+      return 'verification-required';
+    }
     const message = error instanceof Error ? error.message : 'Unable to sign in';
     showToast(message, 'error');
-    return false;
+    return 'error';
   }
 }
 
@@ -419,6 +401,42 @@ export async function verifyEmail(token: string): Promise<boolean> {
     showToast(message, 'error');
     return false;
   }
+}
+
+/** Verifies the six-digit OTP for the given email. Success means the account is fully active
+ *  and the customer can now sign in (registration itself issues no session). */
+export async function verifyEmailOtp(email: string, code: string): Promise<boolean> {
+  try {
+    await api.post('/api/auth/verify-email/otp', { email: email.toLowerCase(), code });
+    showToast('Email verified! You can now sign in.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to verify this code';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+/** Requests a replacement OTP. Works signed-in or signed-out; the backend answers with the same
+ *  generic success either way (anti-enumeration) and enforces all cooldowns/rate limits. */
+export async function resendVerificationOtp(email?: string): Promise<boolean> {
+  try {
+    await api.post('/api/auth/verify-email/resend', email ? { email: email.toLowerCase() } : {});
+    showToast('If that email needs verification, a new code is on its way.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to resend the verification code';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
+/** Generic verification status - reports false for unknown emails, so it never enumerates. */
+export async function getVerificationStatus(email: string): Promise<boolean> {
+  const response = await api.post<{ emailVerified: boolean }>('/api/auth/verify-email/status', {
+    email: email.toLowerCase(),
+  });
+  return response.emailVerified === true;
 }
 
 /** Re-sends the verification email to the signed-in user. Requires an active session. */

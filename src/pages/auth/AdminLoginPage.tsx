@@ -15,8 +15,8 @@ export default function AdminLoginPage() {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    const ok = await login(email, password);
-    if (!ok) {
+    const outcome = await login(email, password);
+    if (outcome !== 'success') {
       setSubmitting(false);
       return;
     }
