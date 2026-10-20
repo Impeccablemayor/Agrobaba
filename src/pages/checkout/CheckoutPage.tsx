@@ -38,6 +38,7 @@ export default function CheckoutPage() {
     };
   });
   const [note, setNote] = useState('');
+  const [fulfillmentType, setFulfillmentType] = useState<'SELLER_MANAGED' | 'AGROBABA_MANAGED'>('SELLER_MANAGED');
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
@@ -135,7 +136,12 @@ export default function CheckoutPage() {
     }
     setPlacingOrder(true);
     const addr = [address.trim(), locationLine(location.cityName, location.stateName)].filter(Boolean).join(', ');
-    const order = await placeOrder(cart, { address: addr, phone: phone.trim(), couponCode: appliedCoupon?.code });
+    const order = await placeOrder(cart, {
+      address: addr,
+      phone: phone.trim(),
+      couponCode: appliedCoupon?.code,
+      fulfillmentType,
+    });
     if (order) {
       orderPlaced.current = true;
       // The order is on the server; clear the (server-side) cart so state and backend move
@@ -241,6 +247,70 @@ export default function CheckoutPage() {
                 <label>Delivery Note <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
                 <textarea placeholder="Any special instructions for the seller or dispatch rider..." value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
+
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
+                <label style={{ fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 10 }}>
+                  <i className="fa-solid fa-truck-ramp-box" style={{ color: 'var(--primary)', marginRight: 6 }}></i>
+                  Delivery Coordination Method
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                  <div
+                    onClick={() => setFulfillmentType('SELLER_MANAGED')}
+                    style={{
+                      border: `2px solid ${fulfillmentType === 'SELLER_MANAGED' ? 'var(--primary)' : 'var(--border-mid)'}`,
+                      borderRadius: 10,
+                      padding: 14,
+                      cursor: 'pointer',
+                      background: fulfillmentType === 'SELLER_MANAGED' ? 'rgba(46, 125, 50, 0.06)' : 'var(--surface)',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>
+                        <i className="fa-solid fa-store" style={{ marginRight: 6, color: 'var(--primary)' }}></i>
+                        Seller-Managed Delivery
+                      </span>
+                      <input
+                        type="radio"
+                        name="fulfillmentType"
+                        checked={fulfillmentType === 'SELLER_MANAGED'}
+                        onChange={() => setFulfillmentType('SELLER_MANAGED')}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Seller coordinates delivery directly using their local transportation arrangement.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setFulfillmentType('AGROBABA_MANAGED')}
+                    style={{
+                      border: `2px solid ${fulfillmentType === 'AGROBABA_MANAGED' ? 'var(--primary)' : 'var(--border-mid)'}`,
+                      borderRadius: 10,
+                      padding: 14,
+                      cursor: 'pointer',
+                      background: fulfillmentType === 'AGROBABA_MANAGED' ? 'rgba(46, 125, 50, 0.06)' : 'var(--surface)',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>
+                        <i className="fa-solid fa-shield-halved" style={{ marginRight: 6, color: 'var(--primary)' }}></i>
+                        AgroBaba-Managed Delivery
+                      </span>
+                      <input
+                        type="radio"
+                        name="fulfillmentType"
+                        checked={fulfillmentType === 'AGROBABA_MANAGED'}
+                        onChange={() => setFulfillmentType('AGROBABA_MANAGED')}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Coordinated via AgroBaba's vetted transporter directory with admin oversight & tracking.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -270,7 +340,9 @@ export default function CheckoutPage() {
               </div>
               <div className="summary-row">
                 <span>Delivery</span>
-                <span style={{ fontSize: 13 }}>Arranged with seller</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
+                  {fulfillmentType === 'AGROBABA_MANAGED' ? 'AgroBaba Coordinated' : 'Seller Arranged'}
+                </span>
               </div>
 
               {appliedCoupon ? (

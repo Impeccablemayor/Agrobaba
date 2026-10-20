@@ -569,3 +569,144 @@ export interface EmailMessage {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==========================================
+// Phase 1 Internal Logistics Types
+// ==========================================
+
+export type FulfillmentType = 'SELLER_MANAGED' | 'AGROBABA_MANAGED';
+
+export type ShipmentStatus =
+  | 'ARRANGEMENT_PENDING'
+  | 'AWAITING_SELLER_PREPARATION'
+  | 'READY_FOR_PICKUP'
+  | 'AWAITING_TRANSPORTER_ASSIGNMENT'
+  | 'TRANSPORTER_ASSIGNED'
+  | 'PICKUP_CONFIRMED'
+  | 'IN_TRANSIT'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'DELIVERY_FAILED'
+  | 'DELIVERY_EXCEPTION'
+  | 'RETURN_IN_PROGRESS'
+  | 'RETURNED'
+  | 'CANCELLED';
+
+export type ProofOfDeliveryType = 'BUYER_CONFIRMATION' | 'DELIVERY_OTP' | 'SIGNED_RECEIPT' | 'ADMIN_OVERRIDE';
+
+export interface Transporter {
+  id: number;
+  name: string;
+  phone: string;
+  altPhone?: string | null;
+  email?: string | null;
+  operatingLocations?: string | null;
+  vehicleType?: string | null;
+  cargoTypes?: string | null;
+  verificationStatus: string;
+  active: boolean;
+  operationalNotes?: string | null;
+  assignedShipmentsCount: number;
+  completedShipmentsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SellerDeliveryProfile {
+  id?: number | null;
+  sellerId: number;
+  providesDelivery: boolean;
+  deliveryCoverage: 'LOCAL_ONLY' | 'SELECT_STATES' | 'NATIONWIDE';
+  coveredStates?: string | null;
+  baseFee: number;
+  freeDeliveryThreshold?: number | null;
+  estimatedDaysMin: number;
+  estimatedDaysMax: number;
+  pickupAddress?: string | null;
+  notes?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ShipmentItem {
+  id: number;
+  orderItemId: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface ShipmentEvent {
+  id: number;
+  status: ShipmentStatus;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  actorEmail?: string | null;
+  actorRole?: string | null;
+  createdAt: string;
+}
+
+export interface DeliveryQuote {
+  id: number;
+  shipmentId: number;
+  quotedAmount: number;
+  currency: string;
+  quoteSource: string;
+  status: string;
+  recordedByAdmin: string;
+  notes?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export interface Shipment {
+  id: number;
+  trackingNumber: string;
+  orderId?: number | null;
+  invoiceNumber?: string | null;
+  sellerId: number;
+  sellerName: string;
+  fulfillmentType: FulfillmentType;
+  status: ShipmentStatus;
+  transporterId?: number | null;
+  transporterName?: string | null;
+  transporterPhone?: string | null;
+  manualTrackingRef?: string | null;
+  pickupAddress?: string | null;
+  deliveryAddress?: string | null;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  deliveryFee: number;
+  transporterCost?: number | null;
+  deliveryOtp?: string | null;
+  estimatedPickupDate?: string | null;
+  actualPickupDate?: string | null;
+  estimatedDeliveryDate?: string | null;
+  actualDeliveryDate?: string | null;
+  proofOfDeliveryType?: ProofOfDeliveryType | null;
+  proofOfDeliveryNote?: string | null;
+  proofOfDeliveryImageUrl?: string | null;
+  confirmedBy?: string | null;
+  requiresAdminAction: boolean;
+  adminActionReason?: string | null;
+  items: ShipmentItem[];
+  events: ShipmentEvent[];
+  quotes: DeliveryQuote[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LogisticsOverview {
+  totalShipments: number;
+  arrangementPendingCount: number;
+  awaitingSellerPrepCount: number;
+  readyForPickupCount: number;
+  unassignedReadyForPickupCount: number;
+  inTransitCount: number;
+  deliveredCount: number;
+  failedOrExceptionCount: number;
+  overdueDeliveriesCount: number;
+  requiresAdminActionCount: number;
+}
+

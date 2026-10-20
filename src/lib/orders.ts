@@ -21,6 +21,8 @@ export interface DeliveryInput {
   address?: string;
   phone?: string;
   couponCode?: string;
+  fulfillmentType?: string;
+  fulfillmentPreferences?: Record<number, string>;
 }
 
 interface BackendOrderItem {
@@ -119,6 +121,8 @@ export async function placeOrder(cartItems: CartItem[], deliveryData: DeliveryIn
       phone: deliveryData.phone || user.contact || '',
       couponCode: deliveryData.couponCode || null,
       idempotencyKey: checkoutIdempotencyKey(),
+      fulfillmentType: deliveryData.fulfillmentType || 'SELLER_MANAGED',
+      fulfillmentPreferences: deliveryData.fulfillmentPreferences || null,
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);

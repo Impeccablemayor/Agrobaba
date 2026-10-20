@@ -46,6 +46,7 @@ import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
+import AdminLogisticsPage from './pages/admin/AdminLogisticsPage';
 import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminTicketsPage from './pages/admin/AdminTicketsPage';
@@ -112,6 +113,7 @@ function App() {
         <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
         <Route path="admin/payments" element={<AdminPaymentsPage />} />
+        <Route path="admin/logistics" element={<AdminLogisticsPage />} />
         <Route path="admin/verifications" element={<AdminVerificationsPage />} />
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
         <Route path="admin/coupons" element={<AdminCouponsPage />} />

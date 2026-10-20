@@ -6,7 +6,9 @@ import { beginCheckout } from '../../lib/payments';
 import { createReview } from '../../lib/reviews';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
-import type { Order } from '../../types';
+import { getShipmentsForOrder, confirmDelivery } from '../../lib/logistics';
+import { showToast } from '../../lib/toastBus';
+import type { Order, Shipment } from '../../types';
 
 type Filter = 'all' | 'delivered';
 
@@ -87,6 +89,9 @@ export default function MyOrdersPage() {
   const [reviewedProductIds, setReviewedProductIds] = useState<Set<string>>(new Set());
   const [reviewingProductId, setReviewingProductId] = useState<string | null>(null);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
+  const [orderShipments, setOrderShipments] = useState<Shipment[]>([]);
+  const [loadingShipments, setLoadingShipments] = useState(false);
+  const [confirmingShipmentId, setConfirmingShipmentId] = useState<number | null>(null);
 
   const { data: orders = [], isLoading: loading } = useMyOrders();
 
@@ -96,6 +101,33 @@ export default function MyOrdersPage() {
     setPayingOrderId(orderId);
     await beginCheckout(orderId);
     setPayingOrderId(null);
+  }
+
+  async function handleOpenOrder(order: Order) {
+    setActiveOrder(order);
+    setLoadingShipments(true);
+    try {
+      const list = await getShipmentsForOrder(Number(order.id));
+      setOrderShipments(list || []);
+    } catch {
+      setOrderShipments([]);
+    } finally {
+      setLoadingShipments(false);
+    }
+  }
+
+  async function handleConfirmDelivery(shipmentId: number) {
+    if (!window.confirm('Have you physically received and verified all items in this package?')) return;
+    setConfirmingShipmentId(shipmentId);
+    try {
+      const updated = await confirmDelivery(shipmentId, { proofType: 'BUYER_CONFIRMATION' });
+      showToast('Delivery confirmed! Thank you.', 'success');
+      setOrderShipments((prev) => prev.map((s) => (s.id === shipmentId ? updated : s)));
+    } catch (e: any) {
+      showToast(e.message || 'Failed to confirm delivery', 'error');
+    } finally {
+      setConfirmingShipmentId(null);
+    }
   }
 
   const inTransit = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
@@ -174,7 +206,7 @@ export default function MyOrdersPage() {
                     const statusClass = order.status === 'delivered' ? 'delivered' : 'pending';
                     const unpaid = isUnpaid(order);
                     return (
-                      <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => setActiveOrder(order)}>
+                      <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => handleOpenOrder(order)}>
                         <td>#{i + 1}</td>
                         <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                         <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
@@ -198,7 +230,7 @@ export default function MyOrdersPage() {
                                   : <><i className="fa-solid fa-credit-card"></i> Pay</>}
                               </button>
                             )}
-                            <button onClick={() => setActiveOrder(order)} className="btn-outline btn-sm btn-inline" style={{ padding: '5px 10px' }}>View</button>
+                            <button onClick={() => handleOpenOrder(order)} className="btn-outline btn-sm btn-inline" style={{ padding: '5px 10px' }}>View</button>
                           </div>
                         </td>
                       </tr>
@@ -255,6 +287,95 @@ export default function MyOrdersPage() {
                   </span>
                 </div>
               )}
+
+              {/* Package Delivery Tracking & OTP Section */}
+              <div style={{ marginTop: 16, marginBottom: 20, padding: 16, background: 'var(--surface)', border: '1px solid var(--border-light)', borderRadius: 10 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 800, margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="fa-solid fa-truck-fast" style={{ color: 'var(--primary)' }}></i>
+                  Delivery Tracking & Verification
+                </h4>
+
+                {loadingShipments ? (
+                  <div style={{ fontSize: 12, color: 'var(--muted)', padding: '10px 0' }}>Loading delivery updates…</div>
+                ) : orderShipments.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Delivery arrangement is being coordinated. Tracking details will appear here once prepared.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {orderShipments.map((shp) => (
+                      <div key={shp.id} style={{ border: '1px solid var(--border-light)', borderRadius: 8, padding: 12, background: 'var(--bg)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <div>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 12, color: 'var(--primary)' }}>
+                              {shp.trackingNumber}
+                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                              • {shp.fulfillmentType === 'AGROBABA_MANAGED' ? 'AgroBaba Coordinated' : 'Seller Dispatched'}
+                            </span>
+                          </div>
+                          <span style={{
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            background: shp.status === 'DELIVERED' ? '#dcfce7' : '#dbeafe',
+                            color: shp.status === 'DELIVERED' ? '#166534' : '#1e40af'
+                          }}>
+                            {shp.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+
+                        {shp.deliveryOtp && shp.status !== 'DELIVERED' && (
+                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', margin: '8px 0' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              <i className="fa-solid fa-key" style={{ marginRight: 6 }}></i> Delivery Verification OTP
+                            </div>
+                            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '0.2em', color: '#14532d', margin: '2px 0' }}>
+                              {shp.deliveryOtp}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#166534' }}>
+                              Provide this code to the delivery driver or seller only after inspecting your goods.
+                            </div>
+                          </div>
+                        )}
+
+                        {shp.status !== 'DELIVERED' && (
+                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => handleConfirmDelivery(shp.id)}
+                              disabled={confirmingShipmentId === shp.id}
+                              className="btn-primary btn-sm btn-inline"
+                              style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, padding: '5px 12px' }}
+                            >
+                              {confirmingShipmentId === shp.id ? 'Confirming…' : (
+                                <><i className="fa-solid fa-circle-check"></i> Confirm I Received This Package</>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Recent Events */}
+                        {shp.events && shp.events.length > 0 && (
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-light)' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                              Recent Progress:
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {shp.events.slice(-3).reverse().map((e, idx) => (
+                                <div key={idx} style={{ fontSize: 11, color: 'var(--text)' }}>
+                                  <span style={{ color: 'var(--muted)', marginRight: 6 }}>{formatDate(e.createdAt)}:</span>
+                                  <strong>{e.title}</strong> {e.description ? `— ${e.description}` : ''}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>Items</h4>
               {activeOrder.items.map((item) => (
