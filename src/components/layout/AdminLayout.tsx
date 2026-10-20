@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', isActive: (p) => p === '/admin/flash-sales' },
   { to: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', isActive: (p) => p === '/admin/coupons' },
   { to: '/admin/tickets', icon: 'fa-headset', label: 'Support Tickets', isActive: (p) => p === '/admin/tickets' },
+  { to: '/admin/categories', icon: 'fa-folder-tree', label: 'Categories', isActive: (p) => p === '/admin/categories' },
   { to: '/admin/activity', icon: 'fa-clock-rotate-left', label: 'Admin Activity', isActive: (p) => p === '/admin/activity' },
   { to: '/admin/emails', icon: 'fa-envelope', label: 'Email Logs', isActive: (p) => p === '/admin/emails' || p.startsWith('/admin/emails') },
 ];

@@ -51,6 +51,7 @@ import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminTicketsPage from './pages/admin/AdminTicketsPage';
 import AdminActivityPage from './pages/admin/AdminActivityPage';
 import AdminEmailsPage from './pages/admin/AdminEmailsPage';
+import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import NotFoundPage from './pages/info/NotFoundPage';
 
 function App() {
@@ -115,6 +116,7 @@ function App() {
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
         <Route path="admin/coupons" element={<AdminCouponsPage />} />
         <Route path="admin/tickets" element={<AdminTicketsPage />} />
+        <Route path="admin/categories" element={<AdminCategoriesPage />} />
         <Route path="admin/activity" element={<AdminActivityPage />} />
         <Route path="admin/emails" element={<AdminEmailsPage />} />
       </Route>
@@ -123,6 +125,3 @@ function App() {
 }
 
 export default App;
-
-
-

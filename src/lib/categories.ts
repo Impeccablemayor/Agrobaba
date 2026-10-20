@@ -10,6 +10,9 @@ interface ApiCategory {
   level: number;
   allowedListingKinds: string[];
   sortOrder: number;
+  createdBy?: string | null;
+  status?: string;
+  active?: boolean;
 }
 
 function mapCategory(c: ApiCategory): Category {
@@ -22,6 +25,9 @@ function mapCategory(c: ApiCategory): Category {
     level: c.level as Category['level'],
     allowedListingKinds: c.allowedListingKinds as Category['allowedListingKinds'],
     sortOrder: c.sortOrder,
+    createdBy: c.createdBy ?? null,
+    status: c.status ?? 'APPROVED',
+    active: c.active ?? true,
   };
 }
 
@@ -33,6 +39,38 @@ export async function getCategories(): Promise<Category[]> {
   } catch {
     return [];
   }
+}
+
+export interface CreateCategoryInput {
+  name: string;
+  parentId: string | number;
+  subcategoryName?: string;
+}
+
+export async function createCategory(input: CreateCategoryInput): Promise<Category> {
+  const data = await api.post<ApiCategory>('/api/categories', {
+    name: input.name,
+    parentId: Number(input.parentId),
+    subcategoryName: input.subcategoryName?.trim() || undefined,
+  });
+  return mapCategory(data);
+}
+
+export async function adminGetCategories(): Promise<Category[]> {
+  const data = await api.get<ApiCategory[]>('/api/admin/categories');
+  return (data || []).map(mapCategory);
+}
+
+export async function adminUpdateCategory(
+  id: string | number,
+  updates: { name: string; status?: string; active?: boolean }
+): Promise<Category> {
+  const data = await api.put<ApiCategory>(`/api/admin/categories/${id}`, updates);
+  return mapCategory(data);
+}
+
+export async function adminDeleteCategory(id: string | number): Promise<void> {
+  await api.delete(`/api/admin/categories/${id}`);
 }
 
 export function getSections(categories: Category[]): Category[] {

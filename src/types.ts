@@ -11,6 +11,9 @@ export interface Category {
   level: 1 | 2 | 3;
   allowedListingKinds: ListingKind[];
   sortOrder: number;
+  createdBy?: string | null;
+  status?: string;
+  active?: boolean;
 }
 
 export type ProfileStatus = 'not_started' | 'skipped' | 'completed';

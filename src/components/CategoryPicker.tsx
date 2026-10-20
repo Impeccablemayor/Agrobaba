@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useCategories } from '../hooks/queries/useCategories';
-import { getChildren, getSections } from '../lib/categories';
+import { useQueryClient } from '@tanstack/react-query';
+import { CATEGORIES_QUERY_KEY, useCategories } from '../hooks/queries/useCategories';
+import { createCategory, getChildren, getSections } from '../lib/categories';
+import { showToast } from '../lib/toastBus';
 
 interface CategoryPickerProps {
   /** Restrict the section dropdown to these section codes (e.g. a farmer only sees Farm Produce/Livestock). Omit for no restriction. */
@@ -11,13 +13,24 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ allowedSections, value, onChange }: CategoryPickerProps) {
+  const queryClient = useQueryClient();
   const categoriesQ = useCategories();
   const categories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
   const loading = categoriesQ.isPending;
   const failed = categoriesQ.isFetched && categories.length === 0;
+
   const [sectionId, setSectionId] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string>('');
   const [subcategoryId, setSubcategoryId] = useState<string>('');
+
+  // Inline custom entry states
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  const [isAddingSubcategory, setIsAddingSubcategory] = useState(false);
+  const [customSubcategoryName, setCustomSubcategoryName] = useState('');
+  const [savingSubcategory, setSavingSubcategory] = useState(false);
 
   // Reconstruct the section/category chain from an externally-set value (e.g. editing an existing listing).
   useEffect(() => {
@@ -32,8 +45,11 @@ export function CategoryPicker({ allowedSections, value, onChange }: CategoryPic
     } else if (node.level === 2) {
       setCategoryId(node.id);
       setSectionId(node.parentId || '');
+      setSubcategoryId('');
     } else {
       setSectionId(node.id);
+      setCategoryId('');
+      setSubcategoryId('');
     }
   }, [value, categories]);
 
@@ -47,18 +63,92 @@ export function CategoryPicker({ allowedSections, value, onChange }: CategoryPic
     setSectionId(id);
     setCategoryId('');
     setSubcategoryId('');
+    setIsAddingCategory(false);
+    setIsAddingSubcategory(false);
     onChange(id || null);
   }
 
   function handleCategory(id: string) {
+    if (id === '__add_custom__') {
+      setIsAddingCategory(true);
+      return;
+    }
     setCategoryId(id);
     setSubcategoryId('');
+    setIsAddingCategory(false);
+    setIsAddingSubcategory(false);
     onChange(id || sectionId || null);
   }
 
   function handleSubcategory(id: string) {
+    if (id === '__add_custom__') {
+      setIsAddingSubcategory(true);
+      return;
+    }
     setSubcategoryId(id);
+    setIsAddingSubcategory(false);
     onChange(id || categoryId || sectionId || null);
+  }
+
+  async function handleSaveCustomCategory() {
+    if (!customCategoryName.trim()) {
+      showToast('Please enter a category name.', 'error');
+      return;
+    }
+    if (!sectionId) {
+      showToast('Please select a section first.', 'error');
+      return;
+    }
+
+    setSavingCategory(true);
+    try {
+      const created = await createCategory({
+        name: customCategoryName.trim(),
+        parentId: sectionId,
+      });
+      await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      setCategoryId(created.id);
+      setSubcategoryId('');
+      setIsAddingCategory(false);
+      setCustomCategoryName('');
+      onChange(created.id);
+      showToast(`Category "${created.name}" created and selected!`, 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not add category';
+      showToast(message, 'error');
+    } finally {
+      setSavingCategory(false);
+    }
+  }
+
+  async function handleSaveCustomSubcategory() {
+    if (!customSubcategoryName.trim()) {
+      showToast('Please enter a subcategory name.', 'error');
+      return;
+    }
+    if (!categoryId) {
+      showToast('Please select a category first.', 'error');
+      return;
+    }
+
+    setSavingSubcategory(true);
+    try {
+      const created = await createCategory({
+        name: customSubcategoryName.trim(),
+        parentId: categoryId,
+      });
+      await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      setSubcategoryId(created.id);
+      setIsAddingSubcategory(false);
+      setCustomSubcategoryName('');
+      onChange(created.id);
+      showToast(`Subcategory "${created.name}" created and selected!`, 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not add subcategory';
+      showToast(message, 'error');
+    } finally {
+      setSavingSubcategory(false);
+    }
   }
 
   if (loading) {
@@ -107,6 +197,7 @@ export function CategoryPicker({ allowedSections, value, onChange }: CategoryPic
   return (
     <div>
       <div className="row g-3">
+        {/* SECTION DROPDOWN */}
         <div className="col-md-4">
           <div className="form-group">
             <label>Section <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -116,27 +207,193 @@ export function CategoryPicker({ allowedSections, value, onChange }: CategoryPic
             </select>
           </div>
         </div>
+
+        {/* CATEGORY DROPDOWN / CUSTOM INPUT */}
         <div className="col-md-4">
           <div className="form-group">
-            <label>Category</label>
-            <select value={categoryId} onChange={(e) => handleCategory(e.target.value)} disabled={!sectionId}>
-              <option value="">{sectionId ? 'Select a category…' : 'Select a section first'}</option>
-              {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ marginBottom: 0 }}>Category</label>
+              {sectionId && !isAddingCategory && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCategory(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  + Add new
+                </button>
+              )}
+            </div>
+
+            {isAddingCategory ? (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="Type new category name…"
+                  value={customCategoryName}
+                  onChange={(e) => setCustomCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleSaveCustomCategory();
+                    } else if (e.key === 'Escape') {
+                      setIsAddingCategory(false);
+                      setCustomCategoryName('');
+                    }
+                  }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                    disabled={savingCategory || !customCategoryName.trim()}
+                    onClick={() => void handleSaveCustomCategory()}
+                  >
+                    {savingCategory ? (
+                      <><i className="fa-solid fa-spinner fa-spin"></i> Saving…</>
+                    ) : (
+                      <><i className="fa-solid fa-plus"></i> Add & Select</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-outline btn-sm"
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                    onClick={() => {
+                      setIsAddingCategory(false);
+                      setCustomCategoryName('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <select
+                value={categoryId}
+                onChange={(e) => handleCategory(e.target.value)}
+                disabled={!sectionId}
+                style={{ marginTop: 6 }}
+              >
+                <option value="">{sectionId ? 'Select a category…' : 'Select a section first'}</option>
+                {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {sectionId && (
+                  <option value="__add_custom__" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                    + Type new category…
+                  </option>
+                )}
+              </select>
+            )}
           </div>
         </div>
+
+        {/* SUBCATEGORY DROPDOWN / CUSTOM INPUT */}
         <div className="col-md-4">
           <div className="form-group">
-            <label>Subcategory</label>
-            <select value={subcategoryId} onChange={(e) => handleSubcategory(e.target.value)} disabled={subcategoryOptions.length === 0}>
-              <option value="">{subcategoryOptions.length ? 'Select a subcategory…' : '—'}</option>
-              {subcategoryOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ marginBottom: 0 }}>Subcategory</label>
+              {categoryId && !isAddingSubcategory && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingSubcategory(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  + Add new
+                </button>
+              )}
+            </div>
+
+            {isAddingSubcategory ? (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="Type new subcategory name…"
+                  value={customSubcategoryName}
+                  onChange={(e) => setCustomSubcategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleSaveCustomSubcategory();
+                    } else if (e.key === 'Escape') {
+                      setIsAddingSubcategory(false);
+                      setCustomSubcategoryName('');
+                    }
+                  }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                    disabled={savingSubcategory || !customSubcategoryName.trim()}
+                    onClick={() => void handleSaveCustomSubcategory()}
+                  >
+                    {savingSubcategory ? (
+                      <><i className="fa-solid fa-spinner fa-spin"></i> Saving…</>
+                    ) : (
+                      <><i className="fa-solid fa-plus"></i> Add & Select</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-outline btn-sm"
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                    onClick={() => {
+                      setIsAddingSubcategory(false);
+                      setCustomSubcategoryName('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <select
+                value={subcategoryId}
+                onChange={(e) => handleSubcategory(e.target.value)}
+                disabled={!categoryId}
+                style={{ marginTop: 6 }}
+              >
+                <option value="">
+                  {!categoryId
+                    ? '—'
+                    : subcategoryOptions.length === 0
+                    ? 'No subcategories (optional or add one below)'
+                    : 'Select a subcategory…'}
+                </option>
+                {subcategoryOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {categoryId && (
+                  <option value="__add_custom__" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                    + Type new subcategory…
+                  </option>
+                )}
+              </select>
+            )}
           </div>
         </div>
       </div>
       <p style={{ fontSize: 11, color: 'var(--muted)', margin: '-6px 0 14px' }}>
-        Choose a Section first, then a Category, then a Subcategory — the next dropdown unlocks once the one above is picked.
+        Choose a Section first, then a Category, then a Subcategory — or click &ldquo;+ Add new&rdquo; if your option isn't listed.
       </p>
     </div>
   );
