@@ -56,6 +56,7 @@
  */
 
 export const DEFAULT_TOKEN_KEY = 'agrobaba_token';
+export const DEFAULT_REFRESH_TOKEN_KEY = 'agrobaba_refresh_token';
 export const DEFAULT_REFRESH_PATH = '/api/auth/refresh';
 export const DEFAULT_LOCK_KEY = 'agrobaba-refresh-lock';
 export const DEFAULT_CHANNEL_NAME = 'agrobaba-auth';
@@ -110,6 +111,7 @@ export interface RefreshCoordinatorOptions {
   lockManager?: WebLocksManagerLike | null;
   refreshPath?: string;
   tokenKey?: string;
+  refreshTokenKey?: string;
   lockKey?: string;
   unauthorizedEvent?: string;
   broadcast?: (message: unknown) => void;
@@ -121,6 +123,8 @@ export interface RefreshCoordinatorOptions {
 export interface RefreshCoordinator {
   getToken(): string | null;
   setToken(token: string | null): void;
+  getRefreshToken(): string | null;
+  setRefreshToken(token: string | null): void;
   hasToken(): boolean;
   refresh(): Promise<RefreshOutcome>;
   signalSessionInvalid(): void;
@@ -190,6 +194,7 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
   const lockManager = options?.lockManager !== undefined ? options.lockManager : defaultLockManager();
   const refreshPath = options?.refreshPath ?? DEFAULT_REFRESH_PATH;
   const tokenKey = options?.tokenKey ?? DEFAULT_TOKEN_KEY;
+  const refreshTokenKey = options?.refreshTokenKey ?? DEFAULT_REFRESH_TOKEN_KEY;
   const lockKey = options?.lockKey ?? DEFAULT_LOCK_KEY;
   const lockTtlKey = `${lockKey}:t`;
   const unauthorizedEvent = options?.unauthorizedEvent ?? DEFAULT_UNAUTHORIZED_EVENT;
@@ -207,8 +212,20 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
     return storage.getItem(tokenKey);
   }
 
+  function getRefreshToken(): string | null {
+    return storage.getItem(refreshTokenKey);
+  }
+
+  function setRefreshToken(token: string | null): void {
+    if (token) {
+      storage.setItem(refreshTokenKey, token);
+    } else {
+      storage.removeItem(refreshTokenKey);
+    }
+  }
+
   function hasToken(): boolean {
-    return getToken() !== null;
+    return getToken() !== null || getRefreshToken() !== null;
   }
 
   function setToken(token: string | null): void {
@@ -222,6 +239,7 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
       // confirmed the session is gone; re-arming here is exactly what let a signed-out app keep
       // POSTing /api/auth/refresh in a loop. A new login re-arms via the branch above.
       storage.removeItem(tokenKey);
+      storage.removeItem(refreshTokenKey);
     }
   }
 
@@ -232,25 +250,38 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
         ? setTimeout(() => controller.abort(), timeoutMs)
         : null;
     try {
+      const fallbackRefreshToken = storage.getItem(refreshTokenKey);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
+      };
+      if (fallbackRefreshToken) {
+        headers['X-Refresh-Token'] = fallbackRefreshToken;
+      }
       const response = await fetchImpl(url, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
-        },
+        headers,
+        body: fallbackRefreshToken ? JSON.stringify({ refreshToken: fallbackRefreshToken }) : undefined,
         ...(controller ? { signal: controller.signal } : {}),
       });
 
       if (response.ok) {
         let token: string | null = null;
+        let rotatedRefreshToken: string | null = null;
         try {
           const body = (await response.json()) as Record<string, unknown>;
           if (body && typeof body.token === 'string' && body.token.length > 0) token = body.token;
+          if (body && typeof body.refreshToken === 'string' && body.refreshToken.length > 0) {
+            rotatedRefreshToken = body.refreshToken;
+          }
         } catch {
           /* non-JSON body -> infra below */
         }
         if (!token) return { ok: false, cause: 'infra' };
+        if (rotatedRefreshToken) {
+          storage.setItem(refreshTokenKey, rotatedRefreshToken);
+        }
         return { ok: true, token };
       }
 
@@ -395,7 +426,7 @@ export function createRefreshCoordinator(options?: RefreshCoordinatorOptions): R
     broadcast({ type: 'session-revoked', source: randomId() });
   }
 
-  return { getToken, setToken, hasToken, refresh, signalSessionInvalid };
+  return { getToken, setToken, getRefreshToken, setRefreshToken, hasToken, refresh, signalSessionInvalid };
 }
 
 /** Reads the `exp` claim of a JWT without validating it. Returns null for any malformed token.

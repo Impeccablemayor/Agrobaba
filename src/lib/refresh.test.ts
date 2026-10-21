@@ -419,3 +419,56 @@ test('a hung refresh POST is bounded by timeoutMs and reported as infra (never l
   assert.equal(outcome.cause, 'infra');
   assert.equal(coord.getToken(), 'old-token');
 });
+
+test('fallback refresh token is attached to headers and body, and rotated token is stored', async () => {
+  let capturedHeaders: HeadersInit | undefined;
+  let capturedBody: string | undefined;
+
+  const coord = createRefreshCoordinator({
+    storage: memoryStorage({
+      agrobaba_token: 'old-access',
+      agrobaba_refresh_token: 'stored-refresh-secret',
+    }),
+    fetchImpl: async (_url, init) => {
+      capturedHeaders = init.headers;
+      capturedBody = typeof init.body === 'string' ? init.body : undefined;
+      return jsonResponse(200, {
+        token: 'new-access-token',
+        refreshToken: 'rotated-refresh-secret',
+      });
+    },
+    lockManager: null,
+  });
+
+  const outcome = await coord.refresh();
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.token, 'new-access-token');
+  assert.equal(coord.getToken(), 'new-access-token');
+  assert.equal(coord.getRefreshToken(), 'rotated-refresh-secret');
+
+  // Verify headers and body sent
+  const headers = capturedHeaders as Record<string, string>;
+  assert.equal(headers['X-Refresh-Token'], 'stored-refresh-secret');
+  assert.equal(headers['X-Refresh-Protection'], 'agrobaba-auth-refresh-1');
+  assert.deepEqual(JSON.parse(capturedBody || '{}'), { refreshToken: 'stored-refresh-secret' });
+});
+
+test('setToken(null) clears both access token and fallback refresh token', () => {
+  const coord = createRefreshCoordinator({
+    storage: memoryStorage({
+      agrobaba_token: 'access-123',
+      agrobaba_refresh_token: 'refresh-456',
+    }),
+    lockManager: null,
+  });
+
+  assert.equal(coord.hasToken(), true);
+  assert.equal(coord.getToken(), 'access-123');
+  assert.equal(coord.getRefreshToken(), 'refresh-456');
+
+  coord.setToken(null);
+
+  assert.equal(coord.hasToken(), false);
+  assert.equal(coord.getToken(), null);
+  assert.equal(coord.getRefreshToken(), null);
+});

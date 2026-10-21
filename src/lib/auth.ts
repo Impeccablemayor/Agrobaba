@@ -96,8 +96,11 @@ export type LoginOutcome = 'success' | 'error' | 'verification-required';
 export async function loginUser(email: string, password: string): Promise<LoginOutcome> {
   try {
     await settlePendingLogout();
-    const response = await api.post<{ token: string; id: number; role: string; name: string; email: string }>('/api/auth/login', { email, password });
+    const response = await api.post<{ token: string; refreshToken?: string; id: number; role: string; name: string; email: string }>('/api/auth/login', { email, password });
     setAuthToken(response.token);
+    if (response.refreshToken) {
+      authRefresher.setRefreshToken(response.refreshToken);
+    }
     // A fresh, credential-proven session supersedes any pending logout intent.
     clearPendingRevoke();
 
@@ -138,6 +141,7 @@ export function logoutUser(): void {
      clears the in-memory copy the moment the authenticated user disappears, so the next account
      that logs in on this browser can only ever see its OWN server cart. */
   setAuthToken(null);
+  authRefresher.setRefreshToken(null);
 }
 
 /** Best-effort server-side session revocation (calls /api/auth/logout, which deletes the session
@@ -146,9 +150,10 @@ export function logoutUser(): void {
  *  present so the Authorization header is attached. Resolves true when the server confirmed the
  *  session is revoked and the cookie is gone. */
 export async function logoutBackend(): Promise<boolean> {
+  const refreshToken = authRefresher.getRefreshToken();
   const run = (async () => {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/api/auth/logout', refreshToken ? { refreshToken } : undefined);
       return true;
     } catch {
       // Server-side logout is best-effort; the pending-revoke marker (see pendingRevoke.ts) makes
@@ -184,12 +189,19 @@ async function settlePendingLogout(): Promise<void> {
  *  but never confirmed by the server. */
 export async function revokePendingLogout(): Promise<boolean> {
   try {
+    const refreshToken = authRefresher.getRefreshToken();
+    const headers: Record<string, string> = {
+      [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
+    };
+    if (refreshToken) {
+      headers['Content-Type'] = 'application/json';
+      headers['X-Refresh-Token'] = refreshToken;
+    }
     const response = await fetch(`${getApiBaseUrl()}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        [REFRESH_PROTECTION_HEADER]: REFRESH_PROTECTION_VALUE,
-      },
+      headers,
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
     });
     return response.ok;
   } catch {
