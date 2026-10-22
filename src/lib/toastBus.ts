@@ -1,4 +1,4 @@
-import type { ToastType } from '../types';
+import type { ToastType } from '../types.ts';
 
 type Listener = (message: string, type: ToastType) => void;
 

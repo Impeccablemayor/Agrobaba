@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StateCitySelect } from '../../components/StateCitySelect';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../lib/toastBus';
 import { buildLocationPayload, EMPTY_LOCATION, type LocationSelection } from '../../lib/locations';
@@ -103,6 +104,29 @@ export default function RegisterPage() {
         <div className="auth-form">
           <h2>Create Your Account</h2>
           <p className="form-subtitle">Join Nigeria's #1 agro marketplace — it's completely free!</p>
+
+          <GoogleSignInButton
+            label="Sign up with Google"
+            acceptedTerms={termsChecked}
+            onSuccess={() => {
+              navigate('/account', { replace: true });
+            }}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              margin: '16px 0 20px',
+              color: 'var(--muted, #6b7280)',
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ flex: 1, height: 1, backgroundColor: 'color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent)' }} />
+            <span>or register with email</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent)' }} />
+          </div>
 
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>

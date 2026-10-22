@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --test src/lib/refresh.test.ts src/lib/locationSelect.test.ts src/lib/pendingRevoke.test.ts src/lib/cart.test.ts src/lib/otp.test.ts src/lib/sessionNotice.test.ts src/lib/api.test.ts",
+    "test": "node --test src/lib/refresh.test.ts src/lib/locationSelect.test.ts src/lib/pendingRevoke.test.ts src/lib/cart.test.ts src/lib/otp.test.ts src/lib/sessionNotice.test.ts src/lib/api.test.ts src/lib/googleAuth.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

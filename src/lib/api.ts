@@ -116,6 +116,8 @@ function isRefreshExempt(path: string): boolean {
   return (
     path === '/api/auth/login' ||
     path === '/api/auth/register' ||
+    path === '/api/auth/google' ||
+    path === '/api/auth/google/link' ||
     path === '/api/auth/refresh' ||
     path === '/api/auth/forgot-password' ||
     path === '/api/auth/reset-password' ||

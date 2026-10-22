@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getCurrentUser } from '../../lib/auth';
 import { consumeSessionEnded } from '../../lib/sessionNotice';
 import { showToast } from '../../lib/toastBus';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 interface LocationState {
   from?: { pathname: string; search: string };
@@ -123,6 +124,33 @@ export default function LoginPage() {
               {incoming.notice}
             </div>
           )}
+
+          <GoogleSignInButton
+            label="Continue with Google"
+            onSuccess={() => {
+              if (getCurrentUser()?.role === 'admin') {
+                logout();
+                showToast('Admin accounts must sign in through the admin portal.', 'error');
+                return;
+              }
+              navigate(redirectTo, { replace: true });
+            }}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              margin: '16px 0 20px',
+              color: 'var(--muted, #6b7280)',
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ flex: 1, height: 1, backgroundColor: 'color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent)' }} />
+            <span>or sign in with email</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent)' }} />
+          </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">

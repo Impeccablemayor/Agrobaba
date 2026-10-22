@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import * as authLib from '../lib/auth';
-import { isAuthRejection, type LoginOutcome } from '../lib/auth';
+import { isAuthRejection, type LoginOutcome, type GoogleAuthOutcome, type GoogleAuthResult } from '../lib/auth';
+export type { GoogleAuthOutcome, GoogleAuthResult };
 import { authRefresher, RefreshUnavailableError } from '../lib/api';
 import { DEFAULT_UNAUTHORIZED_EVENT, decodeJwtExp } from '../lib/refresh';
 import { authLog } from '../lib/authEvents';
@@ -51,6 +52,8 @@ interface AuthContextValue {
   phase: AuthPhase;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<LoginOutcome>;
+  loginWithGoogle: (idToken: string, acceptedTerms?: boolean) => Promise<GoogleAuthResult>;
+  linkGoogleAccount: (idToken: string, password: string) => Promise<boolean>;
   register: (data: RegisterInput) => Promise<boolean>;
   logout: () => void;
   /** Re-verify the stored JWT against Spring Boot. Called on boot and by manual retry. */
@@ -292,6 +295,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return outcome;
   }
 
+  async function loginWithGoogle(idToken: string, acceptedTerms?: boolean): Promise<GoogleAuthResult> {
+    const result = await authLib.loginWithGoogle(idToken, acceptedTerms);
+    if (result.outcome === 'success') {
+      const u = authLib.getCurrentUser();
+      if (u) setLive(u);
+      else {
+        setUser(u);
+        setPhase('live');
+      }
+    }
+    return result;
+  }
+
+  async function linkGoogleAccount(idToken: string, password: string): Promise<boolean> {
+    const ok = await authLib.linkGoogleAccountWithPassword(idToken, password);
+    if (ok) {
+      const u = authLib.getCurrentUser();
+      if (u) setLive(u);
+      else {
+        setUser(u);
+        setPhase('live');
+      }
+    }
+    return ok;
+  }
+
   /** Registration no longer authenticates: the backend issues no token until the email OTP is
    *  verified, so success only means "account created - go verify". */
   async function register(data: RegisterInput): Promise<boolean> {
@@ -335,6 +364,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phase,
     status,
     login,
+    loginWithGoogle,
+    linkGoogleAccount,
     register,
     logout,
     verifyAuth,

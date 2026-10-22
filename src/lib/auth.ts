@@ -1,11 +1,11 @@
-import { KEYS, getItem, setItem } from './storage';
-import { purgeLegacySharedCart } from './cart';
-import { showToast } from './toastBus';
-import { api, ApiError, authRefresher, getApiBaseUrl, setAuthToken } from './api';
-import { decodeJwtExp, REFRESH_PROTECTION_HEADER, REFRESH_PROTECTION_VALUE } from './refresh';
-import { clearPendingRevoke, hasPendingRevoke, markPendingRevoke } from './pendingRevoke';
-import { authLog } from './authEvents';
-import type { Role, SafeUser, User } from '../types';
+import { KEYS, getItem, setItem } from './storage.ts';
+import { purgeLegacySharedCart } from './cartModel.ts';
+import { showToast } from './toastBus.ts';
+import { api, ApiError, authRefresher, getApiBaseUrl, setAuthToken } from './api.ts';
+import { decodeJwtExp, REFRESH_PROTECTION_HEADER, REFRESH_PROTECTION_VALUE } from './refresh.ts';
+import { clearPendingRevoke, hasPendingRevoke, markPendingRevoke } from './pendingRevoke.ts';
+import { authLog } from './authEvents.ts';
+import type { Role, SafeUser, User } from '../types.ts';
 
 // Push the token refresh to ~60s before its exp so an active user almost never hits a 401. When a
 // refresh cannot complete (network/server trouble) the 60s backoff keeps the check running without
@@ -131,6 +131,109 @@ export async function loginUser(email: string, password: string): Promise<LoginO
     const message = error instanceof Error ? error.message : 'Unable to sign in';
     showToast(message, 'error');
     return 'error';
+  }
+}
+
+export type GoogleAuthOutcome = 'success' | 'error' | 'linking-required' | 'terms-required';
+
+export interface GoogleAuthResult {
+  outcome: GoogleAuthOutcome;
+  email?: string;
+}
+
+export async function loginWithGoogle(idToken: string, acceptedTerms?: boolean): Promise<GoogleAuthResult> {
+  try {
+    await settlePendingLogout();
+    const response = await api.post<{
+      token: string;
+      refreshToken?: string;
+      id: number;
+      role: string;
+      name: string;
+      email: string;
+      avatar?: string;
+    }>('/api/auth/google', { idToken, acceptedTerms: acceptedTerms === true });
+
+    setAuthToken(response.token);
+    if (response.refreshToken) {
+      authRefresher.setRefreshToken(response.refreshToken);
+    }
+    clearPendingRevoke();
+
+    const safeUser = {
+      id: String(response.id),
+      name: response.name,
+      email: response.email,
+      role: response.role as Role,
+      country: '',
+      city: '',
+      contact: '',
+      address: '',
+      verified: false,
+      businessVerified: false,
+      joinedAt: new Date().toISOString(),
+      avatar: response.avatar || null,
+    } as SafeUser;
+
+    setItem(KEYS.user, safeUser);
+    showToast(`Welcome, ${response.name}!`, 'success');
+    return { outcome: 'success', email: response.email };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 409) {
+        return { outcome: 'linking-required' };
+      }
+      if (error.status === 400 && error.message?.toLowerCase().includes('terms')) {
+        return { outcome: 'terms-required' };
+      }
+    }
+    const message = error instanceof Error ? error.message : 'Unable to sign in with Google';
+    showToast(message, 'error');
+    return { outcome: 'error' };
+  }
+}
+
+export async function linkGoogleAccountWithPassword(idToken: string, password: string): Promise<boolean> {
+  try {
+    await settlePendingLogout();
+    const response = await api.post<{
+      token: string;
+      refreshToken?: string;
+      id: number;
+      role: string;
+      name: string;
+      email: string;
+      avatar?: string;
+    }>('/api/auth/google/link', { idToken, password });
+
+    setAuthToken(response.token);
+    if (response.refreshToken) {
+      authRefresher.setRefreshToken(response.refreshToken);
+    }
+    clearPendingRevoke();
+
+    const safeUser = {
+      id: String(response.id),
+      name: response.name,
+      email: response.email,
+      role: response.role as Role,
+      country: '',
+      city: '',
+      contact: '',
+      address: '',
+      verified: false,
+      businessVerified: false,
+      joinedAt: new Date().toISOString(),
+      avatar: response.avatar || null,
+    } as SafeUser;
+
+    setItem(KEYS.user, safeUser);
+    showToast(`Account successfully linked! Welcome, ${response.name}!`, 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to link Google account';
+    showToast(message, 'error');
+    return false;
   }
 }
 
