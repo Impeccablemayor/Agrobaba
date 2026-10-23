@@ -1,5 +1,15 @@
 export type Role = 'farmer' | 'buyer' | 'agro-dealer' | 'service-provider' | 'admin';
 
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
+
 export type ListingKind = 'product_sale' | 'service_booking' | 'equipment_sale' | 'equipment_hire' | 'land_lease';
 
 export interface Category {
@@ -525,11 +535,217 @@ export interface FlashSaleSoon {
   phase: 'starting' | 'ending';
 }
 
+export interface AdminUserMetrics {
+  totalUsers: number;
+  newUsersLast7Days: number;
+  newUsersLast30Days: number;
+  usersByRole: Record<string, number>;
+  emailVerifiedCount: number;
+  identityVerifiedCount: number;
+  businessVerifiedCount: number;
+  suspendedCount: number;
+}
+
+export interface AdminListingMetrics {
+  activeProducts: number;
+  totalProducts: number;
+  openDemands: number;
+  totalDemands: number;
+}
+
+export interface AdminOrderMetrics {
+  ordersByStatus: Record<string, number>;
+  ordersAwaitingFulfillment: number;
+  totalOrders: number;
+}
+
+export interface AdminPaymentMetrics {
+  successfulPayments: number;
+  pendingPayments: number;
+  failedPayments: number;
+  needsReviewCount: number;
+  totalSuccessfulVolume: number;
+  volumeLast30Days: number;
+  totalRefundedVolume: number;
+}
+
+export interface AdminAttentionItem {
+  id: string;
+  title: string;
+  description: string;
+  count: number;
+  link: string;
+  severity: 'warning' | 'danger' | 'info';
+}
+
 export interface AdminOverview {
   pendingVerificationsCount: number;
   openTicketsCount: number;
   flashSalesSoon: FlashSaleSoon[];
   recentActions: AuditLogEntry[];
+  userMetrics?: AdminUserMetrics;
+  listingMetrics?: AdminListingMetrics;
+  orderMetrics?: AdminOrderMetrics;
+  paymentMetrics?: AdminPaymentMetrics;
+  attentionItems?: AdminAttentionItem[];
+}
+
+export interface AdminUserSummary {
+  id: number;
+  name: string;
+  publicHandle?: string | null;
+  email: string;
+  role: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  suspendedAt?: string | null;
+  suspendedReason?: string | null;
+  country?: string | null;
+  state?: string | null;
+  city?: string | null;
+  contact?: string | null;
+  businessName?: string | null;
+  emailVerified: boolean;
+  identityVerified: boolean;
+  businessVerified: boolean;
+  createdAt: string;
+  lastActiveAt?: string | null;
+  listingsCount: number;
+  demandsCount: number;
+  ordersCount: number;
+  transactionsCount: number;
+}
+
+export interface AdminVerificationDetail {
+  id: number;
+  status?: string | null;
+  idNumber?: string | null;
+  governmentIdDocument?: string | null;
+  selfieDocument?: string | null;
+  note?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  farmName?: string | null;
+  cropsOrLivestock?: string | null;
+  businessAddress?: string | null;
+  productCategoriesSold?: string | null;
+  professionalCertificates?: string | null;
+  portfolioDocument?: string | null;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankName?: string | null;
+  declarationAccepted?: boolean;
+  cacNumber?: string | null;
+  cacDocument?: string | null;
+  businessStatus?: string | null;
+  businessNote?: string | null;
+  businessReviewedAt?: string | null;
+}
+
+export interface AdminUserDetail {
+  user: AdminUserSummary;
+  address?: string | null;
+  bio?: string | null;
+  avatar?: string | null;
+  authProvider?: string | null;
+  googleId?: string | null;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  verification?: AdminVerificationDetail | null;
+}
+
+export interface AdminUserOrderSummary {
+  id: number;
+  invoiceNumber: string;
+  total: number;
+  status: string;
+  itemsCount: number;
+  buyerName?: string | null;
+  buyerPhone?: string | null;
+  buyerAddress?: string | null;
+  couponCode?: string | null;
+  discountAmount?: number | null;
+  createdAt: string;
+}
+
+export interface AdminRefundSummary {
+  id: number;
+  amountNaira: number;
+  status: string;
+  reason?: string | null;
+  createdAt: string;
+  processedAt?: string | null;
+}
+
+export interface AdminUserTransactionSummary {
+  id: number;
+  orderId: number;
+  orderInvoiceNumber?: string | null;
+  amountNaira: number;
+  currency: string;
+  status: string;
+  reference?: string | null;
+  channel?: string | null;
+  provider?: string | null;
+  paidAt?: string | null;
+  requiresReview: boolean;
+  createdAt: string;
+  refunds: AdminRefundSummary[];
+  attemptsCount: number;
+}
+
+export interface AdminDemandBuyerSummary {
+  id: number;
+  name: string;
+  publicHandle?: string | null;
+  email: string;
+  contact?: string | null;
+  verified: boolean;
+  businessVerified: boolean;
+}
+
+export interface AdminDemandProductSummary {
+  id: number;
+  name: string;
+  price?: number | null;
+  status?: string | null;
+  image?: string | null;
+}
+
+export interface AdminDemandResponseSummary {
+  id: number;
+  responder?: AdminDemandBuyerSummary | null;
+  product?: AdminDemandProductSummary | null;
+  message: string;
+  price?: number | null;
+  accepted: boolean;
+  orderId?: number | null;
+  createdAt: string;
+}
+
+export interface AdminDemandSummary {
+  id: number;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  categoryId?: number | null;
+  requestedListingKind?: string | null;
+  quantity?: string | null;
+  budget?: number | null;
+  location?: string | null;
+  deadline?: string | null;
+  status: 'OPEN' | 'CLOSED' | 'MATCHED';
+  responsesCount: number;
+  buyer?: AdminDemandBuyerSummary | null;
+  deleted: boolean;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deleteReason?: string | null;
+  createdAt: string;
+}
+
+export interface AdminDemandDetail {
+  demand: AdminDemandSummary;
+  responses: AdminDemandResponseSummary[];
 }
 
 export interface CategoryInterestSummary {

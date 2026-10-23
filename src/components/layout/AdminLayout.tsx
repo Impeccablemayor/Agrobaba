@@ -13,7 +13,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: 'fa-gauge', label: 'Overview', isActive: (p) => p === '/admin' },
-  { to: '/admin/personalization', icon: 'fa-brain', label: 'Personalization', isActive: (p) => p === '/admin/personalization' },
+  { to: '/admin/users', icon: 'fa-users', label: 'Users', isActive: (p) => p.startsWith('/admin/users') },
+  { to: '/admin/demands', icon: 'fa-bullhorn', label: 'Buyer Demands', isActive: (p) => p.startsWith('/admin/demands') },
   { to: '/admin/orders', icon: 'fa-receipt', label: 'Orders', isActive: (p) => p === '/admin/orders' },
   { to: '/admin/payments', icon: 'fa-credit-card', label: 'Payments', isActive: (p) => p === '/admin/payments' },
   { to: '/admin/logistics', icon: 'fa-truck-ramp-box', label: 'Logistics & Transporters', isActive: (p) => p.startsWith('/admin/logistics') },
@@ -22,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/coupons', icon: 'fa-tag', label: 'Coupons', isActive: (p) => p === '/admin/coupons' },
   { to: '/admin/tickets', icon: 'fa-headset', label: 'Support Tickets', isActive: (p) => p === '/admin/tickets' },
   { to: '/admin/categories', icon: 'fa-folder-tree', label: 'Categories', isActive: (p) => p === '/admin/categories' },
+  { to: '/admin/personalization', icon: 'fa-brain', label: 'Personalization', isActive: (p) => p === '/admin/personalization' },
   { to: '/admin/activity', icon: 'fa-clock-rotate-left', label: 'Admin Activity', isActive: (p) => p === '/admin/activity' },
   { to: '/admin/emails', icon: 'fa-envelope', label: 'Email Logs', isActive: (p) => p === '/admin/emails' || p.startsWith('/admin/emails') },
 ];

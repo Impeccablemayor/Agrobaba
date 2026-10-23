@@ -1,6 +1,6 @@
 import { showToast } from './toastBus';
 import { api } from './api';
-import type { AdminOverview, AuditLogEntry } from '../types';
+import type { AdminOverview, AuditLogEntry, AdminUserMetrics, AdminListingMetrics, AdminOrderMetrics, AdminPaymentMetrics, AdminAttentionItem } from '../types';
 
 interface ApiFlashSaleSoon {
   id: number;
@@ -23,6 +23,11 @@ interface ApiOverview {
   openTicketsCount: number;
   flashSalesSoon: ApiFlashSaleSoon[];
   recentActions: ApiAuditLogEntry[];
+  userMetrics?: AdminUserMetrics;
+  listingMetrics?: AdminListingMetrics;
+  orderMetrics?: AdminOrderMetrics;
+  paymentMetrics?: AdminPaymentMetrics;
+  attentionItems?: AdminAttentionItem[];
 }
 
 function mapAuditEntry(e: ApiAuditLogEntry): AuditLogEntry {
@@ -33,10 +38,15 @@ function mapOverview(data: ApiOverview): AdminOverview {
   return {
     pendingVerificationsCount: data.pendingVerificationsCount,
     openTicketsCount: data.openTicketsCount,
-    flashSalesSoon: data.flashSalesSoon.map((f) => ({
+    flashSalesSoon: (data.flashSalesSoon || []).map((f) => ({
       id: String(f.id), title: f.title, startAt: f.startAt, endAt: f.endAt, phase: f.phase,
     })),
-    recentActions: data.recentActions.map(mapAuditEntry),
+    recentActions: (data.recentActions || []).map(mapAuditEntry),
+    userMetrics: data.userMetrics,
+    listingMetrics: data.listingMetrics,
+    orderMetrics: data.orderMetrics,
+    paymentMetrics: data.paymentMetrics,
+    attentionItems: data.attentionItems || [],
   };
 }
 

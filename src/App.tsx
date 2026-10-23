@@ -42,6 +42,9 @@ import MyQuotesPage from './pages/quotes/MyQuotesPage';
 import ReceivedQuotesPage from './pages/quotes/ReceivedQuotesPage';
 import PersonalizationWizardPage from './pages/onboarding/PersonalizationWizardPage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminUserDetailPage from './pages/admin/AdminUserDetailPage';
+import AdminDemandsPage from './pages/admin/AdminDemandsPage';
 import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
@@ -110,6 +113,9 @@ function App() {
 
       <Route element={<RoleProtectedRoute role="admin"><AdminLayout /></RoleProtectedRoute>}>
         <Route path="admin" element={<AdminOverviewPage />} />
+        <Route path="admin/users" element={<AdminUsersPage />} />
+        <Route path="admin/users/:id" element={<AdminUserDetailPage />} />
+        <Route path="admin/demands" element={<AdminDemandsPage />} />
         <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
         <Route path="admin/payments" element={<AdminPaymentsPage />} />
