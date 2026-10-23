@@ -748,6 +748,87 @@ export interface AdminDemandDetail {
   responses: AdminDemandResponseSummary[];
 }
 
+export interface AdminProductSummary {
+  id: number;
+  name: string;
+  image?: string | null;
+  listingType?: string | null;
+  category: string;
+  categoryId?: number | null;
+  price: number;
+  currency: string;
+  quantity?: number | null;
+  unit?: string | null;
+  location?: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DRAFT' | string;
+  sellerId?: number | null;
+  sellerName?: string | null;
+  sellerEmail?: string | null;
+  sellerPublicHandle?: string | null;
+  sellerRole?: string | null;
+  sellerVerified: boolean;
+  sellerBusinessVerified: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+  suspendedAt?: string | null;
+  suspendedBy?: string | null;
+  suspendedReason?: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deleteReason?: string | null;
+  reportsCount: number;
+}
+
+export interface AdminProductRelatedOrder {
+  orderId?: number | null;
+  invoiceNumber: string;
+  buyerId?: number | null;
+  buyerName?: string | null;
+  quantity: number;
+  price: number;
+  total: number;
+  status?: string | null;
+  createdAt?: string | null;
+}
+
+export interface AdminProductDetail {
+  product: AdminProductSummary;
+  description?: string | null;
+  images: string[];
+  unitType?: string | null;
+  minOrderQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+  incrementQuantity?: number | null;
+  negotiated: boolean;
+  priceTiers?: Array<{
+    minQuantity: number;
+    maxQuantity?: number | null;
+    unitPrice: number;
+  }>;
+  tags?: string[];
+  relatedOrders: AdminProductRelatedOrder[];
+  moderationHistory: AuditLogEntry[];
+}
+
+export interface SuspendProductPayload {
+  reason: string;
+}
+
+export interface DeleteProductPayload {
+  reason: string;
+}
+
+export interface UpdateAdminProductPayload {
+  name: string;
+  description?: string;
+  price?: number;
+  quantity?: number;
+  unit?: string;
+  location?: string;
+  categoryId?: number;
+  status?: string;
+}
+
 export interface CategoryInterestSummary {
   categoryId: number;
   categoryName: string;

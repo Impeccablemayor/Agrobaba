@@ -246,10 +246,24 @@ export default function AdminUserDetailPage() {
             borderTop: '1px solid var(--border-mid)',
           }}
         >
-          <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)' }}>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>PRODUCT LISTINGS</div>
-            <div style={{ fontSize: 18, fontWeight: 900, marginTop: 2 }}>{u.listingsCount}</div>
-          </div>
+          <Link
+            to={`/admin/products?sellerId=${u.id}`}
+            style={{
+              padding: '10px 12px',
+              background: 'var(--bg-soft)',
+              borderRadius: 'var(--radius-sm)',
+              textDecoration: 'none',
+              color: 'inherit',
+              display: 'block',
+            }}
+            title="Inspect all product listings by this seller"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>PRODUCT LISTINGS</div>
+              <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: 10, color: 'var(--primary)' }}></i>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 900, marginTop: 2, color: 'var(--primary)' }}>{u.listingsCount}</div>
+          </Link>
           <div style={{ padding: '10px 12px', background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)' }}>
             <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>BUYER DEMANDS</div>
             <div style={{ fontSize: 18, fontWeight: 900, marginTop: 2 }}>{u.demandsCount}</div>

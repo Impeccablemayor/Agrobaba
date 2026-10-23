@@ -18,6 +18,11 @@ import {
   getAdminDemandDetail,
   type AdminDemandsFilterParams,
 } from '../../lib/adminDemands';
+import {
+  getAdminProducts,
+  getAdminProductDetail,
+  type AdminProductsFilterParams,
+} from '../../lib/adminProducts';
 
 export function useAdminTickets() {
   return useQuery({
@@ -151,5 +156,24 @@ export function useAdminDemandDetail(id: number | string | null | undefined) {
     queryFn: () => (id ? getAdminDemandDetail(id) : Promise.resolve(null)),
     enabled: Boolean(id),
     staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminProducts(params: AdminProductsFilterParams = {}) {
+  return useQuery({
+    queryKey: ['admin', 'products', params],
+    queryFn: () => getAdminProducts(params),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAdminProductDetail(id: number | string | null | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'product', id],
+    queryFn: () => (id ? getAdminProductDetail(id) : Promise.resolve(null)),
+    enabled: Boolean(id),
+    staleTime: 30 * 1000,
   });
 }

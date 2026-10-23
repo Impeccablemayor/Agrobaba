@@ -14,6 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: 'fa-gauge', label: 'Overview', isActive: (p) => p === '/admin' },
   { to: '/admin/users', icon: 'fa-users', label: 'Users', isActive: (p) => p.startsWith('/admin/users') },
+  { to: '/admin/products', icon: 'fa-boxes-stacked', label: 'Products', isActive: (p) => p.startsWith('/admin/products') },
   { to: '/admin/demands', icon: 'fa-bullhorn', label: 'Buyer Demands', isActive: (p) => p.startsWith('/admin/demands') },
   { to: '/admin/orders', icon: 'fa-receipt', label: 'Orders', isActive: (p) => p === '/admin/orders' },
   { to: '/admin/payments', icon: 'fa-credit-card', label: 'Payments', isActive: (p) => p === '/admin/payments' },

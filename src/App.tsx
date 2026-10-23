@@ -44,6 +44,7 @@ import PersonalizationWizardPage from './pages/onboarding/PersonalizationWizardP
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminUserDetailPage from './pages/admin/AdminUserDetailPage';
+import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminDemandsPage from './pages/admin/AdminDemandsPage';
 import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
 import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
@@ -115,6 +116,7 @@ function App() {
         <Route path="admin" element={<AdminOverviewPage />} />
         <Route path="admin/users" element={<AdminUsersPage />} />
         <Route path="admin/users/:id" element={<AdminUserDetailPage />} />
+        <Route path="admin/products" element={<AdminProductsPage />} />
         <Route path="admin/demands" element={<AdminDemandsPage />} />
         <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
