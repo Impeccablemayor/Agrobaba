@@ -78,30 +78,69 @@ export default function RegisterPage() {
 
       <div className="auth-wrapper">
         <div className="auth-panel">
-          <div>
-            <div className="auth-panel-logo">
-              <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+          <div className="auth-panel-content">
+            <div className="auth-panel-header">
+              <Link to="/" className="auth-panel-logo">
+                <span className="auth-logo-badge">
+                  <i className="fa-solid fa-seedling"></i>
+                </span>
+                Agro<span>baba</span>
+              </Link>
             </div>
-            <p className="auth-panel-tagline">
-              Join thousands of farmers, buyers and agro-dealers transforming agricultural trade across Nigeria.
+
+            <h1 className="auth-panel-headline">
+              Trade agricultural produce with confidence.
+            </h1>
+            <p className="auth-panel-subhead">
+              Join farmers, buyers, and agro-dealers transforming agricultural commerce across Nigeria.
             </p>
-            <ul>
-              <li><i className="fa-solid fa-circle-check"></i> List products and reach buyers instantly</li>
-              <li><i className="fa-solid fa-circle-check"></i> Post demands and get competitive quotes</li>
-              <li><i className="fa-solid fa-circle-check"></i> Escrow-protected payments on every deal</li>
-              <li><i className="fa-solid fa-circle-check"></i> Chat directly with buyers and sellers</li>
-              <li><i className="fa-solid fa-circle-check"></i> Build your reputation with verified reviews</li>
-              <li><i className="fa-solid fa-circle-check"></i> Free to join — no hidden fees</li>
-            </ul>
+
+            <div className="auth-points-list">
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>List products and reach buyers instantly</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Post demands and get competitive quotes</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Escrow-protected payments on every deal</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Chat directly with buyers and sellers</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Build your reputation with verified reviews</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Free to join — no hidden fees</span>
+              </div>
+            </div>
           </div>
 
-          <div className="auth-testimonial">
-            <p>"Registration was easy. Within a week, I found three buyers for my yam harvest and got 30% more than the market price."</p>
-            <div className="cite">— Fatima B., Farmer, Ogun State</div>
+          <div className="auth-pullquote">
+            <p className="pullquote-text">
+              "Registration was easy. Within a week, I found three buyers for my yam harvest and got 30% more than the market price."
+            </p>
+            <div className="pullquote-author">
+              Fatima B. <span>• Farmer, Ogun State</span>
+            </div>
           </div>
         </div>
 
         <div className="auth-form">
+          <div className="auth-mobile-header">
+            <Link to="/" className="auth-mobile-logo">
+              <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+            </Link>
+            <span className="auth-mobile-badge"><i className="fa-solid fa-shield-halved"></i> Escrow Protected</span>
+          </div>
+
           <h2>Create Your Account</h2>
           <p className="form-subtitle">Join Nigeria's #1 agro marketplace — it's completely free!</p>
 
@@ -132,16 +171,24 @@ export default function RegisterPage() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>
               I am joining as a...
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+            <div className="role-options-grid">
               {ROLE_OPTIONS.map((opt) => (
                 <div
                   key={opt.role}
                   className={`role-option ${role === opt.role ? 'active' : ''}`}
                   onClick={() => setRole(opt.role)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setRole(opt.role); }}
                 >
-                  <i className={`fa-solid ${opt.icon}`}></i>
-                  <span>{opt.label}</span>
-                  <small>{opt.blurb}</small>
+                  <div className="role-option-head">
+                    <div className="role-icon-box">
+                      <i className={`fa-solid ${opt.icon}`}></i>
+                    </div>
+                    <span className="role-title">{opt.label}</span>
+                    <i className="fa-solid fa-circle-check role-check"></i>
+                  </div>
+                  <small className="role-blurb">{opt.blurb}</small>
                 </div>
               ))}
             </div>
@@ -149,19 +196,19 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
-              <div className="col-md-6">
+              <div className="col-12 col-md-6">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Full Name <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input type="text" placeholder="Your full name" required autoComplete="name" value={form.name} onChange={(e) => update('name', e.target.value)} />
                 </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-12 col-md-6">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Email Address <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input type="email" placeholder="you@example.com" required autoComplete="email" value={form.email} onChange={(e) => update('email', e.target.value)} />
                 </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-12 col-md-6">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Password <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <div style={{ position: 'relative' }}>
@@ -185,7 +232,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-12 col-md-6">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Phone Number <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input
@@ -200,7 +247,7 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
-              <div className="col-md-4">
+              <div className="col-12 col-md-4">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Country <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input type="text" placeholder="Nigeria" required value={form.country} onChange={(e) => update('country', e.target.value)} />
@@ -209,7 +256,7 @@ export default function RegisterPage() {
               <StateCitySelect
                 idPrefix="register"
                 fieldClassName="form-group"
-                wrapperClassName="col-md-4"
+                wrapperClassName="col-12 col-md-4"
                 wrapperStyle={{ marginBottom: 0 }}
                 required
                 cityLabel="City"
@@ -237,7 +284,7 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            <button type="submit" disabled={submitting} className="btn-primary">
+            <button type="submit" disabled={submitting} className="btn-primary w-100" style={{ padding: '12px', fontSize: 14 }}>
               {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
               {submitting ? 'Creating Account…' : (<><i className="fa-solid fa-user-plus"></i> Create Account</>)}
             </button>

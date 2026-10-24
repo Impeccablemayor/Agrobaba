@@ -274,7 +274,8 @@ export default function VerifyEmailPage() {
             {email && (
               <form onSubmit={handleVerify}>
                 <div
-                  style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 }}
+                  className="otp-inputs-wrapper"
+                  style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, width: '100%', maxWidth: '100%' }}
                   onPaste={handlePaste}
                   role="group"
                   aria-label={`Enter the ${OTP_LENGTH}-digit verification code`}
@@ -295,8 +296,16 @@ export default function VerifyEmailPage() {
                       onChange={(e) => handleBoxChange(i, e.target.value)}
                       onKeyDown={(e) => handleBoxKeyDown(i, e)}
                       style={{
-                        width: 44, height: 52, textAlign: 'center', fontSize: 22, fontWeight: 700,
-                        borderRadius: 8, border: '1px solid var(--border, #d8dce3)',
+                        width: '100%',
+                        maxWidth: 44,
+                        minWidth: 32,
+                        height: 52,
+                        textAlign: 'center',
+                        fontSize: 20,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        border: '1px solid var(--border, #d8dce3)',
+                        padding: 0,
                       }}
                     />
                   ))}

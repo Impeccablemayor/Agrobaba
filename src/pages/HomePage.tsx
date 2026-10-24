@@ -14,7 +14,6 @@ import { ProductCard } from '../components/ProductCard';
 import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
-import { CategorySidebar } from '../components/CategorySidebar';
 import type { Suggestion } from '../lib/search';
 import type { Product } from '../types';
 
@@ -49,7 +48,7 @@ export default function HomePage() {
   const profileStatus = personalizationProfile?.status ?? null;
   const { hours, mins, secs, expired } = useCountdown(flashSale?.endAt || null);
 
-  const isSupplier = !!user && user.role !== 'buyer';
+  const isSupplier = !!user && user.role !== 'buyer' && user.role !== 'admin';
 
   const { data: products = [] } = useProducts();
   const { data: demands = [] } = useDemands();
@@ -67,7 +66,11 @@ export default function HomePage() {
   const recommendedIds = new Set(filteredRecommended.map((p) => p.id));
   const withRecommendedFirst = (candidates: Product[]) =>
     [...candidates].sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)));
-  const produceRail = withRecommendedFirst(products.filter((p) => p.categoryCode?.startsWith('produce.'))).slice(0, 4);
+
+  const produceRail = withRecommendedFirst(
+    products.filter((p) => p.categoryCode?.startsWith('produce.') || p.type === 'produce')
+  ).slice(0, 4);
+
   const servicesRail = withRecommendedFirst(products.filter((p) => p.type === 'service')).slice(0, 4);
   const previewDemands = demands.slice(0, 4);
 
@@ -83,7 +86,7 @@ export default function HomePage() {
   };
 
   const postHref = !user ? '/register' : isSupplier ? '/account/post-listing' : '/demands/new';
-  const postLabel = !user ? 'Get Started' : isSupplier ? 'Post a Listing' : 'Post a Demand';
+  const postLabel = !user ? 'Sell on AgroBaba' : isSupplier ? 'Post a Listing' : 'Post a Demand';
 
   function doHeroSearch(value: string = heroQuery) {
     if (!value.trim()) return;
@@ -96,262 +99,501 @@ export default function HomePage() {
   }
 
   return (
-    <>
-      {/* HERO */}
-      <section id="hero">
-        <div className="hero-inner">
-          <div className="hero-label">
-            <i className="fa-solid fa-leaf"></i> Nigeria's #1 Agro Marketplace
-          </div>
-          <h1>
-            Sell what you grow.
-            <br />
-            <em>Find what you need.</em>
-          </h1>
-          <p className="hero-sub">
-            Verified farmers, buyers, agro-dealers and service providers — all in one place.
-          </p>
-          <div className="hero-search">
-            <SearchSuggest
-              value={heroQuery}
-              onChange={setHeroQuery}
-              onSubmit={doHeroSearch}
-              onSelectResult={goToProduct}
-              scope="products"
-              placeholder='Try "maize Kaduna", "farm consultant", "NPK fertilizer Lagos"'
-            />
-            <button onClick={() => doHeroSearch()}>
-              <i className="fa-solid fa-magnifying-glass"></i> Search
-            </button>
-          </div>
-          <div className="hero-actions" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-            <Link to="/shop" className="btn-primary btn-inline">
-              <i className="fa-solid fa-store"></i> Browse Market
-            </Link>
-            <Link to={postHref} className="btn-outline btn-inline">
-              <i className="fa-solid fa-plus"></i> {postLabel}
-            </Link>
-          </div>
-          <div className="popular">
-            <span>Popular:</span>
-            <Link to="/shop?search=tomatoes">Tomatoes</Link>
-            <Link to="/shop?search=fertilizer">Fertilizer</Link>
-            <Link to="/shop?search=maize">Maize</Link>
-            <Link to="/shop?search=veterinary">Vet Services</Link>
-            <Link to="/shop?search=irrigation">Irrigation</Link>
-            <Link to="/shop?search=cassava">Cassava</Link>
+    <div className="home-page-root">
+      {/* SECTION A: HERO */}
+      <section className="hero-editorial-section">
+        <div className="container">
+          <div className="hero-split-grid">
+            {/* Left Column: Messaging & Search */}
+            <div className="hero-content-col">
+              <div className="hero-badge-pill">
+                <i className="fa-solid fa-leaf"></i> Nigeria's Agricultural Marketplace
+              </div>
+
+              <h1 className="hero-main-title">
+                Good things grow <br />
+                <span className="hero-title-highlight">when we connect.</span>
+              </h1>
+
+              <p className="hero-description-text">
+                Direct trade between verified farmers, agro-dealers, and buyers across Nigeria. Real farm pricing, transparent quantities, and escrow protection.
+              </p>
+
+              {/* Prominent Search Bar */}
+              <div className="hero-search-box">
+                <i className="fa-solid fa-magnifying-glass hero-search-icon"></i>
+                <SearchSuggest
+                  value={heroQuery}
+                  onChange={setHeroQuery}
+                  onSubmit={doHeroSearch}
+                  onSelectResult={goToProduct}
+                  scope="products"
+                  placeholder='Search "tomatoes Ibadan", "NPK fertilizer", "maize Kano"…'
+                />
+                <button
+                  type="button"
+                  className="hero-search-submit"
+                  onClick={() => doHeroSearch()}
+                  aria-label="Search listings"
+                >
+                  <i className="fa-solid fa-magnifying-glass"></i>
+                  <span>Search</span>
+                </button>
+              </div>
+
+              {/* Dual Calls to Action */}
+              <div className="hero-cta-group">
+                <Link to="/shop" className="btn-primary hero-btn-main">
+                  <i className="fa-solid fa-store"></i> Browse Marketplace
+                </Link>
+                <Link to={postHref} className="btn-outline hero-btn-sub">
+                  <i className="fa-solid fa-plus"></i> {postLabel}
+                </Link>
+              </div>
+
+              {/* Quick Popular Keywords */}
+              <div className="hero-popular-tags">
+                <span className="popular-label">Popular:</span>
+                <Link to="/shop?search=tomatoes" className="popular-tag">Tomatoes</Link>
+                <Link to="/shop?search=fertilizer" className="popular-tag">Fertilizer</Link>
+                <Link to="/shop?search=maize" className="popular-tag">Maize</Link>
+                <Link to="/shop?search=cassava" className="popular-tag">Cassava</Link>
+                <Link to="/shop?search=tractor" className="popular-tag">Tractor Hire</Link>
+                <Link to="/shop?search=poultry" className="popular-tag">Poultry Feed</Link>
+              </div>
+            </div>
+
+            {/* Right Column: Authentic Editorial Imagery */}
+            <div className="hero-visual-col">
+              <div className="hero-image-card">
+                <img
+                  src="/hero-agriculture.jpg"
+                  alt="Verified Nigerian farmer with fresh harvest on farmland"
+                  className="hero-farmer-img"
+                  loading="eager"
+                  fetchPriority="high"
+                />
+                {/* Floating Reassurance Badges */}
+                <div className="floating-badge farm-verified-badge">
+                  <i className="fa-solid fa-circle-check"></i>
+                  <div>
+                    <strong>Verified Farmer</strong>
+                    <span>Adegbayi, Oyo State</span>
+                  </div>
+                </div>
+
+                <div className="floating-badge escrow-badge">
+                  <i className="fa-solid fa-shield-halved"></i>
+                  <div>
+                    <strong>Escrow Protected</strong>
+                    <span>Payment verified on delivery</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* TRUST STRIP */}
-      <div className="trust-strip">
-        <div className="trust-item"><i className="fa-solid fa-circle-check"></i> Verified Sellers</div>
-        <div className="trust-item"><i className="fa-solid fa-handshake"></i> Direct Trade, No Middlemen</div>
-        <div className="trust-item"><i className="fa-solid fa-money-check-dollar"></i> Payment Verification</div>
-        <div className="trust-item"><i className="fa-solid fa-comments"></i> Buyer-Seller Messaging</div>
-        <div className="trust-item"><i className="fa-solid fa-headset"></i> Support When You Need It</div>
-      </div>
-
-      {/* RECOMMENDED FOR YOU */}
-      {filteredRecommended.length > 0 && (
-        <>
-          <div className="section">
-            <div className="section-hdr">
-              <h2><i className="fa-solid fa-sparkles" style={{ color: 'var(--primary)' }}></i> Recommended for You</h2>
+      {/* SECTION B: TRUST & REASSURANCE */}
+      <section className="trust-reassurance-strip">
+        <div className="container">
+          <div className="trust-grid">
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <i className="fa-solid fa-user-check"></i>
+              </div>
+              <div className="trust-card-text">
+                <h4>Verified Sellers</h4>
+                <p>Identity & farm verification so you deal with legitimate producers.</p>
+              </div>
             </div>
-            <div className="grid-4">
-              {filteredRecommended.map((p) => <ProductCard key={p.id} product={p} onNotInterested={handleNotInterested} />)}
+
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <i className="fa-solid fa-handshake"></i>
+              </div>
+              <div className="trust-card-text">
+                <h4>Direct Market Trade</h4>
+                <p>Cut out unwarranted middleman markups. Buy direct from the source.</p>
+              </div>
+            </div>
+
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <i className="fa-solid fa-shield-halved"></i>
+              </div>
+              <div className="trust-card-text">
+                <h4>Payment Escrow</h4>
+                <p>Your money is held safely and only released when goods arrive as agreed.</p>
+              </div>
+            </div>
+
+            <div className="trust-card">
+              <div className="trust-icon-box">
+                <i className="fa-solid fa-truck-fast"></i>
+              </div>
+              <div className="trust-card-text">
+                <h4>Nationwide Delivery</h4>
+                <p>Coordinated transit across states with verified agricultural transporters.</p>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="divider"></div>
-        </>
+      {/* SECTION C: PRODUCT CATEGORIES */}
+      <section className="categories-showcase-section">
+        <div className="container">
+          <div className="section-header-row">
+            <div>
+              <span className="section-eyebrow">Explore AgroBaba</span>
+              <h2 className="section-heading">Browse by Category</h2>
+            </div>
+            <Link to="/shop" className="see-all-link">
+              All categories <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+
+          <div className="category-cards-grid">
+            <Link to={sectionHref('produce')} className="category-feature-card">
+              <div className="category-icon-circle green">
+                <i className="fa-solid fa-wheat-awn"></i>
+              </div>
+              <h3>Fresh Produce</h3>
+              <p>Grains, tubers, fruits, plantains & vegetables</p>
+              <span className="category-link-text">Browse produce <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+
+            <Link to={sectionHref('inputs')} className="category-feature-card">
+              <div className="category-icon-circle amber">
+                <i className="fa-solid fa-flask"></i>
+              </div>
+              <h3>Agro Inputs & Seeds</h3>
+              <p>Fertilizers, agrochemicals, hybrid seeds & nutrients</p>
+              <span className="category-link-text">Browse inputs <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+
+            <Link to={sectionHref('livestock')} className="category-feature-card">
+              <div className="category-icon-circle green">
+                <i className="fa-solid fa-cow"></i>
+              </div>
+              <h3>Livestock & Aquaculture</h3>
+              <p>Poultry, goats, cattle, fish, fingerlings & feed</p>
+              <span className="category-link-text">Browse livestock <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+
+            <Link to={sectionHref('equipment')} className="category-feature-card">
+              <div className="category-icon-circle amber">
+                <i className="fa-solid fa-tractor"></i>
+              </div>
+              <h3>Farm Machinery</h3>
+              <p>Tractors, harvesters, planters & irrigation tools</p>
+              <span className="category-link-text">Browse machinery <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+
+            <Link to={sectionHref('services')} className="category-feature-card">
+              <div className="category-icon-circle green">
+                <i className="fa-solid fa-hand-holding-medical"></i>
+              </div>
+              <h3>Agro Services</h3>
+              <p>Veterinary, agronomy, drone spraying & consulting</p>
+              <span className="category-link-text">Explore services <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+
+            <Link to={sectionHref('land')} className="category-feature-card">
+              <div className="category-icon-circle amber">
+                <i className="fa-solid fa-map-location-dot"></i>
+              </div>
+              <h3>Land & Facilities</h3>
+              <p>Farmland lease, storage warehouses & cold rooms</p>
+              <span className="category-link-text">Explore facilities <i className="fa-solid fa-chevron-right"></i></span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* COMPLETE YOUR PROFILE PROMPT */}
+      {user && profileStatus && profileStatus !== 'completed' && (
+        <section className="marketplace-section" style={{ padding: '16px 0' }}>
+          <div className="container">
+            <div className="banner banner-green" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, borderRadius: 'var(--radius)', padding: '20px 24px' }}>
+              <div>
+                <h3 style={{ fontSize: 16, marginBottom: 4, color: '#fff' }}>
+                  <i className="fa-solid fa-sliders" style={{ marginRight: 8 }}></i> Get tailored recommendations
+                </h3>
+                <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.9)' }}>
+                  Tell us what you grow, sell, or buy — we will surface matching produce, buyer demands, and local alerts.
+                </p>
+              </div>
+              <Link to="/onboarding" className="btn-primary" style={{ background: '#fff', color: 'var(--primary-dark)', margin: 0, whiteSpace: 'nowrap' }}>
+                <i className="fa-solid fa-arrow-right"></i> Complete Profile
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* RECOMMENDED FOR YOU (PERSONALIZED) */}
+      {filteredRecommended.length > 0 && (
+        <section className="marketplace-section highlight-bg">
+          <div className="container">
+            <div className="section-header-row">
+              <div>
+                <span className="section-eyebrow">Personalized For You</span>
+                <h2 className="section-heading">
+                  <i className="fa-solid fa-sparkles text-accent"></i> Recommended Products
+                </h2>
+              </div>
+            </div>
+            <div className="product-grid-4">
+              {filteredRecommended.map((p) => (
+                <ProductCard key={p.id} product={p} onNotInterested={handleNotInterested} />
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
       {/* DEMANDS YOU COULD FULFILL */}
       {matchingDemands.length > 0 && (
-        <>
-          <div className="section">
-            <div className="section-hdr">
-              <h2><i className="fa-solid fa-bullseye" style={{ color: 'var(--primary)' }}></i> Demands You Could Fulfill</h2>
-              <Link to="/demands" className="see-all">View demand board <i className="fa-solid fa-chevron-right"></i></Link>
-            </div>
-            <div className="demand-grid">
-              {matchingDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
-            </div>
-          </div>
-
-          <div className="divider"></div>
-        </>
-      )}
-
-      {/* COMPLETE YOUR PROFILE */}
-      {user && profileStatus && profileStatus !== 'completed' && (
-        <>
-          <div className="section">
-            <div className="banner banner-green">
-              <i className="fa-solid fa-sliders"></i>
-              <h3>Get recommendations made for you</h3>
-              <p>Tell us what you're looking for and we'll surface matching listings, demands and alerts across the site — takes under 2 minutes.</p>
-              <Link to="/onboarding" className="banner-btn"><i className="fa-solid fa-arrow-right"></i> Complete My Profile</Link>
-            </div>
-          </div>
-
-          <div className="divider"></div>
-        </>
-      )}
-
-      {/* BROWSE MARKET */}
-      <div className="section">
-        <div className="shop-layout home-browse-layout">
-          <CategorySidebar
-            categories={categories}
-            sectionId="all"
-            categoryId="all"
-            onSelectSection={(id) => navigate(id === 'all' ? '/shop' : `/shop?categoryId=${encodeURIComponent(id)}`)}
-            onSelectCategory={(_sectionId, id) => navigate(`/shop?categoryId=${encodeURIComponent(id)}`)}
-          />
-
-          <div className="shop-content">
-            <div className="section-hdr">
-              <h2><i className="fa-solid fa-store" style={{ color: 'var(--primary)' }}></i> Browse the Market</h2>
-              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-            </div>
-            {products.length === 0 ? (
-              <p className="text-muted text-center">No products yet.</p>
-            ) : (
-              <div className="grid-4">
-                {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
+        <section className="marketplace-section">
+          <div className="container">
+            <div className="section-header-row">
+              <div>
+                <span className="section-eyebrow">Buyer Demand Matching</span>
+                <h2 className="section-heading">
+                  <i className="fa-solid fa-bullseye text-primary"></i> Demands You Can Fulfill
+                </h2>
               </div>
-            )}
+              <Link to="/demands" className="see-all-link">
+                View demand board <i className="fa-solid fa-arrow-right"></i>
+              </Link>
+            </div>
+            <div className="demand-cards-grid">
+              {matchingDemands.map((d) => (
+                <DemandCard key={d.id} demand={d} />
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+      )}
 
-      <div className="divider"></div>
-
-      {/* FLASH DEALS */}
+      {/* FLASH DEALS (IF ACTIVE) */}
       {flashSale && !expired && flashSale.items.length > 0 && (
-        <>
-          <div className="section">
-            <div className="section-hdr">
-              <h2>
-                <i className="fa-solid fa-fire" style={{ color: '#dc2626' }}></i>
-                {flashSale.title}
-                <span className="flash-badge">
-                  <i className="fa-regular fa-clock"></i>
-                  <span>{hours}</span>h : <span>{mins}</span>m : <span>{secs}</span>s
-                </span>
-              </h2>
-              <Link to="/shop" className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
+        <section className="marketplace-section flash-deals-container">
+          <div className="container">
+            <div className="section-header-row">
+              <div className="flash-header-left">
+                <span className="section-eyebrow">Limited Time Offers</span>
+                <h2 className="section-heading">
+                  <i className="fa-solid fa-fire text-danger"></i> {flashSale.title}
+                  <span className="flash-timer-pill">
+                    <i className="fa-regular fa-clock"></i> {hours}h : {mins}m : {secs}s
+                  </span>
+                </h2>
+              </div>
+              <Link to="/shop" className="see-all-link">
+                See all deals <i className="fa-solid fa-arrow-right"></i>
+              </Link>
             </div>
-            <div className="scroll-row">
-              {flashSale.items.map((item) => <FlashSaleCard key={item.id} item={item} />)}
+            <div className="flash-scroll-row">
+              {flashSale.items.map((item) => (
+                <FlashSaleCard key={item.id} item={item} />
+              ))}
             </div>
           </div>
-
-          <div className="divider"></div>
-        </>
+        </section>
       )}
 
-      {/* FRESH PRODUCE */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-wheat-awn" style={{ color: 'var(--primary)' }}></i> Fresh Produce</h2>
-          <Link to={sectionHref('produce')} className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {produceRail.length === 0 ? (
-          <p className="text-muted">No fresh produce listed yet.</p>
-        ) : (
-          <div className="grid-4">
-            {produceRail.map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        )}
-      </div>
-
-      <div className="divider"></div>
-
-      {/* SERVICES */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-hand-holding-medical" style={{ color: 'var(--primary)' }}></i> Agro Services</h2>
-          <Link to={sectionHref('services')} className="see-all">See all <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {servicesRail.length === 0 ? (
-          <p className="text-muted">No services listed yet.</p>
-        ) : (
-          <div className="grid-4">
-            {servicesRail.map((p) => <ProductCard key={p.id} product={p} />)}
-          </div>
-        )}
-      </div>
-
-      <div className="divider"></div>
-
-      {/* DEMAND BOARD PREVIEW */}
-      <div className="section">
-        <div className="section-hdr">
-          <h2><i className="fa-solid fa-clipboard-list" style={{ color: 'var(--primary)' }}></i> Recent Demands</h2>
-          <Link to="/demands" className="see-all">View demand board <i className="fa-solid fa-chevron-right"></i></Link>
-        </div>
-        {previewDemands.length === 0 ? (
-          <p className="text-muted">No demands posted yet.</p>
-        ) : (
-          <div className="demand-grid">
-            {previewDemands.map((d) => <DemandCard key={d.id} demand={d} />)}
-          </div>
-        )}
-      </div>
-
-      <div className="divider"></div>
-
-      {/* SELLER / BUYER CALLS TO ACTION */}
-      <div className="banners">
-        <div className="banner banner-green">
-          <i className="fa-solid fa-tractor"></i>
-          <h3>Farmer, Dealer or Service Provider?</h3>
-          <p>List your produce, products or services and connect directly with serious buyers across Nigeria. Free to join.</p>
-          <Link to="/register" className="banner-btn"><i className="fa-solid fa-plus"></i> Start Selling</Link>
-        </div>
-        <div className="banner banner-amber">
-          <i className="fa-solid fa-basket-shopping"></i>
-          <h3>Need something specific?</h3>
-          <p>Post a demand and receive direct offers from verified farmers and dealers near you. No hassle, no middlemen.</p>
-          <Link to="/demands/new" className="banner-btn"><i className="fa-solid fa-pen"></i> Post a Demand</Link>
-        </div>
-      </div>
-
-      {/* HOW IT WORKS */}
-      <section className="how-it-works">
+      {/* SECTION D: FEATURED MARKETPLACE PRODUCTS */}
+      <section className="marketplace-section">
         <div className="container">
-          <h2 className="section-title">How Agrobaba Works</h2>
-          <p className="section-subtitle">Simple and transparent agricultural trade in 3 steps.</p>
-          <div className="row g-4 mt-2">
-            <div className="col-md-4">
-              <div className="step-card">
-                <div className="step-number">01</div>
-                <h3>Register Free</h3>
-                <p>Sign up as a farmer, buyer, agro-dealer or service provider in under 2 minutes. No fees, no credit card.</p>
-              </div>
+          <div className="section-header-row">
+            <div>
+              <span className="section-eyebrow">Marketplace Discovery</span>
+              <h2 className="section-heading">Featured Produce & Inputs</h2>
             </div>
-            <div className="col-md-4">
-              <div className="step-card">
-                <div className="step-number">02</div>
-                <h3>List or Post</h3>
-                <p>Farmers list what they have. Buyers post what they need. Dealers list products. Everyone connects.</p>
-              </div>
+            <Link to="/shop" className="see-all-link">
+              Browse all listings <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="empty-state-card">
+              <i className="fa-solid fa-store-slash"></i>
+              <p>No listings loaded yet. The marketplace server may be connecting.</p>
+              <Link to="/shop" className="btn-primary btn-inline btn-sm">Refresh Shop</Link>
             </div>
-            <div className="col-md-4">
-              <div className="step-card">
-                <div className="step-number">03</div>
-                <h3>Trade Directly</h3>
-                <p>Agree terms, confirm payment, and get your order moving. Rate your experience and build your reputation.</p>
+          ) : (
+            <div className="product-grid-4">
+              {featuredProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SECTION E: FRESH PRODUCE RAIL */}
+      {produceRail.length > 0 && (
+        <section className="marketplace-section highlight-bg">
+          <div className="container">
+            <div className="section-header-row">
+              <div>
+                <span className="section-eyebrow">Harvest Direct</span>
+                <h2 className="section-heading">
+                  <i className="fa-solid fa-wheat-awn text-primary"></i> Fresh Farm Produce
+                </h2>
               </div>
+              <Link to={sectionHref('produce')} className="see-all-link">
+                View all produce <i className="fa-solid fa-arrow-right"></i>
+              </Link>
+            </div>
+            <div className="product-grid-4">
+              {produceRail.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION E2: AGRICULTURAL SERVICES */}
+      {servicesRail.length > 0 && (
+        <section className="marketplace-section">
+          <div className="container">
+            <div className="section-header-row">
+              <div>
+                <span className="section-eyebrow">Value Chain Expertise</span>
+                <h2 className="section-heading">
+                  <i className="fa-solid fa-hand-holding-medical text-primary"></i> Agricultural Services
+                </h2>
+              </div>
+              <Link to={sectionHref('services')} className="see-all-link">
+                View all services <i className="fa-solid fa-arrow-right"></i>
+              </Link>
+            </div>
+            <div className="product-grid-4">
+              {servicesRail.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION F: DEMAND BOARD PREVIEW */}
+      <section className="marketplace-section highlight-bg">
+        <div className="container">
+          <div className="section-header-row">
+            <div>
+              <span className="section-eyebrow">Buyers Sourcing</span>
+              <h2 className="section-heading">
+                <i className="fa-solid fa-clipboard-list text-primary"></i> Recent Buyer Demands
+              </h2>
+            </div>
+            <Link to="/demands" className="see-all-link">
+              View full demand board <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+
+          {previewDemands.length === 0 ? (
+            <div className="empty-state-card">
+              <i className="fa-solid fa-clipboard"></i>
+              <p>No buyer demands posted yet. Be the first to post what you need!</p>
+              <Link to="/demands/new" className="btn-primary btn-inline btn-sm">Post a Demand</Link>
+            </div>
+          ) : (
+            <div className="demand-cards-grid">
+              {previewDemands.map((d) => (
+                <DemandCard key={d.id} demand={d} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SECTION G: SELLER & BUYER PARTICIPATION (RESTRAINED DUAL CARDS) */}
+      <section className="participation-section">
+        <div className="container">
+          <div className="participation-grid">
+            {/* Seller card */}
+            <div className="participation-card farmer-card">
+              <div className="participation-icon">
+                <i className="fa-solid fa-tractor"></i>
+              </div>
+              <h3>Are you a Farmer, Dealer, or Service Provider?</h3>
+              <p>
+                List your harvests, agricultural inputs, machinery, or expertise directly to serious buyers across Nigeria. Transparent escrow payout and zero listing fees.
+              </p>
+              <Link to={user ? '/account/post-listing' : '/register'} className="btn-primary participation-btn">
+                <i className="fa-solid fa-circle-plus"></i> Start Selling Today
+              </Link>
+            </div>
+
+            {/* Buyer card */}
+            <div className="participation-card buyer-card">
+              <div className="participation-icon">
+                <i className="fa-solid fa-basket-shopping"></i>
+              </div>
+              <h3>Sourcing Specific Crops, Feeds, or Equipment?</h3>
+              <p>
+                Post your exact requirements on the Demand Board. Verified farmers and suppliers will send you competitive quotes directly with no middleman hassle.
+              </p>
+              <Link to="/demands/new" className="btn-secondary participation-btn">
+                <i className="fa-solid fa-pen-to-square"></i> Post a Buyer Demand
+              </Link>
             </div>
           </div>
         </div>
       </section>
-    </>
+
+      {/* SECTION H: HOW AGROBABA WORKS */}
+      <section className="how-it-works-section">
+        <div className="container">
+          <div className="section-center-header">
+            <span className="section-eyebrow">Dependable Commerce</span>
+            <h2 className="section-heading">How AgroBaba Works</h2>
+            <p className="section-subtext">Straightforward agricultural commerce in three transparent steps.</p>
+          </div>
+
+          <div className="steps-cards-row">
+            <div className="process-step-card">
+              <div className="step-badge">01</div>
+              <div className="step-icon-wrap">
+                <i className="fa-solid fa-user-plus"></i>
+              </div>
+              <h3>Connect & Discover</h3>
+              <p>
+                Sign up free as a farmer, buyer, dealer, or service provider. Search verified listings or post a custom demand for what you need.
+              </p>
+            </div>
+
+            <div className="process-step-card">
+              <div className="step-badge">02</div>
+              <div className="step-icon-wrap">
+                <i className="fa-solid fa-comments-dollar"></i>
+              </div>
+              <h3>Agree Terms & Price</h3>
+              <p>
+                Message sellers directly, request quotes for bulk orders, and agree on verified delivery terms and specifications.
+              </p>
+            </div>
+
+            <div className="process-step-card">
+              <div className="step-badge">03</div>
+              <div className="step-icon-wrap">
+                <i className="fa-solid fa-shield-halved"></i>
+              </div>
+              <h3>Escrow Protected Delivery</h3>
+              <p>
+                Pay into escrow with confidence. Goods are delivered through tracked transit, and payout is only released when you confirm receipt.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

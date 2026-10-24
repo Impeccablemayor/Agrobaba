@@ -176,8 +176,12 @@ export function GoogleSignInButton({
         cancel_on_tap_outside: true,
       });
 
-      // Render official GSI button in container
+      // Render official GSI button in container with responsive width
       containerRef.current.innerHTML = '';
+      const containerWidth = containerRef.current.clientWidth || 300;
+      // Google Identity Services accepts width between 200 and 400 pixels
+      const buttonWidth = Math.max(200, Math.min(380, Math.floor(containerWidth)));
+
       window.google.accounts.id.renderButton(containerRef.current, {
         type: 'standard',
         theme: 'outline',
@@ -185,25 +189,57 @@ export function GoogleSignInButton({
         text: 'continue_with',
         shape: 'rectangular',
         logo_alignment: 'left',
-        width: 380,
+        width: buttonWidth,
       });
     }
+
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    function handleResize() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!containerRef.current || !window.google?.accounts?.id) return;
+        const currentW = Math.max(200, Math.min(380, Math.floor(containerRef.current.clientWidth || 300)));
+        containerRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(containerRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: currentW,
+        });
+      }, 200);
+    }
+
+    window.addEventListener('resize', handleResize);
 
     if (window.google?.accounts?.id) {
       initGsi();
     } else {
       script.addEventListener('load', initGsi);
-      return () => script?.removeEventListener('load', initGsi);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(resizeTimer);
+        script?.removeEventListener('load', initGsi);
+      };
     }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, [clientId, acceptedTerms]);
 
   return (
-    <div style={{ width: '100%', marginBottom: 16 }}>
+    <div style={{ width: '100%', maxWidth: '100%', marginBottom: 16 }}>
       {/* Container for Google's official GSI button if script is ready */}
       <div
         ref={containerRef}
         style={{
           width: '100%',
+          maxWidth: '100%',
+          overflow: 'hidden',
           display: 'flex',
           justifyContent: 'center',
           minHeight: 40,

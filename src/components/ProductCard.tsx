@@ -10,8 +10,7 @@ export const ProductCard = memo(function ProductCard({
   onNotInterested,
 }: {
   product: Product;
-  /** Only passed by the "Recommended for You" rail — dismissing a specific recommendation isn't
-   *  a meaningful action on general listing surfaces (produce/services rails, search results). */
+  /** Only passed by the "Recommended for You" rail */
   onNotInterested?: (productId: string) => void;
 }) {
   const navigate = useNavigate();
@@ -24,13 +23,9 @@ export const ProductCard = memo(function ProductCard({
   function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation();
     if (isService || product.negotiated) {
-      // A service needs a date/location/notes, and a negotiated listing has no fixed price to
-      // add at all — neither has a valid "quick add", so go to the real form instead.
       navigate(detailPath);
       return;
     }
-    // A product with a minOrderQuantity can't be validly added as just 1 (Flexible Commerce
-    // Architecture Phase 1) - quick-add must respect it, not silently violate the seller's rule.
     addToCart(product, Math.max(1, product.minOrderQuantity || 1), 'Standard');
   }
 
@@ -39,12 +34,19 @@ export const ProductCard = memo(function ProductCard({
     onNotInterested?.(product.id);
   }
 
+  const effectiveUnit = product.unit || product.unitType || '';
+
   return (
-    <div className="card" onClick={() => navigate(detailPath)}>
+    <div className="card product-card" onClick={() => navigate(detailPath)}>
       <div className="card-img">
-        {product.discount > 0 && <div className="disc-tag">{product.discount}% OFF</div>}
+        {product.discount > 0 && <span className="disc-tag">{product.discount}% OFF</span>}
         {onNotInterested && (
-          <button className="not-interested-btn" onClick={handleNotInterested} title="Not interested">
+          <button
+            className="not-interested-btn"
+            onClick={handleNotInterested}
+            title="Not interested"
+            aria-label="Dismiss recommendation"
+          >
             <i className="fa-solid fa-xmark"></i>
           </button>
         )}
@@ -56,50 +58,82 @@ export const ProductCard = memo(function ProductCard({
             <span className="cat-label">{product.category}</span>
           </div>
         )}
-        {!isService && (
-          <button className="quick-add" onClick={handleQuickAdd}>
+        {!isService && !product.negotiated && (
+          <button
+            className="quick-add"
+            onClick={handleQuickAdd}
+            title="Quick add to cart"
+            aria-label="Add to cart"
+          >
             <i className="fa-solid fa-cart-plus"></i>
           </button>
         )}
       </div>
+
       <div className="card-body">
+        {/* Rating & Reviews */}
         <div className="card-stars">
-          {starString(product.rating)} <span>({product.reviews || 0})</span>
+          <span className="stars-render">{starString(product.rating)}</span>
+          <span className="reviews-count">({product.reviews || 0})</span>
         </div>
-        <div className="card-name">{product.name}</div>
+
+        {/* Product Title */}
+        <h3 className="card-name" title={product.name}>
+          {product.name}
+        </h3>
+
+        {/* Recommendation Reason tag if applicable */}
         {product.recommendationReason && (
           <div className="reco-reason">
             <i className="fa-solid fa-sparkles"></i> {product.recommendationReason}
           </div>
         )}
-        <div className="card-seller">
-          <i className="fa-solid fa-circle-check"></i>
-          {product.sellerName}
-          {product.verified && (
-            <span className="verified-chip">
-              <i className="fa-solid fa-circle-check"></i> Verified Seller
-            </span>
-          )}
-          {product.sellerBusinessVerified && (
-            <span className="business-chip">
-              <i className="fa-solid fa-building"></i> Registered Business
-            </span>
+
+        {/* Seller & Location meta */}
+        <div className="card-seller-info">
+          <div className="seller-name-row">
+            <span className="seller-name">{product.sellerName}</span>
+            {product.verified && (
+              <span className="verified-chip" title="Identity Verified Seller">
+                <i className="fa-solid fa-circle-check"></i> Verified
+              </span>
+            )}
+            {product.sellerBusinessVerified && (
+              <span className="business-chip" title="CAC Registered Business">
+                <i className="fa-solid fa-building"></i> Registered
+              </span>
+            )}
+          </div>
+          {product.location && (
+            <div className="seller-location">
+              <i className="fa-solid fa-location-dot"></i> {product.location}
+            </div>
           )}
         </div>
+
+        {/* Pricing and Action */}
         <div className="card-bottom">
-          <div className="card-price">
+          <div className="card-price-wrap">
             {product.negotiated ? (
-              <span style={{ fontSize: 13 }}>Negotiable</span>
+              <span className="price-negotiable">Negotiable</span>
             ) : (
               <>
-                {formatPrice(product.price ?? 0)}{' '}
+                <span className="card-price">{formatPrice(product.price ?? 0)}</span>
+                {effectiveUnit && <span className="card-unit">/ {effectiveUnit}</span>}
                 {product.discount > 0 && (
-                  <del>{formatPrice(Math.round((product.price ?? 0) / (1 - product.discount / 100)))}</del>
+                  <del className="card-price-del">
+                    {formatPrice(Math.round((product.price ?? 0) / (1 - product.discount / 100)))}
+                  </del>
                 )}
               </>
             )}
           </div>
-          <button className="card-add-btn" onClick={handleQuickAdd}>
+
+          <button
+            type="button"
+            className={`card-add-btn ${product.type === 'service' ? 'is-service' : product.negotiated ? 'is-quote' : ''}`}
+            onClick={handleQuickAdd}
+          >
             {product.type === 'service' ? 'Book' : product.negotiated ? 'Quote' : 'Add'}
           </button>
         </div>

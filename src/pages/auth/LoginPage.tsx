@@ -71,29 +71,69 @@ export default function LoginPage() {
 
       <div className="auth-wrapper">
         <div className="auth-panel">
-          <div>
-            <div className="auth-panel-logo">
-              <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+          <div className="auth-panel-content">
+            <div className="auth-panel-header">
+              <Link to="/" className="auth-panel-logo">
+                <span className="auth-logo-badge">
+                  <i className="fa-solid fa-seedling"></i>
+                </span>
+                Agro<span>baba</span>
+              </Link>
             </div>
-            <p className="auth-panel-tagline">
-              Nigeria's trusted agricultural marketplace — where farmers, buyers, dealers and service providers meet.
+
+            <h1 className="auth-panel-headline">
+              Welcome back to Nigeria's agro marketplace.
+            </h1>
+            <p className="auth-panel-subhead">
+              Direct, secure trade between farmers, buyers, and agro-dealers across Nigeria.
             </p>
-            <ul>
-              <li><i className="fa-solid fa-circle-check"></i> Escrow-protected payments on every deal</li>
-              <li><i className="fa-solid fa-circle-check"></i> Verified farmers and suppliers</li>
-              <li><i className="fa-solid fa-circle-check"></i> Direct trade — no middlemen</li>
-              <li><i className="fa-solid fa-circle-check"></i> Post demands and get offers</li>
-              <li><i className="fa-solid fa-circle-check"></i> Chat directly with buyers and sellers</li>
-            </ul>
+
+            <div className="auth-points-list">
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>List products and reach buyers instantly</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Post demands and get competitive quotes</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Escrow-protected payments on every deal</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Chat directly with buyers and sellers</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Build your reputation with verified reviews</span>
+              </div>
+              <div className="auth-point">
+                <span className="point-bullet"><i className="fa-solid fa-check"></i></span>
+                <span>Free to join — no hidden fees</span>
+              </div>
+            </div>
           </div>
 
-          <div className="auth-testimonial">
-            <p>"Agrobaba changed how I sell my produce. Direct access to buyers with secure payments — I now earn 40% more."</p>
-            <div className="cite">— Chidi O., Maize Farmer, Kaduna</div>
+          <div className="auth-pullquote">
+            <p className="pullquote-text">
+              "Registration was easy. Within a week, I found three buyers for my yam harvest and got 30% more than the market price."
+            </p>
+            <div className="pullquote-author">
+              Fatima B. <span>• Farmer, Ogun State</span>
+            </div>
           </div>
         </div>
 
         <div className="auth-form">
+          <div className="auth-mobile-header">
+            <Link to="/" className="auth-mobile-logo">
+              <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+            </Link>
+            <span className="auth-mobile-badge"><i className="fa-solid fa-shield-halved"></i> Escrow Protected</span>
+          </div>
+
           <h2>Welcome Back</h2>
           <p className="form-subtitle">Log in to your Agrobaba account to continue trading.</p>
 
@@ -182,7 +222,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" disabled={submitting}>
+            <button type="submit" className="btn-primary w-100" disabled={submitting} style={{ padding: '12px', fontSize: 14, marginTop: 4 }}>
               {submitting ? (
                 <>
                   <i className="fa-solid fa-spinner" style={{ animation: 'spin 1s linear infinite' }}></i> Logging in…

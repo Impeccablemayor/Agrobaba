@@ -11,56 +11,95 @@ export function Footer() {
   };
 
   return (
-    <footer id="footer">
+    <footer id="footer" className="site-footer">
       <div className="container">
         <div className="footer-grid">
-          <div className="footer-brand">
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: '-1px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="fa-solid fa-seedling" style={{ color: 'var(--primary)' }}></i>
-              Agro<span style={{ color: 'var(--accent)' }}>baba</span>
+          {/* Brand & Mission */}
+          <div className="footer-brand-col">
+            <Link to="/" className="footer-brand-logo">
+              <span className="brand-leaf"><i className="fa-solid fa-seedling"></i></span>
+              <span className="brand-text">Agro<span className="brand-accent">baba</span></span>
+            </Link>
+            <p className="footer-tagline">
+              Connecting verified farmers, buyers, agro-dealers, and service providers across Nigeria. Direct agricultural commerce, transparent pricing, and secure trade.
+            </p>
+            <div className="footer-trust-pill">
+              <i className="fa-solid fa-shield-halved"></i> Escrow Protected Transactions
             </div>
-            <p>Connecting verified farmers, buyers, agro-dealers and service providers across Nigeria and Africa. Every deal escrow protected.</p>
-            <div className="footer-socials">
-              <a href="https://facebook.com/agrobaba" title="Facebook"><i className="fa-brands fa-facebook-f"></i></a>
-              <a href="https://twitter.com/agrobaba" title="Twitter"><i className="fa-brands fa-twitter"></i></a>
-              <a href="https://instagram.com/agrobaba" title="Instagram"><i className="fa-brands fa-instagram"></i></a>
-              <a href="https://wa.me/2347041512742" title="WhatsApp"><i className="fa-brands fa-whatsapp"></i></a>
+            <div className="footer-social-links">
+              <a href="https://facebook.com/agrobaba" target="_blank" rel="noopener noreferrer" title="Facebook" aria-label="Facebook">
+                <i className="fa-brands fa-facebook-f"></i>
+              </a>
+              <a href="https://twitter.com/agrobaba" target="_blank" rel="noopener noreferrer" title="Twitter / X" aria-label="Twitter">
+                <i className="fa-brands fa-x-twitter"></i>
+              </a>
+              <a href="https://instagram.com/agrobaba" target="_blank" rel="noopener noreferrer" title="Instagram" aria-label="Instagram">
+                <i className="fa-brands fa-instagram"></i>
+              </a>
+              <a href="https://wa.me/2347041512742" target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp">
+                <i className="fa-brands fa-whatsapp"></i>
+              </a>
             </div>
           </div>
+
+          {/* Quick Links */}
           <div className="footer-col">
-            <h4>Quick Links</h4>
+            <h4>Marketplace</h4>
             <ul>
-              <li><Link to="/"><i className="fa-solid fa-chevron-right"></i> Home</Link></li>
-              <li><Link to="/shop"><i className="fa-solid fa-chevron-right"></i> Shop</Link></li>
-              <li><Link to="/demands"><i className="fa-solid fa-chevron-right"></i> Demand Board</Link></li>
-              <li><Link to="/about"><i className="fa-solid fa-chevron-right"></i> About Us</Link></li>
-              <li><Link to="/services"><i className="fa-solid fa-chevron-right"></i> Services</Link></li>
-              <li><Link to="/contact"><i className="fa-solid fa-chevron-right"></i> Contact</Link></li>
+              <li><Link to="/"><i className="fa-solid fa-angle-right"></i> Home</Link></li>
+              <li><Link to="/shop"><i className="fa-solid fa-angle-right"></i> Browse Market</Link></li>
+              <li><Link to="/demands"><i className="fa-solid fa-angle-right"></i> Buyer Demand Board</Link></li>
+              <li><Link to="/services"><i className="fa-solid fa-angle-right"></i> Agricultural Services</Link></li>
+              <li><Link to="/register"><i className="fa-solid fa-angle-right"></i> Start Selling</Link></li>
             </ul>
           </div>
+
+          {/* Categories */}
           <div className="footer-col">
             <h4>Categories</h4>
             <ul>
-              <li><Link to={sectionHref('produce')}><i className="fa-solid fa-chevron-right"></i> Fresh Produce</Link></li>
-              <li><Link to={sectionHref('inputs')}><i className="fa-solid fa-chevron-right"></i> Agro Inputs</Link></li>
-              <li><Link to={sectionHref('equipment')}><i className="fa-solid fa-chevron-right"></i> Farm Equipment</Link></li>
-              <li><Link to={sectionHref('services')}><i className="fa-solid fa-chevron-right"></i> Agro Services</Link></li>
-              <li><Link to="/demands"><i className="fa-solid fa-chevron-right"></i> Demand Board</Link></li>
+              <li><Link to={sectionHref('produce')}><i className="fa-solid fa-angle-right"></i> Fresh Produce</Link></li>
+              <li><Link to={sectionHref('inputs')}><i className="fa-solid fa-angle-right"></i> Agro Inputs & Seeds</Link></li>
+              <li><Link to={sectionHref('livestock')}><i className="fa-solid fa-angle-right"></i> Livestock & Poultry</Link></li>
+              <li><Link to={sectionHref('equipment')}><i className="fa-solid fa-angle-right"></i> Farm Machinery & Tools</Link></li>
+              <li><Link to={sectionHref('services')}><i className="fa-solid fa-angle-right"></i> Agro Services</Link></li>
             </ul>
           </div>
+
+          {/* Contact & Location */}
           <div className="footer-col">
-            <h4>Contact</h4>
-            <ul>
-              <li><a href="#"><i className="fa-solid fa-location-dot"></i> Adegbayi, Ibadan, Oyo State</a></li>
-              <li><a href="mailto:Rsdofollybeefarms@gmail.com"><i className="fa-solid fa-envelope"></i> Rsdofollybeefarms@gmail.com</a></li>
-              <li><a href="tel:+2347041512742"><i className="fa-solid fa-phone"></i> +2347041512742</a></li>
-              <li><a href="#"><i className="fa-brands fa-whatsapp"></i> WhatsApp Us</a></li>
+            <h4>Contact & Office</h4>
+            <ul className="footer-contact-list">
+              <li>
+                <i className="fa-solid fa-location-dot"></i>
+                <span>Adegbayi, Ibadan, Oyo State, Nigeria</span>
+              </li>
+              <li>
+                <i className="fa-solid fa-envelope"></i>
+                <a href="mailto:Rsdofollybeefarms@gmail.com">Rsdofollybeefarms@gmail.com</a>
+              </li>
+              <li>
+                <i className="fa-solid fa-phone"></i>
+                <a href="tel:+2347041512742">+234 704 151 2742</a>
+              </li>
+              <li>
+                <i className="fa-brands fa-whatsapp"></i>
+                <a href="https://wa.me/2347041512742" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a>
+              </li>
             </ul>
           </div>
         </div>
-        <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} Agrobaba. All rights reserved.</p>
-          <p>Built for African farmers 🌱</p>
+
+        {/* Footer bottom copyright and credits */}
+        <div className="footer-bottom-bar">
+          <p>&copy; {new Date().getFullYear()} AgroBaba. All rights reserved.</p>
+          <div className="footer-bottom-links">
+            <Link to="/about">About Us</Link>
+            <span className="dot-divider">&middot;</span>
+            <Link to="/contact">Help & Support</Link>
+            <span className="dot-divider">&middot;</span>
+            <span>Empowering Nigerian Agriculture 🌱</span>
+          </div>
         </div>
       </div>
     </footer>

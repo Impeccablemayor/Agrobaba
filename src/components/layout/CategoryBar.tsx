@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { useCategories } from '../../hooks/queries/useCategories';
 import { getSectionIdByCode } from '../../lib/categories';
-import type { Category, Role } from '../../types';
+import type { Category } from '../../types';
 
 interface CatLink {
   href: string;
@@ -12,87 +11,78 @@ interface CatLink {
   match: (path: string, search: string) => boolean;
 }
 
-/** Section links resolve their target category id at render time (from the live categories list)
- *  instead of hardcoding database ids, and instead of the old `?tab=` params Shop never read. */
 function buildSectionLinks(categories: Category[]): CatLink[] {
   const sectionHref = (code: string) => {
     const id = getSectionIdByCode(categories, code);
     return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
   };
+
   return [
-    { href: '/shop', icon: 'fa-border-all', label: 'All', match: (p, s) => p === '/shop' && !s },
-    { href: sectionHref('produce'), icon: 'fa-wheat-awn', label: 'Produce', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'produce') || '\0'}`) },
-    { href: sectionHref('inputs'), icon: 'fa-flask', label: 'Agro Inputs', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'inputs') || '\0'}`) },
-    { href: sectionHref('equipment'), icon: 'fa-tractor', label: 'Equipment', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'equipment') || '\0'}`) },
-    { href: sectionHref('services'), icon: 'fa-hand-holding-medical', label: 'Services', match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'services') || '\0'}`) },
-    { href: '/demands', icon: 'fa-clipboard-list', label: 'Demand Board', match: (p) => p === '/demands' },
+    {
+      href: '/shop',
+      icon: 'fa-border-all',
+      label: 'All Marketplace',
+      match: (p, s) => p === '/shop' && !s,
+    },
+    {
+      href: sectionHref('produce'),
+      icon: 'fa-wheat-awn',
+      label: 'Fresh Produce',
+      match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'produce') || '\0'}`),
+    },
+    {
+      href: sectionHref('inputs'),
+      icon: 'fa-flask',
+      label: 'Agro Inputs',
+      match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'inputs') || '\0'}`),
+    },
+    {
+      href: sectionHref('livestock'),
+      icon: 'fa-cow',
+      label: 'Livestock & Animals',
+      match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'livestock') || '\0'}`),
+    },
+    {
+      href: sectionHref('equipment'),
+      icon: 'fa-tractor',
+      label: 'Farm Equipment',
+      match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'equipment') || '\0'}`),
+    },
+    {
+      href: sectionHref('services'),
+      icon: 'fa-hand-holding-medical',
+      label: 'Agro Services',
+      match: (_p, s) => s.includes(`categoryId=${getSectionIdByCode(categories, 'services') || '\0'}`),
+    },
+    {
+      href: '/demands',
+      icon: 'fa-clipboard-list',
+      label: 'Demand Board',
+      match: (p) => p.startsWith('/demands'),
+    },
   ];
 }
 
-const roleLinks: Record<Role, CatLink[]> = {
-  farmer: [
-    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Produce', match: (p) => p === '/account/post-listing' },
-    { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings', match: (p) => p === '/account/my-listings' },
-    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders', match: (p) => p === '/account/my-orders' },
-    { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales', match: (p) => p === '/account/my-sales' },
-    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings', match: (p) => p === '/account/my-bookings' },
-    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
-  ],
-  'agro-dealer': [
-    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Product', match: (p) => p === '/account/post-listing' },
-    { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings', match: (p) => p === '/account/my-listings' },
-    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders', match: (p) => p === '/account/my-orders' },
-    { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales', match: (p) => p === '/account/my-sales' },
-    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings', match: (p) => p === '/account/my-bookings' },
-    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
-  ],
-  'service-provider': [
-    { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Service', match: (p) => p === '/account/post-listing' },
-    { href: '/account/my-listings', icon: 'fa-list', label: 'My Services', match: (p) => p === '/account/my-listings' },
-    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders', match: (p) => p === '/account/my-orders' },
-    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings', match: (p) => p === '/account/my-bookings' },
-    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
-  ],
-  buyer: [
-    { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand', match: (p) => p === '/demands/new' },
-    { href: '/demands/mine', icon: 'fa-clipboard-list', label: 'My Demands', match: (p) => p === '/demands/mine' },
-    { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders', match: (p) => p === '/account/my-orders' },
-    { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings', match: (p) => p === '/account/my-bookings' },
-    { href: '/cart', icon: 'fa-cart-shopping', label: 'Cart', match: (p) => p === '/cart' },
-    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
-  ],
-  admin: [
-    { href: '/admin', icon: 'fa-gauge', label: 'Admin Console', match: (p) => p.startsWith('/admin') },
-    { href: '/messages', icon: 'fa-comments', label: 'Messages', match: (p) => p.startsWith('/messages') },
-  ],
-};
-
-export function CategoryBar({ compact = false }: { compact?: boolean }) {
-  const { user } = useAuth();
+export function CategoryBar() {
   const location = useLocation();
   const { data: categories = [] } = useCategories();
   const scrollRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const sectionLinks = buildSectionLinks(categories);
-  const quickLabels = ['All', 'Produce', 'Services', 'Demand Board'];
-  const links = compact
-    ? sectionLinks.filter((l) => quickLabels.includes(l.label))
-    : (user ? [...sectionLinks, ...(roleLinks[user.role] || [])] : sectionLinks);
+  const links = buildSectionLinks(categories);
 
   function updateScrollState() {
     const el = scrollRef.current;
     if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
   }
 
   useEffect(() => {
     updateScrollState();
     window.addEventListener('resize', updateScrollState);
     return () => window.removeEventListener('resize', updateScrollState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [links.length]);
 
   function scrollBy(delta: number) {
@@ -100,28 +90,48 @@ export function CategoryBar({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div id="category-bar">
+    <div id="category-bar" className="category-subnav">
       <div className="container cat-scroll-wrap">
         {canScrollLeft && (
-          <button className="cat-scroll-btn cat-scroll-btn-left" onClick={() => scrollBy(-200)} aria-label="Scroll left">
+          <button
+            type="button"
+            className="cat-scroll-btn cat-scroll-btn-left"
+            onClick={() => scrollBy(-220)}
+            aria-label="Scroll categories left"
+          >
             <i className="fa-solid fa-chevron-left"></i>
           </button>
         )}
-        <ul id="role-nav" className="category-list" ref={scrollRef} onScroll={updateScrollState}>
-          {links.map((link) => (
-            <li key={link.label}>
-              <Link
-                to={link.href}
-                className={`cat-pill ${link.match(location.pathname, location.search) ? 'active' : ''}`}
-              >
-                <i className={`fa-solid ${link.icon}`}></i>
-                {link.label}
-              </Link>
-            </li>
-          ))}
+
+        <ul
+          id="category-pills-list"
+          className="category-list"
+          ref={scrollRef}
+          onScroll={updateScrollState}
+        >
+          {links.map((link) => {
+            const isActive = link.match(location.pathname, location.search);
+            return (
+              <li key={link.label} className="cat-pill-item">
+                <Link
+                  to={link.href}
+                  className={`cat-pill ${isActive ? 'active' : ''}`}
+                >
+                  <i className={`fa-solid ${link.icon}`}></i>
+                  <span>{link.label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
+
         {canScrollRight && (
-          <button className="cat-scroll-btn cat-scroll-btn-right" onClick={() => scrollBy(200)} aria-label="Scroll right">
+          <button
+            type="button"
+            className="cat-scroll-btn cat-scroll-btn-right"
+            onClick={() => scrollBy(220)}
+            aria-label="Scroll categories right"
+          >
             <i className="fa-solid fa-chevron-right"></i>
           </button>
         )}
