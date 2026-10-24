@@ -181,7 +181,7 @@ export default function DemandBoardPage() {
 
       <div style={{ background: 'var(--bg-soft)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '32px 24px', marginTop: 16 }}>
         <div className="container">
-          <div className="how-respond-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, textAlign: 'center' }}>
+          <div className="how-respond-grid">
             {[
               ['fa-magnifying-glass', '1. Browse Demands', 'Find demands that match what you supply. Filter by category, budget or location.'],
               ['fa-reply', '2. Send Your Offer', 'Click Respond, enter your price and message. A chat thread opens between you and the buyer.'],

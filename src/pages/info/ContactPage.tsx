@@ -81,7 +81,7 @@ export default function ContactPage() {
             </div>
           </div>
 
-          <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'start' }}>
+          <div className="contact-grid">
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 32 }}>
               <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 6 }}>Send Us a Message</h2>
               <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>

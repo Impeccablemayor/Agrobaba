@@ -33,7 +33,7 @@ export default function ServicesPage() {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.15)', color: '#fff', padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, marginBottom: 16 }}>
             <i className="fa-solid fa-seedling"></i> Built for African agriculture
           </span>
-          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 10 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', marginBottom: 10 }}>
             Everything you need to trade with confidence
           </h1>
           <p style={{ fontSize: 15, opacity: 0.92, maxWidth: 620, margin: '0 auto' }}>
@@ -41,7 +41,7 @@ export default function ServicesPage() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }} className="svc-grid-responsive">
+        <div className="svc-grid-responsive">
           {CARDS.map(([icon, title, text]) => (
             <div
               key={title}

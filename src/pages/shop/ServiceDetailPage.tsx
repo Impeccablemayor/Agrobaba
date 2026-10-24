@@ -95,13 +95,14 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    <>
-      <Breadcrumb items={[
-        { label: 'Home', href: '/' },
-        { label: 'Shop', href: '/shop' },
-        { label: 'Service Details' },
-      ]} />
-      <div className="service-detail-layout">
+    <div className="section">
+      <div className="container">
+        <Breadcrumb items={[
+          { label: 'Home', href: '/' },
+          { label: 'Shop', href: '/shop' },
+          { label: 'Service Details' },
+        ]} />
+        <div className="service-detail-layout">
       <div className="service-detail-main">
         <div className="sd-header">
           <div className="sd-category">
@@ -211,6 +212,7 @@ export default function ServiceDetailPage() {
         </div>
       </div>
     </div>
-    </>
+  </div>
+</div>
   );
 }
