@@ -62,12 +62,8 @@ export function Navbar() {
   }
 
   const isSupplier = user && user.role !== 'buyer' && user.role !== 'admin';
-  const postListingHref = !user
-    ? '/register'
-    : isSupplier
-    ? '/account/post-listing'
-    : '/demands/new';
-  const postListingLabel = !user ? 'Sell on AgroBaba' : isSupplier ? 'Post Listing' : 'Post Demand';
+  const postListingHref = isSupplier ? '/account/post-listing' : '/demands/new';
+  const postListingLabel = isSupplier ? 'Post Listing' : 'Post Demand';
 
   const userInitial = user?.name ? user.name.trim().charAt(0).toUpperCase() : 'U';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Account';
@@ -130,10 +126,10 @@ export function Navbar() {
               onSubmit={doSearch}
               onSelectResult={goToProduct}
               scope="products"
-              placeholder="Search produce, inputs, tractors, seeds, livestock…"
+              placeholder="Search produce, equipment, inputs…"
             />
             <button className="search-submit-btn" onClick={() => doSearch()} aria-label="Search">
-              Search
+              <i className="fa-solid fa-arrow-right"></i>
             </button>
           </div>
 
@@ -149,11 +145,13 @@ export function Navbar() {
               <i className="fa-solid fa-magnifying-glass"></i>
             </button>
 
-            {/* Quick action button: Sell / Post Demand */}
-            <Link to={postListingHref} className="quick-post-btn">
-              <i className="fa-solid fa-plus"></i>
-              <span>{postListingLabel}</span>
-            </Link>
+            {/* Quick action button: Post Listing / Post Demand (logged-in only) */}
+            {user && (
+              <Link to={postListingHref} className="quick-post-btn">
+                <i className="fa-solid fa-plus"></i>
+                <span>{postListingLabel}</span>
+              </Link>
+            )}
 
             {phase === 'restoring' ? (
               <div className="session-restoring">

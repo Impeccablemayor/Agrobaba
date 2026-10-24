@@ -85,8 +85,9 @@ export default function HomePage() {
     return id ? `/shop?categoryId=${encodeURIComponent(id)}` : '/shop';
   };
 
-  const postHref = !user ? '/register' : isSupplier ? '/account/post-listing' : '/demands/new';
-  const postLabel = !user ? 'Sell on AgroBaba' : isSupplier ? 'Post a Listing' : 'Post a Demand';
+  const postHref = !user ? '/demands' : isSupplier ? '/account/post-listing' : '/demands/new';
+  const postLabel = !user ? 'View Demand Board' : isSupplier ? 'Post a Listing' : 'Post a Demand';
+  const postIcon = !user ? 'fa-clipboard-list' : 'fa-plus';
 
   function doHeroSearch(value: string = heroQuery) {
     if (!value.trim()) return;
@@ -147,7 +148,7 @@ export default function HomePage() {
                   <i className="fa-solid fa-store"></i> Browse Marketplace
                 </Link>
                 <Link to={postHref} className="btn-outline hero-btn-sub">
-                  <i className="fa-solid fa-plus"></i> {postLabel}
+                  <i className={`fa-solid ${postIcon}`}></i> {postLabel}
                 </Link>
               </div>
 
