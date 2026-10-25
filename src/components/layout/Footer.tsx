@@ -16,9 +16,10 @@ export function Footer() {
         <div className="footer-grid">
           {/* Brand & Mission */}
           <div className="footer-brand-col">
-            <Link to="/" className="footer-brand-logo">
-              <span className="brand-leaf"><i className="fa-solid fa-seedling"></i></span>
-              <span className="brand-text">Agro<span className="brand-accent">baba</span></span>
+            <Link to="/" className="footer-brand-logo" aria-label="Agrobaba Home">
+              <span className="footer-logo-badge">
+                <img src="/agrobaba-logo.png" alt="AgroBaba" className="footer-brand-logo-img" />
+              </span>
             </Link>
             <p className="footer-tagline">
               Connecting verified farmers, buyers, agro-dealers, and service providers across Nigeria. Direct agricultural commerce, transparent pricing, and secure trade.

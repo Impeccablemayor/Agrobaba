@@ -69,8 +69,8 @@ export function AdminLayout() {
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
-        <Link to="/admin" className="admin-sidebar-brand">
-          <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+        <Link to="/admin" className="admin-sidebar-brand" aria-label="Agrobaba Admin Home">
+          <img src="/agrobaba-logo.png" alt="AgroBaba" className="admin-brand-logo-img" />
           <span className="admin-sidebar-brand-tag">Admin</span>
         </Link>
         <nav className="admin-sidebar-nav">

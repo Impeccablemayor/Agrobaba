@@ -84,9 +84,8 @@ export function Navbar() {
           </button>
 
           {/* Logo */}
-          <Link className="navbar-brand" to="/">
-            <span className="brand-leaf"><i className="fa-solid fa-seedling"></i></span>
-            <span className="brand-text">Agro<span className="brand-accent">baba</span></span>
+          <Link className="navbar-brand" to="/" aria-label="Agrobaba Home">
+            <img src="/agrobaba-logo.png" alt="AgroBaba" className="navbar-brand-logo-img" />
           </Link>
 
           {/* Primary Nav Links (Desktop) */}
@@ -304,9 +303,8 @@ export function Navbar() {
         <div className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)}>
           <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-drawer-header">
-              <Link className="navbar-brand" to="/" onClick={() => setMobileMenuOpen(false)}>
-                <span className="brand-leaf"><i className="fa-solid fa-seedling"></i></span>
-                <span className="brand-text">Agro<span className="brand-accent">baba</span></span>
+              <Link className="navbar-brand" to="/" onClick={() => setMobileMenuOpen(false)} aria-label="Agrobaba Home">
+                <img src="/agrobaba-logo.png" alt="AgroBaba" className="navbar-brand-logo-img" />
               </Link>
               <button
                 type="button"

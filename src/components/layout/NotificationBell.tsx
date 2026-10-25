@@ -59,11 +59,16 @@ export function NotificationBell() {
   }
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative' }}>
-      <button className="nav-icon-btn" title="Notifications" onClick={toggleOpen} style={{ cursor: 'pointer' }}>
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <button
+        type="button"
+        className="nav-action-icon"
+        title="Notifications"
+        aria-label="Notifications"
+        onClick={toggleOpen}
+      >
         <i className="fa-regular fa-bell"></i>
-        <span>Alerts</span>
-        {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
+        {unreadCount > 0 && <span className="nav-counter-badge">{unreadCount}</span>}
       </button>
 
       {open && (

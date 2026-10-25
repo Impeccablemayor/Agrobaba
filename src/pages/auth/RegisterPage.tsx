@@ -80,11 +80,10 @@ export default function RegisterPage() {
         <div className="auth-panel">
           <div className="auth-panel-content">
             <div className="auth-panel-header">
-              <Link to="/" className="auth-panel-logo">
-                <span className="auth-logo-badge">
-                  <i className="fa-solid fa-seedling"></i>
+              <Link to="/" className="auth-panel-logo" aria-label="Agrobaba Home">
+                <span className="auth-logo-badge-pill">
+                  <img src="/agrobaba-logo.png" alt="AgroBaba" className="auth-brand-img" />
                 </span>
-                Agro<span>baba</span>
               </Link>
             </div>
 
@@ -135,8 +134,8 @@ export default function RegisterPage() {
 
         <div className="auth-form">
           <div className="auth-mobile-header">
-            <Link to="/" className="auth-mobile-logo">
-              <i className="fa-solid fa-seedling"></i> Agro<span>baba</span>
+            <Link to="/" className="auth-mobile-logo" aria-label="Agrobaba Home">
+              <img src="/agrobaba-logo.png" alt="AgroBaba" className="auth-mobile-logo-img" />
             </Link>
             <span className="auth-mobile-badge"><i className="fa-solid fa-shield-halved"></i> Escrow Protected</span>
           </div>
