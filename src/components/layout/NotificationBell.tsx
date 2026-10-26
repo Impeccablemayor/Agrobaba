@@ -25,11 +25,15 @@ export function NotificationBell() {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   async function toggleOpen() {
@@ -59,7 +63,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+    <div ref={wrapperRef} className="notification-bell-wrapper">
       <button
         type="button"
         className="nav-action-icon"
@@ -72,25 +76,20 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div
-          style={{
-            position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 340, maxWidth: 'calc(100vw - 32px)', maxHeight: 420, overflowY: 'auto',
-            background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', zIndex: 1000,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+        <div className="notification-dropdown">
+          <div className="notification-dropdown-header">
             <strong style={{ fontSize: 13 }}>Notifications</strong>
             {notifications.some((n) => !n.read) && (
-              <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={handleMarkAllRead} className="notification-mark-all-btn">
                 Mark all read
               </button>
             )}
           </div>
 
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>Loading…</div>
+            <div className="notification-dropdown-empty">Loading…</div>
           ) : notifications.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+            <div className="notification-dropdown-empty">
               <i className="fa-regular fa-bell-slash" style={{ fontSize: 24, marginBottom: 8, display: 'block' }}></i>
               No notifications yet.
             </div>
@@ -99,20 +98,17 @@ export function NotificationBell() {
               <div
                 key={n.id}
                 onClick={() => handleItemClick(n)}
-                style={{
-                  display: 'flex', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                  background: n.read ? 'transparent' : 'var(--primary-light)',
-                }}
+                className={`notification-dropdown-item ${n.read ? 'is-read' : 'is-unread'}`}
               >
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <i className={`fa-solid ${TYPE_ICONS[n.type] || TYPE_ICONS.default}`} style={{ color: 'var(--primary)', fontSize: 13 }}></i>
+                <div className="notification-item-icon-box">
+                  <i className={`fa-solid ${TYPE_ICONS[n.type] || TYPE_ICONS.default}`}></i>
                 </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: n.read ? 500 : 700, marginBottom: 2 }}>{n.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                <div className="notification-item-text">
+                  <div className={`notification-item-title ${n.read ? 'read' : 'unread'}`}>{n.title}</div>
+                  <div className="notification-item-body">
                     {n.body}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+                  <div className="notification-item-time">{timeAgo(n.createdAt)}</div>
                 </div>
               </div>
             ))
