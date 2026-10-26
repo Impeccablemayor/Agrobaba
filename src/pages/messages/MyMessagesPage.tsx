@@ -44,18 +44,20 @@ export default function MyMessagesPage() {
                   style={{ display: 'flex', alignItems: 'center', gap: 14, borderBottom: '1px solid var(--border)' }}
                   onClick={() => navigate(`/messages/${conv.partnerId}?partnerName=${encodeURIComponent(conv.partnerName)}`)}
                 >
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: 'var(--primary)', fontSize: 18 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: '#ffffff', fontSize: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                     {initial}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                      <span className="name">
-                        {conv.partnerName}{' '}
+                      <span className="name" style={{ fontWeight: conv.unread > 0 ? 800 : 700, fontSize: 15, color: '#111b21', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {conv.partnerName}
                         {conv.unread > 0 && (
-                          <span className="nav-badge" style={{ position: 'static', display: 'inline-flex', marginLeft: 4 }}>{conv.unread}</span>
+                          <span style={{ background: '#25d366', color: '#ffffff', fontSize: 11, fontWeight: 700, borderRadius: 12, padding: '1px 7px', minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {conv.unread}
+                          </span>
                         )}
                       </span>
-                      <span className="time">{timeAgo(conv.lastMessage.createdAt)}</span>
+                      <span className="time" style={{ color: conv.unread > 0 ? '#00a884' : '#667781', fontWeight: conv.unread > 0 ? 600 : 400 }}>{timeAgo(conv.lastMessage.createdAt)}</span>
                     </div>
                     {contextLabel && (
                       <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600, marginBottom: 2 }}>
