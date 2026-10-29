@@ -61,10 +61,10 @@ export default function AdminOverviewPage() {
 
       {/* Attention Required Banner / Grid */}
       {attentionItems.length > 0 && (
-        <div className="admin-panel" style={{ borderLeft: '4px solid var(--accent, #eab308)', padding: '18px 20px' }}>
+        <div className="admin-panel" style={{ borderLeft: '4px solid var(--accent)', padding: '18px 20px' }}>
           <div className="admin-panel-hdr" style={{ marginBottom: 12 }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, margin: 0 }}>
-              <i className="fa-solid fa-bell" style={{ color: 'var(--accent, #eab308)' }}></i>
+              <i className="fa-solid fa-bell" style={{ color: 'var(--accent)' }}></i>
               Requires Administrative Attention ({attentionItems.reduce((acc, item) => acc + item.count, 0)})
             </h3>
           </div>
@@ -116,7 +116,7 @@ export default function AdminOverviewPage() {
         <MetricCard
           linkTo="/admin/users"
           icon="fa-users"
-          iconBg="rgba(22, 101, 52, 0.1)"
+          iconBg="var(--primary-light)"
           iconColor="var(--primary)"
           label="Total Registered Users"
           value={userMetrics ? userMetrics.totalUsers.toLocaleString() : '—'}
@@ -134,8 +134,8 @@ export default function AdminOverviewPage() {
         <MetricCard
           linkTo="/admin/orders"
           icon="fa-receipt"
-          iconBg="rgba(217, 119, 6, 0.1)"
-          iconColor="#d97706"
+          iconBg="var(--accent-light)"
+          iconColor="var(--accent)"
           label="Total Platform Orders"
           value={orderMetrics ? orderMetrics.totalOrders.toLocaleString() : '—'}
           subtext={orderMetrics ? `${orderMetrics.ordersAwaitingFulfillment} awaiting fulfillment` : undefined}
@@ -143,8 +143,8 @@ export default function AdminOverviewPage() {
         <MetricCard
           linkTo="/admin/demands"
           icon="fa-bullhorn"
-          iconBg="rgba(147, 51, 234, 0.1)"
-          iconColor="#9333ea"
+          iconBg="var(--earth-light)"
+          iconColor="var(--earth-brown)"
           label="Buyer Demands"
           value={listingMetrics ? listingMetrics.openDemands.toLocaleString() : '—'}
           subtext={listingMetrics ? `${listingMetrics.totalDemands} total posted demands` : undefined}
@@ -417,3 +417,4 @@ export default function AdminOverviewPage() {
     </div>
   );
 }
+

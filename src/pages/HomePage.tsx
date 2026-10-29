@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useProducts } from '../hooks/queries/useProducts';
@@ -56,14 +56,17 @@ export default function HomePage() {
   const { data: initialRecommended = [] } = useRecommendedProducts();
   const { data: matchingDemands = [] } = useMatchingDemands();
 
-  const [filteredRecommended, setFilteredRecommended] = useState<Product[]>([]);
+  const [dismissedProductIds, setDismissedProductIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    setFilteredRecommended(initialRecommended);
-  }, [initialRecommended]);
+  const filteredRecommended = useMemo(() => {
+    if (!initialRecommended || initialRecommended.length === 0) return [];
+    if (dismissedProductIds.length === 0) return initialRecommended;
+    const dismissedSet = new Set(dismissedProductIds);
+    return initialRecommended.filter((p) => !dismissedSet.has(p.id));
+  }, [initialRecommended, dismissedProductIds]);
 
   const featuredProducts = products.slice(0, 8);
-  const recommendedIds = new Set(filteredRecommended.map((p) => p.id));
+  const recommendedIds = useMemo(() => new Set(filteredRecommended.map((p) => p.id)), [filteredRecommended]);
   const withRecommendedFirst = (candidates: Product[]) =>
     [...candidates].sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)));
 
@@ -76,7 +79,7 @@ export default function HomePage() {
 
   function handleNotInterested(productId: string) {
     recordEvent('not_interested', productId);
-    setFilteredRecommended((prev) => prev.filter((p) => p.id !== productId));
+    setDismissedProductIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
     showToast("Got it — you'll see less like this", 'info');
   }
 
@@ -276,7 +279,7 @@ export default function HomePage() {
             </Link>
 
             <Link to={sectionHref('livestock')} className="category-feature-card">
-              <div className="category-icon-circle green">
+              <div className="category-icon-circle brown">
                 <i className="fa-solid fa-cow"></i>
               </div>
               <h3>Livestock & Aquaculture</h3>
@@ -303,7 +306,7 @@ export default function HomePage() {
             </Link>
 
             <Link to={sectionHref('land')} className="category-feature-card">
-              <div className="category-icon-circle amber">
+              <div className="category-icon-circle brown">
                 <i className="fa-solid fa-map-location-dot"></i>
               </div>
               <h3>Land & Facilities</h3>
