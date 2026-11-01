@@ -8,7 +8,7 @@ export function TopBar() {
     <div id="top">
       <div className="container top-container">
         <span id="user-status">
-          <i className={user ? 'fa-solid fa-circle-user' : 'fa-regular fa-circle-user'}></i>{' '}
+          <i className={user ? 'fa-solid fa-circle-user' : 'fa-regular fa-circle-user'} style={{ color: 'var(--primary)' }}></i>{' '}
           Welcome, {user ? <strong>{user.name}</strong> : 'Guest'}
         </span>
         <ul className="top-links">

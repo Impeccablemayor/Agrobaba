@@ -205,7 +205,7 @@ export default function ProductDetailPage() {
                 {oldPrice && (
                   <>
                     <div style={{ fontSize: 14, color: 'var(--muted)', textDecoration: 'line-through' }}>{formatPrice(oldPrice)}</div>
-                    <div style={{ background: 'var(--danger)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4 }}>
+                    <div style={{ background: 'var(--accent)', color: 'white', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4 }}>
                       {product.discount}% OFF
                     </div>
                   </>
@@ -330,10 +330,10 @@ export default function ProductDetailPage() {
                 <i className="fa-solid fa-shield-halved" style={{ color: 'var(--primary)' }}></i> Escrow Protected
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                <i className="fa-solid fa-rotate-left" style={{ color: 'var(--primary)' }}></i> Returns Policy
+                <i className="fa-solid fa-rotate-left" style={{ color: 'var(--earth-brown-light)' }}></i> Returns Policy
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                <i className="fa-solid fa-truck" style={{ color: 'var(--primary)' }}></i> Delivery Available
+                <i className="fa-solid fa-truck" style={{ color: 'var(--accent)' }}></i> Delivery Available
               </div>
             </div>
           </div>

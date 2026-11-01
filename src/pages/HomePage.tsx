@@ -110,10 +110,6 @@ export default function HomePage() {
           <div className="hero-split-grid">
             {/* Left Column: Messaging & Search */}
             <div className="hero-content-col">
-              <div className="hero-badge-pill">
-                <i className="fa-solid fa-leaf"></i> Nigeria's Agricultural Marketplace
-              </div>
-
               <h1 className="hero-main-title">
                 Good things grow <br />
                 <span className="hero-title-highlight">when we connect.</span>

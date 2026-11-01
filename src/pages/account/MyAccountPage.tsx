@@ -287,7 +287,7 @@ export default function MyAccountPage() {
             Matches for You
           </h4>
           {profileStatus && profileStatus !== 'completed' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
               <i className="fa-solid fa-sliders" style={{ color: 'var(--primary)' }}></i>
               <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>Complete your profile to see personalized matches here.</span>
               <Link to="/onboarding" className="btn-primary btn-inline btn-sm">Complete My Profile</Link>

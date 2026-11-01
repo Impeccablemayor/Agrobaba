@@ -125,8 +125,8 @@ export default function AdminOverviewPage() {
         <MetricCard
           linkTo="/admin/payments"
           icon="fa-money-bill-wave"
-          iconBg="rgba(37, 99, 235, 0.1)"
-          iconColor="#2563eb"
+          iconBg="var(--accent-light)"
+          iconColor="var(--accent)"
           label="Settled Gross Volume (GMV)"
           value={paymentMetrics ? formatPrice(paymentMetrics.totalSuccessfulVolume) : '—'}
           subtext="Total successful payments settled via Flutterwave"

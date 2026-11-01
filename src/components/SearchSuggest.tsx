@@ -12,12 +12,12 @@ interface SearchSuggestProps {
   autoFocus?: boolean;
 }
 
-const GROUP_ICONS: Record<SuggestGroupType, string> = {
-  category: 'fa-tag',
-  product: 'fa-box',
-  demand: 'fa-clipboard-list',
-  location: 'fa-location-dot',
-  popular: 'fa-fire',
+const GROUP_CONFIG: Record<SuggestGroupType, { icon: string; color: string }> = {
+  category: { icon: 'fa-tag', color: 'var(--primary)' },
+  product: { icon: 'fa-box', color: 'var(--primary)' },
+  demand: { icon: 'fa-clipboard-list', color: 'var(--accent)' },
+  location: { icon: 'fa-location-dot', color: 'var(--earth-brown-light)' },
+  popular: { icon: 'fa-fire', color: 'var(--accent)' },
 };
 
 export function SearchSuggest({ value, onChange, onSubmit, onSelectResult, scope = 'products', placeholder, inputClassName, autoFocus }: SearchSuggestProps) {
@@ -130,10 +130,10 @@ export function SearchSuggest({ value, onChange, onSubmit, onSelectResult, scope
                       display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
                       padding: '8px 12px', border: 'none',
                       background: idx === highlighted ? 'var(--primary-light, #f0f7f2)' : 'transparent',
-                      cursor: 'pointer', fontSize: 13, color: 'inherit',
+                      cursor: 'pointer', fontSize: 13, color: idx === highlighted ? 'var(--primary-dark)' : 'inherit', fontWeight: idx === highlighted ? 600 : 400,
                     }}
                   >
-                    <i className={`fa-solid ${GROUP_ICONS[group.type]}`} style={{ color: 'var(--muted, #999)', width: 14 }}></i>
+                    <i className={`fa-solid ${GROUP_CONFIG[group.type].icon}`} style={{ color: GROUP_CONFIG[group.type].color, width: 14 }}></i>
                     {item.label}
                   </button>
                 );

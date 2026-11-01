@@ -121,7 +121,7 @@ export default function MyListingsPage() {
               {filteredProducts.map((p) => {
                 const icon = CATEGORY_ICONS[p.category] || CATEGORY_ICONS.default;
                 return (
-                  <div className="card" key={p.id}>
+                  <div className="card product-card my-listing-card" key={p.id}>
                     <div className="card-img">
                       {p.discount > 0 && <div className="disc-tag">{p.discount}% OFF</div>}
                       {p.image ? (
@@ -134,7 +134,7 @@ export default function MyListingsPage() {
                       )}
                     </div>
                     <div className="card-body">
-                      <div className="card-name">{p.name}</div>
+                      <div className="card-name" title={p.name}>{p.name}</div>
                       <div className="card-price">{p.negotiated ? 'Negotiable' : formatPrice(p.price ?? 0)}</div>
                       <div className="card-seller" style={{ marginTop: 8 }}>
                         <i className="fa-solid fa-box"></i> {p.quantity} {p.unit} &middot; {p.sold || 0} sold
@@ -142,11 +142,11 @@ export default function MyListingsPage() {
                       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                         <Link
                           to={p.type === 'service' ? `/shop/service/${p.id}` : `/shop/product/${p.id}`}
-                          className="btn-outline btn-sm btn-inline" style={{ flex: 1, padding: 6, textAlign: 'center' }}
+                          className="btn-outline btn-sm btn-inline" style={{ flex: 1, minWidth: 0, padding: '6px 4px', textAlign: 'center', justifyContent: 'center' }}
                         >
                           <i className="fa-solid fa-eye"></i> View
                         </Link>
-                        <button onClick={() => setPendingDelete({ id: p.id, name: p.name })} className="btn-danger btn-sm btn-inline" style={{ flex: 1, padding: 6, width: 'auto' }}>
+                        <button onClick={() => setPendingDelete({ id: p.id, name: p.name })} className="btn-danger btn-sm btn-inline" style={{ flex: 1, minWidth: 0, padding: '6px 4px', width: 'auto', justifyContent: 'center' }}>
                           <i className="fa-solid fa-trash"></i> Delete
                         </button>
                       </div>
