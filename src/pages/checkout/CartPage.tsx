@@ -3,6 +3,7 @@ import { useCart } from '../../contexts/CartContext';
 import { formatPrice } from '../../lib/format';
 import { groupCartBySeller } from '../../lib/cart';
 import { formatUnitQuantity } from '../../lib/units';
+import { OptimizedImage } from '../../components/common/OptimizedImage';
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -69,7 +70,14 @@ export default function CartPage() {
                                 >
                                   <div style={{ width: 48, height: 48, background: 'var(--bg-soft)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     {item.image ? (
-                                      <img src={item.image} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} alt="" />
+                                      <OptimizedImage
+                                        src={item.image}
+                                        targetWidth={96}
+                                        targetHeight={96}
+                                        crop="fill"
+                                        style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }}
+                                        alt={item.name}
+                                      />
                                     ) : (
                                       <i className="fa-solid fa-box" style={{ color: 'var(--muted)' }}></i>
                                     )}

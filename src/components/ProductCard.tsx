@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatPrice, starString } from '../lib/format';
 import { useCart } from '../contexts/CartContext';
 import { CATEGORY_ICONS } from '../lib/constants';
+import { OptimizedImage } from './common/OptimizedImage';
 import type { Product } from '../types';
 
 export const ProductCard = memo(function ProductCard({
@@ -51,7 +52,13 @@ export const ProductCard = memo(function ProductCard({
           </button>
         )}
         {product.image ? (
-          <img src={product.image} alt={product.name} loading="lazy" decoding="async" />
+          <OptimizedImage
+            src={product.image}
+            alt={product.name}
+            targetWidth={400}
+            fallbackIcon={icon}
+            fallbackText={product.category}
+          />
         ) : (
           <div className="card-img-inner">
             <i className={`fa-solid ${icon}`}></i>

@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../lib/format';
 import { CATEGORY_ICONS } from '../lib/constants';
+import { OptimizedImage } from './common/OptimizedImage';
 import type { FlashSaleItem } from '../types';
 
 export const FlashSaleCard = memo(function FlashSaleCard({ item }: { item: FlashSaleItem }) {
@@ -13,7 +14,13 @@ export const FlashSaleCard = memo(function FlashSaleCard({ item }: { item: Flash
       <div className="card-img">
         <div className="disc-tag">{item.discountPercent}% OFF</div>
         {item.productImage ? (
-          <img src={item.productImage} alt={item.productName} loading="lazy" />
+          <OptimizedImage
+            src={item.productImage}
+            alt={item.productName}
+            targetWidth={400}
+            fallbackIcon={icon}
+            fallbackText={item.category}
+          />
         ) : (
           <div className="card-img-inner">
             <i className={`fa-solid ${icon}`}></i>

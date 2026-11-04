@@ -1,0 +1,73 @@
+/* ===================================================
+   AGROBABA — Comprehensive Design System & Stylesheet
+   Identity: Trust, Transparency, Dependable Nigerian Agro-Commerce
+   =================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+
+/* ===== DESIGN SYSTEM TOKENS ===== */
+:root {
+  /* Brand Core Colors (Faithful to AgroBaba Logo) */
+  --primary:            #1B7D3F; /* AgroBaba Agricultural Green (fresh, vibrant, trustworthy) */
+  --primary-rgb:        27, 125, 63;
+  --primary-dark:       #135E2F; /* Forest Depth */
+  --primary-darker:     #0C3E1F;
+  --primary-light:      #EAF5EE; /* Soft botanical wash */
+  --primary-subtle:     #F3F9F5;
+  --accent:             #E86A17; /* Warm Harvest Orange / Sun-ripened Accent */
+  --accent-rgb:         232, 106, 23;
+  --accent-dark:        #B84D06; /* High-contrast warm orange for text and focus */
+  --accent-light:       #FFF3EB; /* Soft warm harvest wash */
+  --accent-subtle:      #FFF8F2;
+  --earth-brown:        #5A381E; /* Rich Fertile Soil / Logo "Baba" Brown */
+  --earth-brown-light:  #7D4E2A;
+  --earth-light:        #F7F2EB; /* Soft earthen neutral wash */
+  --earth-subtle:       #FAF6F0;
+
+  /* Neutrals & Surfaces */
+  --bg:                 #FFFFFF;
+  --bg-soft:            #F9FAF7; /* Warm white background with subtle natural warmth */
+  --bg-subtle:          #F0F4ED;
+  --surface-card:       #FFFFFF;
+  --dark:               #16241B; /* Botanical slate black */
+  --dark-surface:       #1D2E23;
+
+  /* Typography Colors */
+  --text:               #1F2E24; /* Deep botanical charcoal */
+  --text-secondary:     #4A5A51; /* Readable slate green */
+  --muted:              #6E7E74; /* Subdued info */
+  --text-inverse:       #FFFFFF;
+
+  /* Borders & Dividers */
+  --border:             #E1E7DF;
+  --border-mid:         #CFDACC;
+  --border-focus:       var(--primary);
+
+  /* Semantic Feedback */
+  --danger:             #D92D20;
+  --danger-light:       #FEF3F2;
+  --success:            #0E8345;
+  --success-light:      #ECFDF3;
+  --warning:            #E86A17;
+  --warning-light:      #FFF3EB;
+  --info:               #175CD3;
+  --info-light:         #EFF8FF;
+
+  /* Radii */
+  --radius-xs:          4px;
+  --radius-sm:          8px;
+  --radius:             12px;
+  --radius-md:          16px;
+  --radius-lg:          20px;
+  --radius-full:        9999px;
+
+  /* Refined Elevation Shadows */
+  --shadow-sm:          0 1px 3px rgba(22, 36, 27, 0.06), 0 1px 2px rgba(22, 36, 27, 0.04);
+  --shadow:             0 4px 14px -2px rgba(22, 36, 27, 0.08), 0 2px 6px -2px rgba(22, 36, 27, 0.04);
+  --shadow-md:          0 8px 24px -4px rgba(22, 36, 27, 0.1), 0 4px 10px -2px rgba(22, 36, 27, 0.04);
+  --shadow-lg:          0 16px 36px -6px rgba(22, 36, 27, 0.12), 0 6px 14px -3px rgba(22, 36, 27, 0.06);
+
+  /* Transitions */
+  --transition:         all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow:    all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

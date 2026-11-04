@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { captureFrontendError } from '../lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -17,6 +18,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Unhandled error in component tree:', error, info.componentStack);
+    captureFrontendError(error, { componentStack: info.componentStack });
   }
 
   render() {

@@ -8,6 +8,7 @@ import { CATEGORY_ICONS } from '../../lib/constants';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
+import { OptimizedImage } from '../../components/common/OptimizedImage';
 import type { Role } from '../../types';
 
 const LABELS: Record<Role, { title: string; sub: string; add: string; crumb: string }> = {
@@ -125,7 +126,14 @@ export default function MyListingsPage() {
                     <div className="card-img">
                       {p.discount > 0 && <div className="disc-tag">{p.discount}% OFF</div>}
                       {p.image ? (
-                        <img src={p.image} alt={p.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <OptimizedImage
+                          src={p.image}
+                          alt={p.name}
+                          targetWidth={400}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          fallbackIcon={icon}
+                          fallbackText={p.category}
+                        />
                       ) : (
                         <div className="card-img-inner">
                           <i className={`fa-solid ${icon}`}></i>

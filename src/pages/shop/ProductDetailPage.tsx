@@ -12,6 +12,7 @@ import { ProductCard } from '../../components/ProductCard';
 import type { Review } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
+import { OptimizedImage } from '../../components/common/OptimizedImage';
 
 const TYPE_LABELS: Record<string, string> = { produce: 'Fresh Produce', product: 'Agro Input', service: 'Service' };
 
@@ -134,7 +135,15 @@ export default function ProductDetailPage() {
           <div className="product-detail-images">
             <div style={{ background: 'var(--bg-soft)', borderRadius: 'var(--radius)', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow)' }}>
               {product.image ? (
-                <img src={product.image} alt={product.name} loading="eager" decoding="async" style={{ width: '100%', borderRadius: 'var(--radius)', objectFit: 'cover', maxHeight: 400 }} />
+                <OptimizedImage
+                  src={product.image}
+                  alt={product.name}
+                  targetWidth={800}
+                  loading="eager"
+                  decoding="async"
+                  sizes="(max-width: 768px) 100vw, 600px"
+                  style={{ width: '100%', borderRadius: 'var(--radius)', objectFit: 'cover', maxHeight: 400 }}
+                />
               ) : (
                 <div style={{ textAlign: 'center' }}>
                   <i className="fa-solid fa-box" style={{ fontSize: 64, color: '#d1d5db' }}></i>

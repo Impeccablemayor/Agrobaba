@@ -10,7 +10,10 @@ import { MessagesProvider } from './contexts/MessagesContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { initSentry } from './lib/sentry';
 import App from './App.tsx';
+
+initSentry();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

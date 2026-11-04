@@ -1,0 +1,226 @@
+/* ===== MY ACCOUNT & DASHBOARDS ===== */
+.account-container {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 24px;
+  padding: 28px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.account-menu {
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: sticky;
+  top: 86px;
+  box-shadow: var(--shadow-sm);
+}
+
+.account-menu .menu-header {
+  padding: 14px 18px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border);
+}
+
+.account-menu a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.account-menu a:hover {
+  background: var(--bg-soft);
+  color: var(--primary);
+}
+
+.account-menu a.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-left: 3px solid var(--primary);
+  padding-left: 15px;
+  font-weight: 700;
+}
+
+
+/* ===== ACCOUNT PROFILE & DETAILS ===== */
+/* ===== ACCOUNT PROFILE & DETAILS ===== */
+.account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.account-detail-item {
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
+.account-detail-item .label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.account-detail-item .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Form card and Account Actions */
+.form-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+.form-card .sub {
+  color: var(--muted);
+  font-size: 13.5px;
+  margin-bottom: 20px;
+}
+.form-card .field {
+  margin-bottom: 18px;
+}
+.form-card .field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.form-card .field .req {
+  color: var(--danger);
+  margin-left: 2px;
+}
+.form-card .field .hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.form-card input, .form-card select, .form-card textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  transition: var(--transition);
+}
+.form-card input:focus, .form-card select:focus, .form-card textarea:focus {
+  border-color: var(--primary);
+}
+.form-divider {
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+.form-card .actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Danger card (Delete account) */
+.danger-card {
+  background: var(--danger-light);
+  border: 1px solid #fecdd3;
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.danger-card h3 {
+  color: var(--danger);
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.warn-list {
+  padding-left: 20px;
+  margin: 14px 0;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.ack {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.btn-danger-full {
+  width: 100%;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-danger-full:hover {
+  background: #b91c1c;
+}
+.btn-danger-full:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cancel-link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.cancel-link:hover {
+  color: var(--text);
+}
