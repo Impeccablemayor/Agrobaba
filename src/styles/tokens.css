@@ -24,6 +24,51 @@
   --earth-light:        #F7F2EB; /* Soft earthen neutral wash */
   --earth-subtle:       #FAF6F0;
 
+  /* Expanded Agricultural & Nature-Inspired Palette */
+  /* Fresh & Lime Green (Growth, Vitality, Fresh Produce) */
+  --lime:               #65A30D;
+  --lime-dark:          #4D7C0F;
+  --lime-light:         #F7FEE7;
+  --lime-subtle:        #ECFCCB;
+  --lime-border:        rgba(101, 163, 13, 0.25);
+
+  /* Soft Sage & Herbal Green (Foliage, Agro-Services, Balance) */
+  --sage:               #447B59;
+  --sage-dark:          #325B42;
+  --sage-light:         #EFF6F1;
+  --sage-subtle:        #E2ECE5;
+  --sage-border:        rgba(68, 123, 89, 0.22);
+
+  /* Warm Cream, Ivory & Soft Earth Ground (Warmth, Natural Grain) */
+  --cream:              #FAF7F0;
+  --cream-subtle:       #FDFBF7;
+  --cream-border:       #EFE9DC;
+  --surface-warm:       #FAF8F4;
+  --surface-cream:      #F5EFEB;
+
+  /* Golden Harvest & Grain Accents (Ripe Crops, Wheat, Cereal) */
+  --gold:               #D97706;
+  --gold-dark:          #B45309;
+  --gold-light:         #FEF3C7;
+  --gold-subtle:        #FFFBEB;
+  --gold-border:        rgba(217, 119, 6, 0.22);
+
+  /* Terracotta & Clay Tones (Pottery, Fertile Red Earth, Sun-baked Soil) */
+  --terracotta:         #C2542D;
+  --terracotta-dark:    #9F3F1D;
+  --terracotta-light:   #FDF2EC;
+  --terracotta-subtle:  #FBE6DC;
+  --terracotta-border:  rgba(194, 84, 45, 0.22);
+  --clay:               #8C532B;
+  --clay-light:         #F8EFE8;
+
+  /* Agricultural Ambient Gradients */
+  --gradient-hero:      linear-gradient(175deg, #F2F7F3 0%, #FAF8F2 60%, #FFFFFF 100%);
+  --gradient-warm:      linear-gradient(135deg, #FAF7F0 0%, #F5F9F4 100%);
+  --gradient-meadow:    linear-gradient(135deg, #F0F7F2 0%, #E8F3EB 100%);
+  --gradient-harvest:   linear-gradient(135deg, #FFF9F2 0%, #FEF3C7 100%);
+  --gradient-flash:     linear-gradient(135deg, #FFF6EE 0%, #FFFDF9 50%, #F5FBF6 100%);
+
   /* Neutrals & Surfaces */
   --bg:                 #FFFFFF;
   --bg-soft:            #F9FAF7; /* Warm white background with subtle natural warmth */
