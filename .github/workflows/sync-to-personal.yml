@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   sync:
+    if: github.repository == 'AgroBaba/Agro-baba-Frontend'
     name: Synchronize Personal Repository
     runs-on: ubuntu-latest
 
