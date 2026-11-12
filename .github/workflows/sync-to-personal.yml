@@ -1,0 +1,42 @@
+
+name: Sync Organization to Personal Repository
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-personal-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Synchronize Personal Repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout organization repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config user.name "AgroBaba Sync Bot"
+          git config user.email "agrobaba-sync[bot]@users.noreply.github.com"
+
+      - name: Add personal repository
+        run: |
+          git remote add personal \
+            https://x-access-token:${{ secrets.PERSONAL_REPO_TOKEN }}@github.com/Impeccablemayor/Agrobaba.git
+
+      - name: Synchronize main branch
+        run: |
+          git push personal HEAD:refs/heads/main
