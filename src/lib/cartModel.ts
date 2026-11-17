@@ -30,6 +30,11 @@ export interface BackendCartItem {
   unit: string | null;
   acceptedQuoteId: number | null;
   addedAt: string;
+  available?: number | null;
+  minOrderQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+  incrementQuantity?: number | null;
+  issue?: string | null;
 }
 
 export interface BackendCart {
@@ -54,6 +59,11 @@ export function mapBackendCartItem(item: BackendCartItem): CartItem {
     addedAt: item.addedAt,
     unit: item.unit ?? null,
     acceptedQuoteId: item.acceptedQuoteId != null ? String(item.acceptedQuoteId) : null,
+    available: item.available ?? null,
+    minOrderQuantity: item.minOrderQuantity ?? null,
+    maxOrderQuantity: item.maxOrderQuantity ?? null,
+    incrementQuantity: item.incrementQuantity ?? null,
+    issue: item.issue ?? null,
   };
 }
 

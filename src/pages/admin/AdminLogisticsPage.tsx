@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getAdminLogisticsOverview,
   getAdminShipments,
@@ -101,7 +101,7 @@ export default function AdminLogisticsPage() {
     active: true,
   });
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [overviewData, shipmentsData, transportersData, activeList] = await Promise.all([
@@ -127,11 +127,11 @@ export default function AdminLogisticsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [statusFilter, requiresActionFilter, searchQuery, page, transporterSearch]);
 
   useEffect(() => {
-    loadData();
-  }, [statusFilter, requiresActionFilter, searchQuery, page, transporterSearch]);
+    void loadData();
+  }, [loadData]);
 
   async function handleAssignSubmit() {
     if (!selectedShipment || !assignTransporterId) {

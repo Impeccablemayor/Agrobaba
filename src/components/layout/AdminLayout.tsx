@@ -18,6 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/demands', icon: 'fa-bullhorn', label: 'Buyer Demands', isActive: (p) => p.startsWith('/admin/demands') },
   { to: '/admin/orders', icon: 'fa-receipt', label: 'Orders', isActive: (p) => p === '/admin/orders' },
   { to: '/admin/payments', icon: 'fa-credit-card', label: 'Payments', isActive: (p) => p === '/admin/payments' },
+  { to: '/admin/transactions', icon: 'fa-handshake', label: 'Bookings & Quotes', isActive: (p) => p === '/admin/transactions' },
   { to: '/admin/logistics', icon: 'fa-truck-ramp-box', label: 'Logistics & Transporters', isActive: (p) => p.startsWith('/admin/logistics') },
   { to: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', isActive: (p) => p === '/admin/verifications' },
   { to: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', isActive: (p) => p === '/admin/flash-sales' },

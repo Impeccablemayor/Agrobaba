@@ -17,6 +17,8 @@ const API_BASE_URL = (
 interface ApiErrorShape {
   message?: string;
   error?: string;
+  /** Field -> reason map from the backend's validation handler (GlobalExceptionHandler). */
+  errors?: Record<string, unknown>;
 }
 
 const MAX_RETRIES = 2;
@@ -142,10 +144,19 @@ function readBody(response: Response): Promise<unknown> {
 
 async function throwApiError(response: Response): Promise<never> {
   const data = (await readBody(response)) as ApiErrorShape | null;
+  // Bean-validation failures arrive as message "Validation failed" plus per-field reasons in
+  // `errors` ({ images: "You can upload up to 3 product images" }); surface the specific reason
+  // so the toast tells the user what to fix.
+  const fieldErrors =
+    typeof data === 'object' && data !== null && data.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors).filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+      : [];
   const message =
-    typeof data === 'object' && data !== null
-      ? data.message || data.error || 'Request failed'
-      : 'Request failed';
+    fieldErrors.length > 0
+      ? fieldErrors.join(' ')
+      : typeof data === 'object' && data !== null
+        ? data.message || data.error || 'Request failed'
+        : 'Request failed';
   throw new ApiError(response.status, message);
 }
 

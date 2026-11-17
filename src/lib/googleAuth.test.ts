@@ -25,7 +25,6 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 const { loginWithGoogle, linkGoogleAccountWithPassword, getCurrentUser } = await import('./auth.ts');
 const { authRefresher, setAuthToken } = await import('./api.ts');
-const { KEYS, getItem } = await import('./storage.ts');
 
 beforeEach(() => {
   storage.clear();

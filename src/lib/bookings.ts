@@ -53,6 +53,9 @@ export interface CreateBookingInput {
   scheduledDate: string;
   serviceLocation?: string;
   customerNotes?: string;
+  /** Answers to the provider's customer questions, keyed by requirement id (and `${id}_other`
+   *  for a free-text "Other" choice). The backend rejects bookings missing a required answer. */
+  requirementAnswers?: Record<string, string>;
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<ServiceBooking | false> {
@@ -62,6 +65,8 @@ export async function createBooking(input: CreateBookingInput): Promise<ServiceB
       scheduledDate: input.scheduledDate,
       serviceLocation: input.serviceLocation || null,
       customerNotes: input.customerNotes || null,
+      requirementAnswers: input.requirementAnswers && Object.keys(input.requirementAnswers).length
+        ? input.requirementAnswers : null,
     });
     showToast('Booking request sent!', 'success');
     return mapBooking(booking);

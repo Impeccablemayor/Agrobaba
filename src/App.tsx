@@ -1,67 +1,74 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { RoleProtectedRoute } from './components/routing/RoleProtectedRoute';
 import { GuestOnlyRoute } from './components/routing/GuestOnlyRoute';
+import { PageLoadingSpinner } from './components/LoadingSpinner';
 
+// Eagerly load landing page for instant first paint
 import HomePage from './pages/HomePage';
-import LoginPage from './pages/auth/LoginPage';
-import AdminLoginPage from './pages/auth/AdminLoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import VerifyEmailPage from './pages/auth/VerifyEmailPage';
-import AboutPage from './pages/info/AboutPage';
-import ContactPage from './pages/info/ContactPage';
-import ServicesPage from './pages/info/ServicesPage';
-import ShopPage from './pages/shop/ShopPage';
-import ProductDetailPage from './pages/shop/ProductDetailPage';
-import ServiceDetailPage from './pages/shop/ServiceDetailPage';
-import DemandBoardPage from './pages/demands/DemandBoardPage';
-import DemandDetailPage from './pages/demands/DemandDetailPage';
-import PostDemandPage from './pages/demands/PostDemandPage';
-import MyDemandsPage from './pages/demands/MyDemandsPage';
-import MyMessagesPage from './pages/messages/MyMessagesPage';
-import ChatPage from './pages/messages/ChatPage';
-import CartPage from './pages/checkout/CartPage';
-import CheckoutPage from './pages/checkout/CheckoutPage';
-import PaymentCallbackPage from './pages/checkout/PaymentCallbackPage';
-import MyAccountPage from './pages/account/MyAccountPage';
-import EditAccountPage from './pages/account/EditAccountPage';
-import ChangePasswordPage from './pages/account/ChangePasswordPage';
-import DeleteAccountPage from './pages/account/DeleteAccountPage';
-import MyListingsPage from './pages/account/MyListingsPage';
-import PostListingPage from './pages/account/PostListingPage';
-import MyOrdersPage from './pages/account/MyOrdersPage';
-import MyBookingsPage from './pages/account/MyBookingsPage';
-import MySalesPage from './pages/account/MySalesPage';
-import VerifyAccountPage from './pages/account/VerifyAccountPage';
-import QuoteDetailPage from './pages/quotes/QuoteDetailPage';
-import MyQuotesPage from './pages/quotes/MyQuotesPage';
-import ReceivedQuotesPage from './pages/quotes/ReceivedQuotesPage';
-import PersonalizationWizardPage from './pages/onboarding/PersonalizationWizardPage';
-import AdminOverviewPage from './pages/admin/AdminOverviewPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminUserDetailPage from './pages/admin/AdminUserDetailPage';
-import AdminProductsPage from './pages/admin/AdminProductsPage';
-import AdminDemandsPage from './pages/admin/AdminDemandsPage';
-import AdminPersonalizationPage from './pages/admin/AdminPersonalizationPage';
-import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
-import AdminOrdersPage from './pages/admin/AdminOrdersPage';
-import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
-import AdminLogisticsPage from './pages/admin/AdminLogisticsPage';
-import AdminFlashSalesPage from './pages/admin/AdminFlashSalesPage';
-import AdminCouponsPage from './pages/admin/AdminCouponsPage';
-import AdminTicketsPage from './pages/admin/AdminTicketsPage';
-import AdminActivityPage from './pages/admin/AdminActivityPage';
-import AdminEmailsPage from './pages/admin/AdminEmailsPage';
-import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
-import NotFoundPage from './pages/info/NotFoundPage';
+
+// Lazy load auth & secondary routes to optimize bundle size
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const AdminLoginPage = lazy(() => import('./pages/auth/AdminLoginPage'));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'));
+const AboutPage = lazy(() => import('./pages/info/AboutPage'));
+const ContactPage = lazy(() => import('./pages/info/ContactPage'));
+const ServicesPage = lazy(() => import('./pages/info/ServicesPage'));
+const ShopPage = lazy(() => import('./pages/shop/ShopPage'));
+const ProductDetailPage = lazy(() => import('./pages/shop/ProductDetailPage'));
+const ServiceDetailPage = lazy(() => import('./pages/shop/ServiceDetailPage'));
+const DemandBoardPage = lazy(() => import('./pages/demands/DemandBoardPage'));
+const DemandDetailPage = lazy(() => import('./pages/demands/DemandDetailPage'));
+const PostDemandPage = lazy(() => import('./pages/demands/PostDemandPage'));
+const MyDemandsPage = lazy(() => import('./pages/demands/MyDemandsPage'));
+const MyMessagesPage = lazy(() => import('./pages/messages/MyMessagesPage'));
+const ChatPage = lazy(() => import('./pages/messages/ChatPage'));
+const CartPage = lazy(() => import('./pages/checkout/CartPage'));
+const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'));
+const PaymentCallbackPage = lazy(() => import('./pages/checkout/PaymentCallbackPage'));
+const MyAccountPage = lazy(() => import('./pages/account/MyAccountPage'));
+const EditAccountPage = lazy(() => import('./pages/account/EditAccountPage'));
+const ChangePasswordPage = lazy(() => import('./pages/account/ChangePasswordPage'));
+const DeleteAccountPage = lazy(() => import('./pages/account/DeleteAccountPage'));
+const MyListingsPage = lazy(() => import('./pages/account/MyListingsPage'));
+const PostListingPage = lazy(() => import('./pages/account/PostListingPage'));
+const MyOrdersPage = lazy(() => import('./pages/account/MyOrdersPage'));
+const MyBookingsPage = lazy(() => import('./pages/account/MyBookingsPage'));
+const MySalesPage = lazy(() => import('./pages/account/MySalesPage'));
+const VerifyAccountPage = lazy(() => import('./pages/account/VerifyAccountPage'));
+const QuoteDetailPage = lazy(() => import('./pages/quotes/QuoteDetailPage'));
+const MyQuotesPage = lazy(() => import('./pages/quotes/MyQuotesPage'));
+const ReceivedQuotesPage = lazy(() => import('./pages/quotes/ReceivedQuotesPage'));
+const PersonalizationWizardPage = lazy(() => import('./pages/onboarding/PersonalizationWizardPage'));
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminUserDetailPage = lazy(() => import('./pages/admin/AdminUserDetailPage'));
+const AdminProductsPage = lazy(() => import('./pages/admin/AdminProductsPage'));
+const AdminDemandsPage = lazy(() => import('./pages/admin/AdminDemandsPage'));
+const AdminPersonalizationPage = lazy(() => import('./pages/admin/AdminPersonalizationPage'));
+const AdminVerificationsPage = lazy(() => import('./pages/admin/AdminVerificationsPage'));
+const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage'));
+const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage'));
+const AdminTransactionsPage = lazy(() => import('./pages/admin/AdminTransactionsPage'));
+const AdminLogisticsPage = lazy(() => import('./pages/admin/AdminLogisticsPage'));
+const AdminFlashSalesPage = lazy(() => import('./pages/admin/AdminFlashSalesPage'));
+const AdminCouponsPage = lazy(() => import('./pages/admin/AdminCouponsPage'));
+const AdminTicketsPage = lazy(() => import('./pages/admin/AdminTicketsPage'));
+const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage'));
+const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage'));
+const AdminCategoriesPage = lazy(() => import('./pages/admin/AdminCategoriesPage'));
+const NotFoundPage = lazy(() => import('./pages/info/NotFoundPage'));
 
 function App() {
   return (
-    <Routes>
+    <Suspense fallback={<PageLoadingSpinner />}>
+      <Routes>
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
 
@@ -100,6 +107,7 @@ function App() {
         <Route path="account/delete" element={<ProtectedRoute><DeleteAccountPage /></ProtectedRoute>} />
         <Route path="account/my-listings" element={<ProtectedRoute><MyListingsPage /></ProtectedRoute>} />
         <Route path="account/post-listing" element={<ProtectedRoute><PostListingPage /></ProtectedRoute>} />
+        <Route path="account/listings/:id/edit" element={<ProtectedRoute><PostListingPage /></ProtectedRoute>} />
         <Route path="account/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
         <Route path="account/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
@@ -121,6 +129,7 @@ function App() {
         <Route path="admin/personalization" element={<AdminPersonalizationPage />} />
         <Route path="admin/orders" element={<AdminOrdersPage />} />
         <Route path="admin/payments" element={<AdminPaymentsPage />} />
+        <Route path="admin/transactions" element={<AdminTransactionsPage />} />
         <Route path="admin/logistics" element={<AdminLogisticsPage />} />
         <Route path="admin/verifications" element={<AdminVerificationsPage />} />
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
@@ -131,6 +140,7 @@ function App() {
         <Route path="admin/emails" element={<AdminEmailsPage />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 }
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { formatPrice } from '../../lib/format';
@@ -7,8 +8,20 @@ import { OptimizedImage } from '../../components/common/OptimizedImage';
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cart, total, loading, removeFromCart, updateQuantity } = useCart();
+  const { cart, total, loading, removeFromCart, updateQuantity, refreshCart } = useCart();
   const sellerGroups = groupCartBySeller(cart);
+  const [checkingStock, setCheckingStock] = useState(true);
+
+  // Stock and listing status can change after an item was added (sold out, archived, order rules
+  // tightened). Re-read the cart on arrival so each line carries the server's current verdict.
+  useEffect(() => {
+    let active = true;
+    void refreshCart().finally(() => { if (active) setCheckingStock(false); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit
+  }, []);
+
+  const issueCount = cart.filter((item) => item.issue).length;
 
   return (
     <div className="section">
@@ -92,6 +105,11 @@ export default function CartPage() {
                                     )}
                                   </div>
                                 </Link>
+                                {item.issue && (
+                                  <div role="alert" style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, marginTop: 6, maxWidth: 320 }}>
+                                    <i className="fa-solid fa-triangle-exclamation"></i> {item.issue}
+                                  </div>
+                                )}
                               </td>
                               <td>
                                 {item.acceptedQuoteId ? (
@@ -102,8 +120,15 @@ export default function CartPage() {
                                 ) : (
                                   <>
                                     <input
-                                      type="number" min={1} max={99} value={item.quantity}
-                                      style={{ width: 60, padding: '4px 8px', border: '1.5px solid var(--border-mid)', borderRadius: 6, fontSize: 13 }}
+                                      type="number"
+                                      aria-label={`Quantity of ${item.name}`}
+                                      // Bounded by live stock and the listing's order rules (was a hard
+                                      // max of 99, which blocked bulk orders like 120 bags).
+                                      min={item.minOrderQuantity || 1}
+                                      max={Math.min(item.available ?? Number.MAX_SAFE_INTEGER, item.maxOrderQuantity ?? Number.MAX_SAFE_INTEGER)}
+                                      step={item.incrementQuantity || 1}
+                                      value={item.quantity}
+                                      style={{ width: 76, padding: '4px 8px', border: `1.5px solid ${item.issue ? 'var(--danger)' : 'var(--border-mid)'}`, borderRadius: 6, fontSize: 13 }}
                                       onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
                                     />
                                     {/* "1 item" (above) is the cart line/order-container - this caption is
@@ -151,8 +176,19 @@ export default function CartPage() {
                   <span>{formatPrice(total)}</span>
                 </div>
 
-                <button onClick={() => navigate('/checkout')} className="btn-primary btn-inline" style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}>
-                  <i className="fa-solid fa-lock"></i> Proceed to Checkout
+                {issueCount > 0 && (
+                  <p role="status" style={{ fontSize: 12, color: 'var(--danger)', margin: '12px 0 0', fontWeight: 600 }}>
+                    {issueCount === 1 ? '1 item needs' : `${issueCount} items need`} attention before checkout.
+                  </p>
+                )}
+                <button
+                  onClick={() => navigate('/checkout')}
+                  disabled={checkingStock || issueCount > 0}
+                  className="btn-primary btn-inline"
+                  style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
+                >
+                  <i className={`fa-solid ${checkingStock ? 'fa-spinner fa-spin' : 'fa-lock'}`}></i>{' '}
+                  {checkingStock ? 'Checking stock…' : issueCount > 0 ? 'Fix cart to continue' : 'Proceed to Checkout'}
                 </button>
               </div>
             </div>

@@ -1,33 +1,33 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { useProduct, useProducts } from '../../hooks/queries/useProducts';
-import { getProductReviews } from '../../lib/reviews';
+import { useProduct, useProducts, useProductReviews } from '../../hooks/queries/useProducts';
 import { useCart } from '../../contexts/CartContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { isLoggedIn } from '../../lib/auth';
 import { showToast } from '../../lib/toastBus';
 import { formatDate, formatPrice, starString } from '../../lib/format';
 import { formatUnitQuantity, resolveUnitPrice } from '../../lib/units';
+import { listingTypeLabel } from '../../lib/listingLabels';
 import { useRequestQuote } from '../../hooks/mutations/useQuoteMutations';
 import { ProductCard } from '../../components/ProductCard';
-import type { Review } from '../../types';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { OptimizedImage } from '../../components/common/OptimizedImage';
-
-const TYPE_LABELS: Record<string, string> = { produce: 'Fresh Produce', product: 'Agro Input', service: 'Service' };
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState('Standard');
   const [buyerNotes, setBuyerNotes] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews'>('description');
-  const [reviews, setReviews] = useState<Review[]>([]);
 
   const { data: product, isLoading: loading } = useProduct(id);
+  const { data: reviews = [] } = useProductReviews(id);
   const { data: categoryProducts = [] } = useProducts({ category: product?.category });
   const requestQuote = useRequestQuote();
 
@@ -38,14 +38,8 @@ export default function ProductDetailPage() {
   }, [product?.minOrderQuantity]);
 
   useEffect(() => {
-    let active = true;
-    if (!id) { setReviews([]); return; }
-    void (async () => {
-      const data = await getProductReviews(id);
-      if (active) setReviews(data);
-    })();
-    return () => { active = false; };
-  }, [id]);
+    setActiveImageIndex(0);
+  }, [product?.id]);
 
   if (loading && !product) {
     return <PageLoadingSpinner message="Loading product details…" />;
@@ -68,6 +62,12 @@ export default function ProductDetailPage() {
   }
 
   const oldPrice = product.price != null && product.discount > 0 ? Math.round(product.price / (1 - product.discount / 100)) : null;
+  // Display convenience only - the backend independently rejects carting/quoting/ordering your
+  // own listing using the authenticated session, so this can't be bypassed client-side.
+  const isOwner = Boolean(user && String(user.id) === String(product.sellerId));
+  const typeLabel = listingTypeLabel(product);
+  const productImages = product.images?.length ? product.images : product.image ? [product.image] : [];
+  const activeImage = productImages[Math.min(activeImageIndex, Math.max(0, productImages.length - 1))];
 
   function handleAddToCart(e: FormEvent) {
     e.preventDefault();
@@ -134,9 +134,10 @@ export default function ProductDetailPage() {
         <div className="product-detail-layout">
           <div className="product-detail-images">
             <div style={{ background: 'var(--bg-soft)', borderRadius: 'var(--radius)', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow)' }}>
-              {product.image ? (
+              {activeImage ? (
                 <OptimizedImage
-                  src={product.image}
+                  key={activeImage}
+                  src={activeImage}
                   alt={product.name}
                   targetWidth={800}
                   loading="eager"
@@ -151,6 +152,23 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+
+            {productImages.length > 1 && (
+              <div className="product-gallery-thumbs" aria-label="Listing photos">
+                {productImages.map((src, i) => (
+                  <button
+                    key={src}
+                    type="button"
+                    className={`product-gallery-thumb${src === activeImage ? ' active' : ''}`}
+                    onClick={() => setActiveImageIndex(i)}
+                    aria-label={`Show photo ${i + 1} of ${productImages.length}`}
+                    aria-pressed={src === activeImage}
+                  >
+                    <OptimizedImage src={src} alt="" targetWidth={160} />
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20, marginTop: 16 }}>
               <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
@@ -171,9 +189,11 @@ export default function ProductDetailPage() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleMessageSeller} className="btn-secondary btn-sm btn-inline" style={{ flex: 1 }}>
-                  <i className="fa-regular fa-comments"></i> Message Seller
-                </button>
+                {!isOwner && (
+                  <button onClick={handleMessageSeller} className="btn-secondary btn-sm btn-inline" style={{ flex: 1 }}>
+                    <i className="fa-regular fa-comments"></i> Message Seller
+                  </button>
+                )}
                 <Link to="/shop" className="btn-outline btn-sm btn-inline" style={{ flex: 1, textAlign: 'center' }}>
                   <i className="fa-solid fa-store"></i> View Shop
                 </Link>
@@ -185,7 +205,7 @@ export default function ProductDetailPage() {
             <div>
               <span className="product-category">{product.category}</span>
               <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: 'var(--accent-light)', color: 'var(--accent-dark)' }}>
-                {TYPE_LABELS[product.type] || 'Listing'}
+                {typeLabel}
               </span>
             </div>
 
@@ -252,7 +272,22 @@ export default function ProductDetailPage() {
 
             <div className="description">{product.description}</div>
 
-            {product.negotiated ? (
+            {isOwner ? (
+              <div className="owner-listing-panel">
+                <p>
+                  <i className="fa-solid fa-circle-info" style={{ color: 'var(--primary)' }}></i>{' '}
+                  This is your listing. Buyers see purchase options here; you can manage it instead.
+                </p>
+                <div className="owner-listing-actions">
+                  <Link to={`/account/listings/${product.id}/edit`} className="btn-primary btn-inline btn-sm">
+                    <i className="fa-solid fa-pen"></i> Edit Listing
+                  </Link>
+                  <Link to="/account/my-listings" className="btn-outline btn-inline btn-sm">
+                    <i className="fa-solid fa-list"></i> My Listings
+                  </Link>
+                </div>
+              </div>
+            ) : product.negotiated ? (
               <form onSubmit={handleRequestQuote}>
                 <div className="form-group">
                   <label>Desired Quantity <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
@@ -374,7 +409,7 @@ export default function ProductDetailPage() {
                 <tbody>
                   {[
                     ['Category', product.category],
-                    ['Type', TYPE_LABELS[product.type] || 'Agro Input'],
+                    ['Type', typeLabel],
                     ['Size / Package', product.size || 'Standard'],
                     ['Unit', product.unit || '—'],
                     ['Location', product.location || '—'],

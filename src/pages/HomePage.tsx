@@ -15,6 +15,7 @@ import { DemandCard } from '../components/DemandCard';
 import { FlashSaleCard } from '../components/FlashSaleCard';
 import { SearchSuggest } from '../components/SearchSuggest';
 import type { Suggestion } from '../lib/search';
+import { isFreshProduce } from '../lib/listingLabels';
 import type { Product } from '../types';
 
 function useCountdown(endAt: string | null) {
@@ -70,9 +71,9 @@ export default function HomePage() {
   const withRecommendedFirst = (candidates: Product[]) =>
     [...candidates].sort((a, b) => Number(recommendedIds.has(b.id)) - Number(recommendedIds.has(a.id)));
 
-  const produceRail = withRecommendedFirst(
-    products.filter((p) => p.categoryCode?.startsWith('produce.') || p.type === 'produce')
-  ).slice(0, 4);
+  // Category-based, not `type`: every farmer listing has type "produce" (it's the seller's flow),
+  // which used to put livestock, fish and processed goods under "Fresh Produce".
+  const produceRail = withRecommendedFirst(products.filter(isFreshProduce)).slice(0, 4);
 
   const servicesRail = withRecommendedFirst(products.filter((p) => p.type === 'service')).slice(0, 4);
   const previewDemands = demands.slice(0, 4);

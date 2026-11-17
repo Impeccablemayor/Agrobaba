@@ -196,6 +196,227 @@
   gap: 16px;
 }
 
+/* Shop refinements (type, seller role, state, price, verified) - collapsible panel. */
+.marketplace-filter-toggle-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.marketplace-filter-toggle-row .is-active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.marketplace-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.marketplace-filters label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+
+.marketplace-filters label > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.marketplace-filters select,
+.marketplace-filters input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  border: 1.5px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.marketplace-filters .marketplace-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 20px;
+}
+
+.marketplace-filters .marketplace-filter-check > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .marketplace-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .marketplace-filters { grid-template-columns: 1fr; padding: 12px; }
+  .marketplace-filters .marketplace-filter-check { padding-top: 4px; min-height: 40px; }
+}
+
+/* Detail-page gallery: main photo + thumbnail strip (wraps on narrow screens). */
+.product-gallery-thumbs {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.product-gallery-thumb {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-soft);
+  cursor: pointer;
+}
+
+.product-gallery-thumb.active {
+  border-color: var(--primary);
+}
+
+.product-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Shown instead of buy/quote/book actions when the viewer owns the listing. */
+.owner-listing-panel {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+}
+
+.owner-listing-panel p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.owner-listing-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.owner-listing-actions > * {
+  flex: 1 1 140px;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Listing form photo picker (create + edit). */
+.listing-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.listing-image-tile,
+.listing-image-add {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.listing-image-tile {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+.listing-image-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-image-cover {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.listing-image-action {
+  position: absolute;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.listing-image-action.cover {
+  left: 6px;
+  bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary-dark);
+}
+
+.listing-image-action.remove {
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+
+.listing-image-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px dashed var(--border-mid);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.listing-image-add i {
+  font-size: 22px;
+}
+
+.listing-image-add:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 .product-meta {
   display: flex;
   align-items: center;
@@ -399,4 +620,20 @@
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 90px;
+}
+
+/* Service detail: provider-supplied facts (coverage, experience, inclusions, equipment). */
+.service-facts {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.service-facts i {
+  color: var(--primary);
+  width: 18px;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -12,9 +12,11 @@ interface ConfirmDialogProps {
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Optional extra content (e.g. a reason field) rendered between the message and actions. */
+  children?: ReactNode;
 }
 
-const FOCUSABLE = 'button:not([disabled])';
+const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled])';
 
 export function ConfirmDialog({
   open,
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   busy = false,
   onConfirm,
   onCancel,
+  children,
 }: ConfirmDialogProps) {
   const titleId = useId();
   const messageId = useId();
@@ -94,6 +97,7 @@ export function ConfirmDialog({
         </div>
         <h3 id={titleId}>{title}</h3>
         <p id={messageId}>{message}</p>
+        {children}
         <div className="confirm-actions">
           <button ref={cancelRef} type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>
             {cancelLabel}

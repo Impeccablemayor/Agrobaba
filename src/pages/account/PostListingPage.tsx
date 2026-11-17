@@ -1,20 +1,26 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, type FormEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
-import { addProduct } from '../../lib/products';
+import { MAX_LISTING_IMAGES } from '../../lib/products';
 import { UNIT_TYPES, unitLabel, type UnitType } from '../../lib/units';
 import { getAllowedSectionCodesForRole, findCategory, hasChildren } from '../../lib/categories';
 import { useCategories } from '../../hooks/queries/useCategories';
+import { useProduct, useServiceListing } from '../../hooks/queries/useProducts';
+import { useAddProduct, useUpdateProduct } from '../../hooks/mutations/useProductMutations';
+import { ServiceListingForm } from './ServiceListingForm';
 import { showToast } from '../../lib/toastBus';
 import { CategoryPicker } from '../../components/CategoryPicker';
-import { prefillFromUser } from '../../lib/locationSelect';
+import { ListingImagePicker } from '../../components/ListingImagePicker';
+import { PageLoadingSpinner } from '../../components/LoadingSpinner';
+import { prefillFromUser, type LocationPrefill } from '../../lib/locationSelect';
 import { locationLine, type LocationSelection } from '../../lib/locations';
-import type { ProductType, Role } from '../../types';
+import type { Product, ProductType, Role, SafeUser } from '../../types';
 
 interface RoleConfig {
   type: ProductType;
   pageTitle: string;
+  editTitle: string;
   subtitle: string;
   breadcrumb: string;
   nameLabel: string;
@@ -30,21 +36,23 @@ interface RoleConfig {
 const CONFIG: Partial<Record<Role, RoleConfig>> = {
   farmer: {
     type: 'produce',
-    pageTitle: 'Post Your Produce',
-    subtitle: 'List your farm produce for buyers to find and purchase directly.',
-    breadcrumb: 'Post Produce',
-    nameLabel: 'Produce Name',
+    pageTitle: 'Post Your Listing',
+    editTitle: 'Edit Your Listing',
+    subtitle: 'List your crops, livestock, fish or processed farm goods for buyers to find and purchase directly.',
+    breadcrumb: 'Post Listing',
+    nameLabel: 'Listing Name',
     namePlaceholder: 'e.g. Fresh Tomatoes — Grade A, 50kg bag',
     priceLabel: 'Price (₦)',
     descLabel: 'Description',
-    descPlaceholder: 'Describe your produce — variety, grade, harvest date, freshness, delivery options...',
-    submitLabel: 'Post Produce',
-    units: ['bag', 'kg', 'tonne', 'crate', 'basket', 'bundle', 'piece', 'litre'],
+    descPlaceholder: 'Describe your listing — variety or breed, grade, age/weight, harvest date, delivery options...',
+    submitLabel: 'Post Listing',
+    units: ['bag', 'kg', 'tonne', 'crate', 'basket', 'bundle', 'piece', 'litre', 'head', 'bird'],
     showSize: true,
   },
   'agro-dealer': {
     type: 'product',
     pageTitle: 'Post Your Product',
+    editTitle: 'Edit Your Product',
     subtitle: 'List your agro inputs, equipment, or supplies for farmers and buyers.',
     breadcrumb: 'Post Product',
     nameLabel: 'Product Name',
@@ -56,23 +64,10 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
     units: ['bag', 'bottle', 'litre', 'kg', 'piece', 'unit', 'carton', 'set'],
     showSize: true,
   },
-  'service-provider': {
-    type: 'service',
-    pageTitle: 'Post Your Service',
-    subtitle: 'Offer your agricultural services to farmers and buyers across Nigeria.',
-    breadcrumb: 'Post Service',
-    nameLabel: 'Service Title',
-    namePlaceholder: 'e.g. Poultry Vet Consultation — 1 hour session',
-    priceLabel: 'Price (₦)',
-    descLabel: 'Service Description',
-    descPlaceholder: 'Describe your service — what you offer, experience, coverage area, availability...',
-    submitLabel: 'Post Service',
-    units: ['session', 'hour', 'day', 'acre', 'visit', 'project'],
-    showSize: false,
-  },
   admin: {
     type: 'product',
     pageTitle: 'Post a Listing',
+    editTitle: 'Edit Listing',
     subtitle: 'Posted under the Agrobaba Official store — your admin account stays private, buyers won’t see it’s you.',
     breadcrumb: 'Post Listing',
     nameLabel: 'Listing Name',
@@ -86,41 +81,93 @@ const CONFIG: Partial<Record<Role, RoleConfig>> = {
   },
 };
 
-export default function PostListingPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+/** Saved product locations are "City, State" (see locationLine); split them back into a
+ *  name-based prefill - StateCitySelect matches names to its catalogue. */
+function prefillFromLocationText(text: string | null | undefined, fallback: LocationPrefill): LocationPrefill {
+  const parts = (text || '').split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return fallback;
+  return { stateId: null, stateName: parts[1], cityId: null, cityName: parts[0] };
+}
 
-  const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+export interface ListingEditTarget {
+  product: Product;
+}
+
+/** /account/post-listing (create) and /account/listings/:id/edit (edit). Products use ListingForm;
+ *  services use the dedicated ServiceListingForm (they publish through /api/services). */
+export default function PostListingPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const editing = Boolean(id);
+  const { data: product, isLoading: productLoading } = useProduct(id);
+  const isServiceEdit = product?.type === 'service';
+  const { data: service, isLoading: serviceLoading } = useServiceListing(id, editing && isServiceEdit);
+
+  if (!user) return null;
+  if (!editing) return user.role === 'service-provider' ? <ServiceListingForm user={user} /> : <ListingForm user={user} />;
+
+  if (productLoading || (isServiceEdit && serviceLoading)) {
+    return <PageLoadingSpinner message="Loading your listing…" />;
+  }
+  const canEdit = product && (String(product.sellerId) === String(user.id) || user.role === 'admin');
+  if (!product || !canEdit || (isServiceEdit && !service)) {
+    return (
+      <div className="section"><div className="container" style={{ maxWidth: 760 }}>
+        <div className="empty-cart">
+          <i className="fa-solid fa-lock"></i>
+          <p>{!product ? 'Listing not found.' : 'You can only edit your own listings.'}</p>
+          <Link to="/account/my-listings" className="btn-secondary btn-inline btn-sm">Back to My Listings</Link>
+        </div>
+      </div></div>
+    );
+  }
+  if (isServiceEdit) return <ServiceListingForm user={user} existing={service} />;
+  return <ListingForm user={user} edit={{ product }} />;
+}
+
+function ListingForm({ user, edit }: { user: SafeUser; edit?: ListingEditTarget }) {
+  const navigate = useNavigate();
   const { data: categories = [] } = useCategories();
-  const [price, setPrice] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [unit, setUnit] = useState('');
+  const addProductMutation = useAddProduct();
+  const updateProductMutation = useUpdateProduct();
+
+  const existing = edit?.product;
+  // An admin editing someone's listing must use the listing's flow, not the admin config.
+  const roleForForm: Role = existing
+    ? (existing.type === 'produce' ? 'farmer' : user.role)
+    : user.role;
+
+  const initialLocation: LocationPrefill = existing
+      ? prefillFromLocationText(existing.location, prefillFromUser(user))
+      : prefillFromUser(user);
+
+  const [name, setName] = useState(existing?.name ?? '');
+  const [categoryId, setCategoryId] = useState<string | null>(existing?.categoryId != null ? String(existing.categoryId) : null);
+  const [price, setPrice] = useState(existing?.price != null ? String(existing.price) : '');
+  const [quantity, setQuantity] = useState(existing ? String(existing.quantity ?? 1) : '1');
+  const [unit, setUnit] = useState(existing?.unit ?? '');
   const [unitType, setUnitType] = useState('');
   const [minOrderQuantity, setMinOrderQuantity] = useState('');
   const [maxOrderQuantity, setMaxOrderQuantity] = useState('');
   const [incrementQuantity, setIncrementQuantity] = useState('');
   const [priceTiers, setPriceTiers] = useState<{ minQuantity: string; pricePerUnit: string }[]>([]);
-  const [negotiated, setNegotiated] = useState(false);
-  const [size, setSize] = useState('Standard');
-  const [location, setLocation] = useState<LocationSelection>(() => {
-    const prefill = prefillFromUser(user);
-    return {
-      stateId: prefill.stateId ?? null,
-      stateName: prefill.stateName ?? null,
-      cityId: prefill.cityId ?? null,
-      cityName: prefill.cityName ?? null,
-    };
+  const [negotiated, setNegotiated] = useState(existing?.negotiated ?? false);
+  const [size, setSize] = useState(existing?.size || 'Standard');
+  const [location, setLocation] = useState<LocationSelection>({
+    stateId: initialLocation.stateId ?? null,
+    stateName: initialLocation.stateName ?? null,
+    cityId: initialLocation.cityId ?? null,
+    cityName: initialLocation.cityName ?? null,
   });
-  const [discount, setDiscount] = useState('0');
-  const [description, setDescription] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(existing ? String(existing.discount ?? 0) : '0');
+  const [description, setDescription] = useState(existing?.description ?? '');
+  const [images, setImages] = useState<string[]>(() => {
+    if (existing) return (existing.images?.length ? existing.images : existing.image ? [existing.image] : []).slice(0, MAX_LISTING_IMAGES);
+    return [];
+  });
   const [submitting, setSubmitting] = useState(false);
 
-  if (!user) return null;
-
-  if (!CONFIG[user.role]) {
+  if (!CONFIG[roleForForm]) {
     return (
       <div className="section">
         <div className="container" style={{ maxWidth: 760 }}>
@@ -147,9 +194,15 @@ export default function PostListingPage() {
     );
   }
 
-  const c = CONFIG[user.role]!;
+  const c = CONFIG[roleForForm]!;
+  const isEdit = Boolean(existing);
+  // Category and negotiated-vs-fixed pricing are locked after publishing (the backend edit
+  // contract excludes them to protect quotes, carts and checkout).
+  const categoryLocked = isEdit;
   const effectiveUnit = unit || c.units[0];
-  const allowedSections = getAllowedSectionCodesForRole(user.role);
+  const unitOptions = c.units.includes(effectiveUnit) ? c.units : [effectiveUnit, ...c.units];
+  const allowedSections = getAllowedSectionCodesForRole(roleForForm);
+  const existingCategoryName = existing?.category;
 
   function addPriceTierRow() {
     setPriceTiers((rows) => [...rows, { minQuantity: '', pricePerUnit: '' }]);
@@ -163,59 +216,69 @@ export default function PostListingPage() {
     setPriceTiers((rows) => rows.filter((_, i) => i !== index));
   }
 
-  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image is too large. Max 5MB.', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => setImage(ev.target?.result as string);
-    reader.onerror = () => showToast("Couldn't read that image file. Please try a different photo.", 'error');
-    reader.readAsDataURL(file);
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
-    if (!categoryId) {
-      showToast('Please select a category.', 'error');
-      return;
-    }
-    const selected = findCategory(categories, categoryId);
-    if (!selected || hasChildren(categories, categoryId)) {
-      showToast('Please pick a specific subcategory, not a broader category.', 'error');
-      return;
+    if (!categoryLocked) {
+      if (!categoryId) {
+        showToast('Please select a category.', 'error');
+        return;
+      }
+      const selected = findCategory(categories, categoryId);
+      if (!selected || hasChildren(categories, categoryId)) {
+        showToast('Please pick a specific subcategory, not a broader category.', 'error');
+        return;
+      }
     }
     if (!negotiated && !price) {
       showToast('Please set a price, or mark this listing as negotiated.', 'error');
       return;
     }
-    const locationText = locationLine(location.cityName, location.stateName);
     if (!location.cityName || !location.stateName) {
       showToast('Please select your state and city.', 'error');
       return;
     }
+    const locationText = locationLine(location.cityName, location.stateName);
     setSubmitting(true);
-    const listingKind = selected.allowedListingKinds[0];
-    const result = await addProduct({
-      name, categoryId, listingKind, price: price || undefined, quantity, unit: effectiveUnit,
-      size: c.showSize ? size : 'Standard', location: locationText, discount, description,
-      type: c.type, image,
-      unitType: unitType || null,
-      minOrderQuantity: minOrderQuantity || null,
-      maxOrderQuantity: maxOrderQuantity || null,
-      incrementQuantity: incrementQuantity || null,
-      priceTiers: negotiated ? [] : priceTiers.filter((t) => t.minQuantity && t.pricePerUnit),
-      negotiated,
-    });
-    if (result) {
+
+    let ok = false;
+    if (isEdit) {
+      ok = Boolean(await updateProductMutation.mutateAsync({
+        id: existing!.id,
+        data: {
+          name: name.trim(),
+          description,
+          price: existing!.negotiated ? (price ? Number(price) : null) : Number(price),
+          quantity: Number(quantity) || 1,
+          unit: effectiveUnit,
+          location: locationText,
+          size: c.showSize ? size : 'Standard',
+          discount: Number(discount) || 0,
+          images,
+        },
+      }));
+    } else {
+      const selected = findCategory(categories, categoryId!)!;
+      ok = Boolean(await addProductMutation.mutateAsync({
+        name, categoryId, listingKind: selected.allowedListingKinds[0], price: price || undefined, quantity, unit: effectiveUnit,
+        size: c.showSize ? size : 'Standard', location: locationText, discount, description,
+        type: c.type, images,
+        unitType: unitType || null,
+        minOrderQuantity: minOrderQuantity || null,
+        maxOrderQuantity: maxOrderQuantity || null,
+        incrementQuantity: incrementQuantity || null,
+        priceTiers: negotiated ? [] : priceTiers.filter((t) => t.minQuantity && t.pricePerUnit),
+        negotiated,
+      }));
+    }
+    if (ok) {
       navigate('/account/my-listings');
       return;
     }
     setSubmitting(false);
   }
+
+  const crumb = isEdit ? 'Edit Listing' : c.breadcrumb;
 
   return (
     <div className="section">
@@ -223,47 +286,47 @@ export default function PostListingPage() {
         <nav aria-label="breadcrumb">
           <ol className="breadcrumb">
             <li className="breadcrumb-item"><Link to="/">Home</Link></li>
-            <li className="breadcrumb-item"><Link to="/account">My Account</Link></li>
-            <li className="breadcrumb-item active">{c.breadcrumb}</li>
+            <li className="breadcrumb-item"><Link to={isEdit ? '/account/my-listings' : '/account'}>{isEdit ? 'My Listings' : 'My Account'}</Link></li>
+            <li className="breadcrumb-item active">{crumb}</li>
           </ol>
         </nav>
 
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>{c.pageTitle}</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>{c.subtitle}</p>
+          <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>{isEdit ? c.editTitle : c.pageTitle}</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>{isEdit ? `Update the details buyers see for "${existing!.name}".` : c.subtitle}</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 32 }}>
-          <div className="form-group">
-            <label>{c.type === 'service' ? 'Service Photo (optional)' : 'Listing Photo'}</label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{ border: '2px dashed var(--border-mid)', borderRadius: 'var(--radius)', padding: 32, textAlign: 'center', cursor: 'pointer' }}
-            >
-              <input type="file" ref={fileInputRef} accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
-              {image ? (
-                <img src={image} style={{ maxHeight: 200, margin: '0 auto', borderRadius: 'var(--radius-sm)' }} alt="Preview" />
-              ) : (
-                <div>
-                  <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: 36, color: 'var(--muted)', marginBottom: 12 }}></i>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Click to upload a photo</p>
-                  <p style={{ fontSize: 11, color: 'var(--muted)' }}>JPG, PNG up to 5MB. A good photo boosts sales!</p>
-                </div>
-              )}
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="listing-form" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 32 }}>
+          <ListingImagePicker
+            images={images}
+            onChange={setImages}
+            max={MAX_LISTING_IMAGES}
+            label="Listing Photos"
+          />
 
           <div className="form-group">
             <label>{c.nameLabel} <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <input type="text" placeholder={c.namePlaceholder} required value={name} onChange={(e) => setName(e.target.value)} />
+            <input type="text" placeholder={c.namePlaceholder} required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
-          <CategoryPicker allowedSections={allowedSections} value={categoryId} onChange={setCategoryId} />
+          {categoryLocked ? (
+            <div className="form-group">
+              <label>Category</label>
+              <input type="text" value={existingCategoryName || '—'} disabled />
+              <small style={{ fontSize: 11, color: 'var(--muted)' }}>
+                The category can't be changed after publishing. To list under a different category, post a new listing.
+              </small>
+            </div>
+          ) : (
+            <CategoryPicker allowedSections={allowedSections} value={categoryId} onChange={setCategoryId} />
+          )}
 
           <div className="row g-3">
             <div className="col-md-6">
               <div className="form-group">
-                <label>{c.priceLabel} {!negotiated && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <label>
+                  {c.priceLabel} {!negotiated && <span style={{ color: 'var(--danger)' }}>*</span>}
+                </label>
                 <input
                   type="number" placeholder={negotiated ? 'Optional starting reference price' : 'e.g. 8500'} min="0"
                   required={!negotiated} value={price} onChange={(e) => setPrice(e.target.value)}
@@ -272,7 +335,7 @@ export default function PostListingPage() {
             </div>
           </div>
 
-          {c.type !== 'service' && (
+          {!isEdit && (
             <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <input
                 type="checkbox" id="negotiated-check" checked={negotiated}
@@ -284,24 +347,30 @@ export default function PostListingPage() {
               </label>
             </div>
           )}
+          {isEdit && negotiated && (
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4 }}>
+              <i className="fa-solid fa-comments-dollar"></i> Negotiated listing — buyers request a quote. This can't be switched to a fixed-price listing after publishing.
+            </p>
+          )}
 
-          <div className="row g-3">
-            <div className="col-md-6">
-              <div className="form-group">
-                <label>{c.showSize ? 'Quantity Available' : 'Slots Available'}</label>
-                <input type="number" placeholder="e.g. 100" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <div className="row g-3">
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label>Quantity Available</label>
+                  <input type="number" placeholder="e.g. 100" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="form-group">
+                  <label>Unit</label>
+                  <select value={effectiveUnit} onChange={(e) => setUnit(e.target.value)}>
+                    {unitOptions.map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="col-md-6">
-              <div className="form-group">
-                <label>Unit</label>
-                <select value={effectiveUnit} onChange={(e) => setUnit(e.target.value)}>
-                  {c.units.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
 
+          {!isEdit && (
           <div className="form-group">
             <label>Order Rules <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 10 }}>
@@ -325,8 +394,9 @@ export default function PostListingPage() {
               </div>
             </div>
           </div>
+          )}
 
-          {!negotiated && (
+          {!isEdit && !negotiated && (
           <div className="form-group">
             <label>Price Tiers <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 10 }}>
@@ -361,56 +431,60 @@ export default function PostListingPage() {
           </div>
           )}
 
-          <div className="row g-3">
-            {c.showSize && (
+          {c.showSize && (
+            <div className="row g-3">
               <div className="col-md-6">
                 <div className="form-group">
                   <label>Size / Package</label>
-                  <input type="text" placeholder="e.g. 50kg bag" value={size} onChange={(e) => setSize(e.target.value)} />
+                  <input type="text" placeholder="e.g. 50kg bag" maxLength={80} value={size} onChange={(e) => setSize(e.target.value)} />
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="row g-3">
             <StateCitySelect
               idPrefix="post-listing"
               fieldClassName="form-group"
               wrapperClassName="col-md-6"
-              initial={prefillFromUser(user)}
+              initial={initialLocation}
               required
               cityLabel="City"
               onChange={setLocation}
             />
           </div>
 
-          <div className="form-group">
-            <label>Discount % (optional)</label>
-            <input type="number" placeholder="e.g. 10 for 10% off" min="0" max="90" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-            <small style={{ fontSize: 11, color: 'var(--muted)' }}>Leave at 0 for no discount. Discounted items appear in Flash Deals.</small>
-          </div>
+            <div className="form-group">
+              <label>Discount % (optional)</label>
+              <input type="number" placeholder="e.g. 10 for 10% off" min="0" max="90" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+              <small style={{ fontSize: 11, color: 'var(--muted)' }}>Leave at 0 for no discount. Discounted items appear in Flash Deals.</small>
+            </div>
 
           <div className="form-group">
             <label>{c.descLabel} <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <textarea rows={5} placeholder={c.descPlaceholder} required value={description} onChange={(e) => setDescription(e.target.value)} />
+            <textarea rows={5} placeholder={c.descPlaceholder} required maxLength={5000} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 1 }}>
               {submitting && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>}
-              {submitting ? 'Publishing…' : (<><i className="fa-solid fa-check"></i> {c.submitLabel}</>)}
+              {submitting
+                ? (isEdit ? 'Saving…' : 'Publishing…')
+                : (<><i className="fa-solid fa-check"></i> {isEdit ? 'Save Changes' : c.submitLabel}</>)}
             </button>
-            <Link to="/account" className="btn-outline btn-inline" style={{ padding: '11px 24px' }}>Cancel</Link>
+            <Link to={isEdit ? '/account/my-listings' : '/account'} className="btn-outline btn-inline" style={{ padding: '11px 24px' }}>Cancel</Link>
           </div>
         </form>
 
+        {!isEdit && (
         <div style={{ marginTop: 20, background: 'var(--primary-light)', border: '1px solid #c8e6d4', borderRadius: 'var(--radius)', padding: 20 }}>
           <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', marginBottom: 12 }}>
             <i className="fa-solid fa-lightbulb"></i> Tips for a great listing
           </h4>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              'Use a clear, well-lit photo of your actual product',
+              `Add up to ${MAX_LISTING_IMAGES} clear, well-lit photos of the actual item - different angles help buyers decide`,
+              'Pick the most specific category so buyers can find you in search and filters',
               'Write a detailed, honest description to build trust',
               'Price competitively — check similar listings in the shop',
               'Respond quickly to messages to close more deals',
@@ -421,6 +495,7 @@ export default function PostListingPage() {
             ))}
           </ul>
         </div>
+        )}
       </div>
     </div>
   );

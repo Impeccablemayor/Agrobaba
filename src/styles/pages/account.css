@@ -224,3 +224,99 @@
 .cancel-link:hover {
   color: var(--text);
 }
+
+/* Service listing form (create/edit, draft/publish) */
+.service-listing-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.service-engagement-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.service-engagement-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+}
+
+.service-engagement-option input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.service-engagement-option small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.service-more-details {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.service-more-details > summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.service-more-details > summary span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.service-requirement-builder {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--bg-soft);
+}
+
+.service-requirement-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.service-requirement-controls select {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.service-requirement-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.service-listing-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+@media (max-width: 560px) {
+  .service-listing-card { padding: 18px; }
+  .service-listing-actions > * { flex: 1 1 100%; justify-content: center; }
+}
