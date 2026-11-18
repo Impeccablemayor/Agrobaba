@@ -50,7 +50,7 @@ export default function AboutPage() {
               </div>
               <div>
                 <h4>Escrow Protected Security</h4>
-                <p>Every transaction is locked in mock escrow until both buyer and farmer confirm physical handover and satisfaction.</p>
+                <p>Every payment is held securely by AgroBaba until the buyer confirms delivery.</p>
               </div>
             </div>
 
