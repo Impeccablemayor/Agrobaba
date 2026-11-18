@@ -23,6 +23,8 @@ export interface DeliveryInput {
   couponCode?: string;
   fulfillmentType?: string;
   fulfillmentPreferences?: Record<number, string>;
+  /** ONLINE adds the seller's delivery fee (computed by the server) to this payment. */
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY';
 }
 
 interface BackendOrderItem {
@@ -35,6 +37,8 @@ interface BackendOrderItem {
   sellerId: number;
   sellerName: string;
   type: string;
+  deliveryFee?: number;
+  additionalFees?: number;
 }
 
 interface BackendOrderResponse {
@@ -55,6 +59,7 @@ interface BackendOrderResponse {
   paymentReference: string | null;
   paymentAuthorizationUrl: string | null;
   paymentInitializationFailed: boolean;
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
 }
 
 function mapOrder(response: BackendOrderResponse): Order {
@@ -70,6 +75,7 @@ function mapOrder(response: BackendOrderResponse): Order {
     sellerName: item.sellerName,
     type: (item.type as Order['items'][number]['type']) || 'product',
     addedAt: response.createdAt,
+    deliveryFee: item.deliveryFee ?? 0,
   }));
 
   return {
@@ -90,6 +96,8 @@ function mapOrder(response: BackendOrderResponse): Order {
     paymentReference: response.paymentReference || null,
     paymentAuthorizationUrl: response.paymentAuthorizationUrl || null,
     paymentInitializationFailed: Boolean(response.paymentInitializationFailed),
+    deliveryPayment: response.deliveryPayment ?? null,
+    deliveryFeeTotal: response.items.reduce((sum, i) => sum + (i.deliveryFee ?? 0), 0),
   };
 }
 
@@ -123,6 +131,7 @@ export async function placeOrder(cartItems: CartItem[], deliveryData: DeliveryIn
       idempotencyKey: checkoutIdempotencyKey(),
       fulfillmentType: deliveryData.fulfillmentType || 'SELLER_MANAGED',
       fulfillmentPreferences: deliveryData.fulfillmentPreferences || null,
+      deliveryPayment: deliveryData.deliveryPayment || 'ON_DELIVERY',
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);

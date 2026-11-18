@@ -99,6 +99,10 @@ export default function MySalesPage() {
 
   const earningByOrder = new Map((earnings?.orders ?? []).map((e) => [String(e.orderId), e]));
   /** This seller's items on the order - an order value, not earnings. */
+  /** Delivery fee the buyer already paid online for this seller's lines. */
+  function myDeliveryPaid(order: Order) {
+    return order.items.filter((it) => String(it.sellerId) === String(user!.id)).reduce((s, it) => s + (it.deliveryFee ?? 0), 0);
+  }
   function myOrderValue(order: Order) {
     return order.items.filter((it) => String(it.sellerId) === String(user!.id)).reduce((s, it) => s + it.price * it.quantity, 0);
   }
@@ -290,6 +294,11 @@ export default function MySalesPage() {
                       <td>
                         <div style={{ fontWeight: 600 }}>{order.buyerName}</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Message buyer for delivery details'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                          {myDeliveryPaid(order) > 0
+                            ? <>Delivery fee paid online: {formatPrice(myDeliveryPaid(order))}</>
+                            : 'Delivery fee: paid on delivery'}
+                        </div>
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                       <td>

@@ -347,6 +347,8 @@ export interface AcceptedQuote {
 }
 
 export interface CartItem {
+  /** On order lines only: delivery fee included in the online payment for this line. */
+  deliveryFee?: number;
   id: string;
   productId: string;
   name: string;
@@ -450,6 +452,11 @@ export interface Order {
    *  The order itself is still recoverable; the customer can retry payment from the order
    *  detail page. */
   paymentInitializationFailed: boolean;
+  /** Buyer's checkout choice: ONLINE = delivery fee included in this payment; ON_DELIVERY = paid
+   *  to whoever delivers. Null on older list views. */
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
+  /** Delivery fees included in the online payment (0 when paid on delivery). */
+  deliveryFeeTotal?: number;
 }
 
 export interface FlashSaleItem {

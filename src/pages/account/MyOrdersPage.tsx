@@ -216,7 +216,12 @@ export default function MyOrdersPage() {
                         <td>#{i + 1}</td>
                         <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                         <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                          {formatPrice(order.total)}
+                          <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}>
+                            {(order.deliveryFeeTotal ?? 0) > 0 ? `incl. ${formatPrice(order.deliveryFeeTotal ?? 0)} delivery` : 'Delivery paid on arrival'}
+                          </div>
+                        </td>
                         <td>{formatDate(order.createdAt)}</td>
                         <td><span className={`status-${statusClass}`} style={{ textTransform: 'capitalize' }}>{order.status}</span></td>
                         <td style={{ fontSize: 12, color: order.paymentStatus === 'SUCCESS' ? 'var(--success)' : unpaid ? 'var(--accent)' : 'var(--muted)' }}>

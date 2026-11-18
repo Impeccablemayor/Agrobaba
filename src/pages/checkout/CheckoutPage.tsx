@@ -4,6 +4,7 @@ import { StateCitySelect } from '../../components/StateCitySelect';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { placeOrder } from '../../lib/orders';
+import { estimateDeliveryFee } from '../../lib/logistics';
 import { previewCoupon } from '../../lib/coupons';
 import { getProductById } from '../../lib/products';
 import { resolveUnitPrice } from '../../lib/units';
@@ -39,6 +40,10 @@ export default function CheckoutPage() {
   });
   const [note, setNote] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'SELLER_MANAGED' | 'AGROBABA_MANAGED'>('SELLER_MANAGED');
+  const [deliveryPayment, setDeliveryPayment] = useState<'ONLINE' | 'ON_DELIVERY'>('ON_DELIVERY');
+  // Each seller's own delivery fee (their delivery profile), for display only - the server
+  // recalculates it when the order is placed.
+  const [deliveryQuotes, setDeliveryQuotes] = useState<Record<string, number>>({});
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
@@ -104,6 +109,27 @@ export default function CheckoutPage() {
     return () => { active = false; };
   }, [cart]);
 
+  // Sellers' delivery fees for the "pay delivery now" option. Quote lines already include delivery.
+  const quoteKey = cart.map((i) => `${i.sellerId}:${i.price * i.quantity}:${i.acceptedQuoteId ?? ''}`).join('|');
+  useEffect(() => {
+    let active = true;
+    const subtotals = new Map<string, number>();
+    const quoted = new Set(cart.filter((i) => i.acceptedQuoteId).map((i) => String(i.sellerId)));
+    cart.filter((i) => !i.acceptedQuoteId && i.sellerId).forEach((i) => {
+      subtotals.set(String(i.sellerId), (subtotals.get(String(i.sellerId)) ?? 0) + i.price * i.quantity);
+    });
+    Promise.allSettled([...subtotals.entries()].filter(([id]) => !quoted.has(id)).map(([id, sub]) =>
+      estimateDeliveryFee(Number(id), sub).then((r) => [id, r.fee] as const)))
+      .then((results) => {
+        if (!active) return;
+        const next: Record<string, number> = {};
+        results.forEach((r) => { if (r.status === 'fulfilled' && r.value[1] > 0) next[r.value[0]] = r.value[1]; });
+        setDeliveryQuotes(next);
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the cart's seller subtotals
+  }, [quoteKey]);
+
   if (loading) return null;
   if (cart.length === 0 && !orderPlaced.current) return null;
 
@@ -112,7 +138,11 @@ export default function CheckoutPage() {
       ? total * (appliedCoupon.discountValue / 100)
       : Math.min(appliedCoupon.discountValue, total)
     : 0;
-  const finalTotal = total - discountAmount;
+  const sellerDeliveryTotal = Object.values(deliveryQuotes).reduce((s, f) => s + f, 0);
+  const canPayDeliveryOnline = fulfillmentType === 'SELLER_MANAGED' && sellerDeliveryTotal > 0;
+  const deliveryOnline = canPayDeliveryOnline && deliveryPayment === 'ONLINE' ? sellerDeliveryTotal : 0;
+  // The coupon never applies to delivery (same rule as the server).
+  const finalTotal = total - discountAmount + deliveryOnline;
   const sellerGroups = groupCartBySeller(cart);
 
   async function handleApplyCoupon() {
@@ -163,6 +193,7 @@ export default function CheckoutPage() {
       phone: phone.trim(),
       couponCode: appliedCoupon?.code,
       fulfillmentType,
+      deliveryPayment: canPayDeliveryOnline ? deliveryPayment : 'ON_DELIVERY',
     });
     if (order) {
       orderPlaced.current = true;
@@ -332,6 +363,25 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                 </div>
+                {canPayDeliveryOnline ? (
+                  <div style={{ marginTop: 14 }}>
+                    <label style={{ fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 8 }}>Delivery fee payment</label>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, marginBottom: 6 }}>
+                      <input type="radio" name="deliveryPayment" checked={deliveryPayment === 'ONLINE'} onChange={() => setDeliveryPayment('ONLINE')} style={{ marginTop: 3 }} />
+                      <span>Pay the seller&apos;s delivery fee now ({formatPrice(sellerDeliveryTotal)}) with your order</span>
+                    </label>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+                      <input type="radio" name="deliveryPayment" checked={deliveryPayment === 'ON_DELIVERY'} onChange={() => setDeliveryPayment('ON_DELIVERY')} style={{ marginTop: 3 }} />
+                      <span>Pay for delivery when my order arrives</span>
+                    </label>
+                  </div>
+                ) : (
+                  <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {fulfillmentType === 'AGROBABA_MANAGED'
+                      ? 'Delivery is paid when your order arrives. AgroBaba will confirm the cost once a transporter is assigned.'
+                      : 'Delivery is arranged with the seller and paid when your order arrives.'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -363,7 +413,7 @@ export default function CheckoutPage() {
               <div className="summary-row">
                 <span>Delivery</span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>
-                  {fulfillmentType === 'AGROBABA_MANAGED' ? 'AgroBaba Coordinated' : 'Seller Arranged'}
+                  {deliveryOnline > 0 ? formatPrice(deliveryOnline) : 'Pay on delivery'}
                 </span>
               </div>
 
