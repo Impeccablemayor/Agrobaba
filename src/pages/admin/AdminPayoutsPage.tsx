@@ -182,7 +182,8 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
           <h4>Amount</h4>
           <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Seller's items</span><span>{formatPrice(e.grossAmount)}</span></p>
           {e.refundedAmount > 0 && <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Refunded to buyer</span><span>−{formatPrice(e.refundedAmount)}</span></p>}
-          <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Platform fee</span><span>−{formatPrice(e.platformFee)}</span></p>
+          <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Platform fee (on items only)</span><span>−{formatPrice(e.platformFee)}</span></p>
+          {e.deliveryFee > 0 && <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Delivery fee (seller delivered, no fee)</span><span>+{formatPrice(e.deliveryFee)}</span></p>}
           <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, color: 'var(--primary)' }}><span>Send exactly</span><span>{formatPrice(e.netAmount)}</span></p>
         </div>
 

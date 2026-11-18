@@ -25,6 +25,8 @@ export interface Payout {
   refundedAmount: number;
   feeRate: number;
   feeAmount: number;
+  /** Included in netAmount; 0 when AgroBaba delivered. */
+  deliveryFee: number;
   netAmount: number;
   currency: string;
   status: 'RELEASED' | 'VOIDED';

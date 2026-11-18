@@ -232,6 +232,8 @@ export interface OrderEarning {
   refundedAmount: number;
   /** AgroBaba's platform fee on (gross - refunded); the recorded fee once paid out. */
   platformFee: number;
+  /** Delivery fee paid online and credited to this seller (they deliver); 0 when AgroBaba delivers. No platform fee on it. */
+  deliveryFee: number;
   /** What the seller receives (after refunds and fee), 0 when no verified payment backs it. */
   netAmount: number;
   paidAt: string | null;
