@@ -5,6 +5,7 @@ import { useSalesOrders } from '../../hooks/queries/useOrders';
 import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
+import { CancelOrderButton } from '../../components/CancelOrderButton';
 import {
   getMyDeliveryProfile,
   saveMyDeliveryProfile,
@@ -291,6 +292,14 @@ export default function MySalesPage() {
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
                           </select>
+                        )}
+                        {/* A seller may cancel only an unpaid order that contains nothing but their
+                            own items (e.g. out of stock); mixed orders go to the buyer/support. */}
+                        {order.status === 'pending' && order.paymentStatus !== 'SUCCESS'
+                          && order.items.every((it) => String(it.sellerId) === String(user!.id)) && (
+                          <div style={{ marginTop: 6 }}>
+                            <CancelOrderButton orderId={order.id} invoiceNumber={order.invoiceNumber} compact />
+                          </div>
                         )}
                       </td>
                       <td>

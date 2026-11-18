@@ -95,6 +95,11 @@ export function GoogleSignInButton({
     }
   }
 
+  const handleCredentialRef = useRef(handleCredential);
+  handleCredentialRef.current = handleCredential;
+  const acceptedTermsRef = useRef(acceptedTerms);
+  acceptedTermsRef.current = acceptedTerms;
+
   // Handle Link Account submission with password
   async function handleLinkSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -169,7 +174,7 @@ export function GoogleSignInButton({
         client_id: clientId,
         callback: (response) => {
           if (response?.credential) {
-            void handleCredential(response.credential, acceptedTerms);
+            void handleCredentialRef.current(response.credential, acceptedTermsRef.current);
           }
         },
         auto_select: false,
@@ -229,7 +234,7 @@ export function GoogleSignInButton({
       window.removeEventListener('resize', handleResize);
       clearTimeout(resizeTimer);
     };
-  }, [clientId, acceptedTerms]);
+  }, [clientId]);
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', marginBottom: 16 }}>

@@ -6,6 +6,30 @@ import { getAllFlashSalesAdmin } from '../../lib/flashSales';
 import { getAdminOverview, getAuditLog } from '../../lib/adminOverview';
 import { getAdminPersonalizationOverview } from '../../lib/adminPersonalization';
 import {
+  getAdminBookings, getAdminQuotes,
+  type AdminBookingStatus, type AdminCommerceFilters, type AdminQuoteStatus,
+} from '../../lib/adminCommerce';
+
+export function useAdminBookings(filters: AdminCommerceFilters<AdminBookingStatus>, enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'bookings', filters],
+    queryFn: () => getAdminBookings(filters),
+    staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+export function useAdminQuotes(filters: AdminCommerceFilters<AdminQuoteStatus>, enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'quotes', filters],
+    queryFn: () => getAdminQuotes(filters),
+    staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+import {
   getAdminUsers,
   getAdminUserDetail,
   getAdminUserOrders,

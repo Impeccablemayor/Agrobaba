@@ -6,6 +6,7 @@ import { beginCheckout } from '../../lib/payments';
 import { createReview } from '../../lib/reviews';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
+import { CancelOrderButton } from '../../components/CancelOrderButton';
 import { getShipmentsForOrder, confirmDelivery } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
 import type { Order, Shipment } from '../../types';
@@ -431,6 +432,17 @@ export default function MyOrdersPage() {
                     ? <><i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Opening checkout…</>
                     : <><i className="fa-solid fa-credit-card"></i> Pay Now</>}
                 </button>
+              )}
+              {/* Only an unpaid, still-pending order can be cancelled by the buyer; paid orders are
+                  refunded through AgroBaba support (the backend enforces the same rule). */}
+              {activeOrder.status === 'pending' && activeOrder.paymentStatus !== 'SUCCESS' && (
+                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
+                  <CancelOrderButton
+                    orderId={activeOrder.id}
+                    invoiceNumber={activeOrder.invoiceNumber}
+                    onCancelled={() => setActiveOrder(null)}
+                  />
+                </div>
               )}
             </div>
           </div>

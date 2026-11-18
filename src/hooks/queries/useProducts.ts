@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMyProducts, getProductById, getProducts, type ProductFilters } from '../../lib/products';
-import type { Product } from '../../types';
+import { getMyProducts, getProductById, getProducts, getServiceListing, type ProductFilters, type ServiceListing } from '../../lib/products';
+import { getProductReviews } from '../../lib/reviews';
+import type { Product, Review } from '../../types';
 
 export interface ProductQueryParams extends ProductFilters {
   page?: number;
@@ -51,5 +52,24 @@ export function useMyProducts() {
     queryFn: () => getMyProducts(),
     staleTime: 3 * 60 * 1000,
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Full service record (pricing, engagement, gallery) - only fetched when editing a service. */
+export function useServiceListing(productId?: string, enabled = true) {
+  return useQuery<ServiceListing | null>({
+    queryKey: ['services', 'detail', productId],
+    queryFn: () => (productId ? getServiceListing(productId) : Promise.resolve(null)),
+    enabled: Boolean(productId) && enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useProductReviews(id?: string) {
+  return useQuery<Review[]>({
+    queryKey: ['products', id, 'reviews'],
+    queryFn: () => (id ? getProductReviews(id) : Promise.resolve([])),
+    enabled: Boolean(id),
+    staleTime: 3 * 60 * 1000,
   });
 }

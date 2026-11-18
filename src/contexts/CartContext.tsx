@@ -18,6 +18,9 @@ interface CartContextValue {
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
+  /** Re-reads the server cart (fresh stock + per-line issues). Resolves to the latest items, or
+   *  null if the read failed - callers must not treat a failed read as "cart is fine". */
+  refreshCart: () => Promise<CartItem[] | null>;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -126,6 +129,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function refreshCart(): Promise<CartItem[] | null> {
+    if (!userId) return [];
+    const epoch = epochRef.current;
+    try {
+      const items = await cartLib.fetchServerCart();
+      applyResult(epoch, items);
+      return epoch === epochRef.current ? items : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function clearCart(): Promise<void> {
     const epoch = epochRef.current;
     try {
@@ -143,7 +158,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, count, total, loading, addToCart, removeFromCart, updateQuantity, clearCart }}>
+    <CartContext.Provider value={{ cart, count, total, loading, addToCart, removeFromCart, updateQuantity, clearCart, refreshCart }}>
       {children}
     </CartContext.Provider>
   );

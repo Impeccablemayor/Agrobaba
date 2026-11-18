@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useProduct } from '../../hooks/queries/useProducts';
+import { useProduct, useServiceListing } from '../../hooks/queries/useProducts';
+import { OptimizedImage } from '../../components/common/OptimizedImage';
 import { useCategories } from '../../hooks/queries/useCategories';
 import { getSectionIdByCode } from '../../lib/categories';
 import { createBooking } from '../../lib/bookings';
@@ -24,8 +25,12 @@ export default function ServiceDetailPage() {
   });
   const [bookLocation, setBookLocation] = useState('');
   const [bookMessage, setBookMessage] = useState('');
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  /** Answers to the provider's questions, keyed by requirement id (+ `${id}_other`). */
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const { data: product, isLoading: loading } = useProduct(id);
+  const { data: serviceListing } = useServiceListing(id, product?.type === 'service');
   const { data: categories = [] } = useCategories();
 
   const servicesCatId = getSectionIdByCode(categories, 'services');
@@ -54,9 +59,36 @@ export default function ServiceDetailPage() {
     );
   }
 
+  // A provider can't book or message their own service (backend rejects self-booking too).
+  const isOwner = Boolean(user && String(user.id) === String(product.sellerId));
+  const galleryImages = (serviceListing?.gallery ?? []).filter((m) => m.type === 'image').map((m) => m.url);
+  const serviceImages = galleryImages.length ? galleryImages : product.image ? [product.image] : [];
+  const activeImage = serviceImages[Math.min(activeImageIndex, Math.max(0, serviceImages.length - 1))];
+  const requirements = (serviceListing?.requirements ?? []).filter((r) => r.id != null);
+  const flexibleLabels = (values: { code: string | null; customValue: string | null }[] | undefined) =>
+    (values ?? []).map((v) => v.customValue || (v.code ? v.code.replaceAll('_', ' ') : '')).filter(Boolean);
+  const inclusions = flexibleLabels(serviceListing?.inclusions);
+  const equipment = flexibleLabels(serviceListing?.equipment);
+  const COVERAGE: Record<string, string> = {
+    my_lga: 'Within my LGA', my_state: 'Within my state', selected_states: 'Selected states',
+    nationwide: 'Nationwide', remote: 'Remote', custom: serviceListing?.customCoverage || 'Custom area',
+  };
+  const setAnswer = (key: string, value: string) => setAnswers((prev) => ({ ...prev, [key]: value }));
+
   async function handleBook(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // The backend refuses a booking that skips a required question; say which one up front.
+    const missing = requirements.find((r) => r.required && !(answers[String(r.id)] || '').trim());
+    if (missing) {
+      showToast(`Please answer: ${missing.question}`, 'error');
+      return;
+    }
+    const otherMissing = requirements.find((r) => answers[String(r.id)] === '__other' && !(answers[`${r.id}_other`] || '').trim());
+    if (otherMissing) {
+      showToast(`Please specify your answer for: ${otherMissing.question}`, 'error');
+      return;
+    }
     // Auth gate (Phase 5): never create a booking without confirmed auth.
     if (!isLive()) {
       await renewSession();
@@ -78,6 +110,13 @@ export default function ServiceDetailPage() {
       scheduledDate: date,
       serviceLocation: bookLocation,
       customerNotes: bookMessage,
+      requirementAnswers: Object.fromEntries(
+        Object.entries(answers)
+          .filter(([, v]) => v.trim() !== '')
+          // ServiceBookingService.validateAnswers expects the "__other" sentinel for the choice
+          // plus the free text under `${id}_other`.
+          .map(([k, v]) => [k, v === '__other' ? v : v.trim()]),
+      ),
     });
     setSubmitting(false);
     if (booking) {
@@ -118,6 +157,36 @@ export default function ServiceDetailPage() {
           </div>
         </div>
 
+        {activeImage && (
+          <div style={{ marginBottom: 20 }}>
+            <OptimizedImage
+              key={activeImage}
+              src={activeImage}
+              alt={product.name}
+              targetWidth={900}
+              loading="eager"
+              sizes="(max-width: 768px) 100vw, 700px"
+              style={{ width: '100%', maxHeight: 380, objectFit: 'cover', borderRadius: 'var(--radius)' }}
+            />
+            {serviceImages.length > 1 && (
+              <div className="product-gallery-thumbs" aria-label="Service photos">
+                {serviceImages.map((src, i) => (
+                  <button
+                    key={src.slice(-48)}
+                    type="button"
+                    className={`product-gallery-thumb${src === activeImage ? ' active' : ''}`}
+                    onClick={() => setActiveImageIndex(i)}
+                    aria-label={`Show photo ${i + 1} of ${serviceImages.length}`}
+                    aria-pressed={src === activeImage}
+                  >
+                    <OptimizedImage src={src} alt="" targetWidth={160} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="provider-card">
           <div className="provider-avatar">
             <i className="fa-solid fa-user-tie"></i>
@@ -142,7 +211,7 @@ export default function ServiceDetailPage() {
         <div className="sd-info-grid">
           <div className="sd-info-item">
             <div className="label">Price</div>
-            <div className="value price">{formatPrice(product.price ?? 0)}</div>
+            <div className="value price">{product.price != null ? formatPrice(product.price) : 'On request'}</div>
           </div>
           <div className="sd-info-item">
             <div className="label">Session / Package</div>
@@ -161,10 +230,35 @@ export default function ServiceDetailPage() {
         <div className="sd-body">
           <h3>About This Service</h3>
           <p>{product.description}</p>
+          {serviceListing && (inclusions.length > 0 || equipment.length > 0 || serviceListing.coverageType || serviceListing.experienceYears != null) && (
+            <ul className="service-facts">
+              {serviceListing.coverageType && <li><i className="fa-solid fa-map-location-dot"></i> <strong>Coverage:</strong> {COVERAGE[serviceListing.coverageType] || serviceListing.coverageType}</li>}
+              {serviceListing.experienceYears != null && <li><i className="fa-solid fa-award"></i> <strong>Experience:</strong> {serviceListing.experienceYears} year{serviceListing.experienceYears === 1 ? '' : 's'}</li>}
+              {inclusions.length > 0 && <li><i className="fa-solid fa-circle-check"></i> <strong>Included:</strong> {inclusions.join(', ')}</li>}
+              {equipment.length > 0 && <li><i className="fa-solid fa-tractor"></i> <strong>Equipment:</strong> {equipment.join(', ')}</li>}
+            </ul>
+          )}
         </div>
       </div>
 
       <div className="service-detail-sidebar">
+        {isOwner ? (
+          <>
+            <h3 className="sidebar-title"><i className="fa-solid fa-briefcase" style={{ color: 'var(--primary)' }}></i> Your Service</h3>
+            <div className="owner-listing-panel">
+              <p>This is your service. Customers book or request a quote here; you manage it and respond to requests instead.</p>
+              <div className="owner-listing-actions">
+                <Link to={`/account/listings/${product.id}/edit`} className="btn-primary btn-inline btn-sm">
+                  <i className="fa-solid fa-pen"></i> Edit Service
+                </Link>
+                <Link to="/account/my-bookings" className="btn-outline btn-inline btn-sm">
+                  <i className="fa-solid fa-calendar-check"></i> Booking Requests
+                </Link>
+              </div>
+            </div>
+          </>
+        ) : (
+        <>
         <h3 className="sidebar-title"><i className="fa-solid fa-calendar-check" style={{ color: 'var(--primary)' }}></i> Book This Service</h3>
 
         {!user ? (
@@ -187,6 +281,41 @@ export default function ServiceDetailPage() {
                   value={bookLocation} onChange={(e) => setBookLocation(e.target.value)}
                 />
               </div>
+              {requirements.map((r) => {
+                const key = String(r.id);
+                const fieldId = `book-req-${key}`;
+                const value = answers[key] || '';
+                return (
+                  <div className="form-group" key={key}>
+                    <label htmlFor={fieldId}>
+                      {r.question} {r.required && <span style={{ color: 'var(--danger)' }}>*</span>}
+                    </label>
+                    {r.answerType === 'multiple_choice' ? (
+                      <>
+                        <select id={fieldId} value={value} onChange={(e) => setAnswer(key, e.target.value)}>
+                          <option value="">Choose…</option>
+                          {r.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                          {r.allowOther && <option value="__other">Other…</option>}
+                        </select>
+                        {value === '__other' && (
+                          <input
+                            style={{ marginTop: 6 }} aria-label={`Other answer for ${r.question}`} maxLength={160}
+                            value={answers[`${key}_other`] || ''} onChange={(e) => setAnswer(`${key}_other`, e.target.value)}
+                          />
+                        )}
+                      </>
+                    ) : r.answerType === 'long_text' ? (
+                      <textarea id={fieldId} rows={3} maxLength={1000} value={value} onChange={(e) => setAnswer(key, e.target.value)} />
+                    ) : (
+                      <input
+                        id={fieldId} maxLength={300} value={value} onChange={(e) => setAnswer(key, e.target.value)}
+                        type={r.answerType === 'number' ? 'number' : r.answerType === 'date' ? 'date' : 'text'}
+                        placeholder={r.answerType === 'location' ? 'Farm or site address' : undefined}
+                      />
+                    )}
+                  </div>
+                );
+              })}
               <div className="form-group">
                 <label htmlFor="book-message">Additional Notes</label>
                 <textarea
@@ -210,6 +339,8 @@ export default function ServiceDetailPage() {
             <i className="fa-regular fa-comments"></i> Message Provider
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   </div>

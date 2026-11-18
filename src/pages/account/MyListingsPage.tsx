@@ -47,7 +47,9 @@ export default function MyListingsPage() {
     );
   }
 
-  const allProducts = products;
+  // /api/products/me also returns archived (removed) listings - the backend keeps them for order
+  // history - so a removed listing must not linger here looking like the removal failed.
+  const allProducts = products.filter((p) => p.status !== 'archived');
   const active = allProducts.filter((p) => p.status === 'active').length;
   const discounted = allProducts.filter((p) => p.discount > 0).length;
   const totalSold = allProducts.reduce((s, p) => s + (p.sold || 0), 0);
@@ -154,8 +156,14 @@ export default function MyListingsPage() {
                         >
                           <i className="fa-solid fa-eye"></i> View
                         </Link>
+                        <Link
+                          to={`/account/listings/${p.id}/edit`}
+                          className="btn-outline btn-sm btn-inline" style={{ flex: 1, minWidth: 0, padding: '6px 4px', textAlign: 'center', justifyContent: 'center' }}
+                        >
+                          <i className="fa-solid fa-pen"></i> Edit
+                        </Link>
                         <button onClick={() => setPendingDelete({ id: p.id, name: p.name })} className="btn-danger btn-sm btn-inline" style={{ flex: 1, minWidth: 0, padding: '6px 4px', width: 'auto', justifyContent: 'center' }}>
-                          <i className="fa-solid fa-trash"></i> Delete
+                          <i className="fa-solid fa-trash"></i> Remove
                         </button>
                       </div>
                     </div>
@@ -170,9 +178,9 @@ export default function MyListingsPage() {
 
       <ConfirmDialog
         open={!!pendingDelete}
-        title="Delete this listing?"
-        message={`"${pendingDelete?.name}" will be permanently removed from the marketplace. This cannot be undone.`}
-        confirmLabel="Delete Listing"
+        title="Remove this listing?"
+        message={`"${pendingDelete?.name}" will be taken off the marketplace and buyers will no longer see it. Existing orders, quotes and bookings for it are kept.`}
+        confirmLabel="Remove Listing"
         destructive
         busy={deleteProductMutation.isPending}
         onConfirm={handleDelete}

@@ -225,6 +225,9 @@ export interface Product {
   unit: string;
   location: string;
   image: string | null;
+  /** Full gallery (up to 3), first entry is the cover. Only returned by the detail/full product
+   *  endpoints - paginated listing cards get `image` alone. Absent on legacy single-image rows. */
+  images?: string[];
   /** Phase 1 of the Flexible Commerce Architecture roadmap - all optional. Unset on every
    *  listing created before this phase; those keep behaving exactly as before. */
   unitType?: string | null;
@@ -248,7 +251,8 @@ export interface Product {
   discount: number;
   tags: string[];
   createdAt: string;
-  status: 'active' | 'inactive';
+  /** 'archived' = removed by the seller/admin (kept server-side for order/quote history). */
+  status: 'active' | 'inactive' | 'archived' | 'draft';
   /** Only set on products returned by GET /api/home/recommended - see PersonalizationScoring.explain. */
   recommendationReason?: string | null;
   /** Which RecommendationScorer produced recommendationReason (e.g. "deterministic-v1") - not
@@ -363,6 +367,13 @@ export interface CartItem {
   /** Negotiated Commerce roadmap - when set, this line's price/quantity are locked from an
    *  AcceptedQuote, not live product pricing. The cart renders it read-only. */
   acceptedQuoteId?: string | null;
+  /** Live listing stock (null = untracked) and order rules, fresh on every cart read. */
+  available?: number | null;
+  minOrderQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+  incrementQuantity?: number | null;
+  /** Server-computed reason checkout would refuse this line (sold out, archived, below minimum…). */
+  issue?: string | null;
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'confirmed' | 'cancelled';

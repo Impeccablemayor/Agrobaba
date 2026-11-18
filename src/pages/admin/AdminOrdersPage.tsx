@@ -6,6 +6,7 @@ import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { CancelOrderButton } from '../../components/CancelOrderButton';
 import type { Order } from '../../types';
 
 type TabKey = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
@@ -233,6 +234,15 @@ export default function AdminOrdersPage() {
                 <button className="btn-outline btn-inline btn-sm" onClick={() => setConfirmAction('advance-status')}>
                   <i className="fa-solid fa-truck"></i> Advance to "{NEXT_STATUS[selected.status]}"
                 </button>
+              )}
+              {selected.status === 'pending' && (
+                // Unpaid orders only - the backend refuses a paid order (use Payments -> Refund).
+                <CancelOrderButton
+                  orderId={selected.id}
+                  invoiceNumber={selected.invoiceNumber}
+                  compact
+                  onCancelled={() => setSelected((prev) => (prev ? { ...prev, status: 'cancelled' } : null))}
+                />
               )}
             </div>
           </div>

@@ -16,7 +16,7 @@ import type { Coupon } from '../../types';
 
 export default function CheckoutPage() {
   const { user, phase, renewSession } = useAuth();
-  const { cart, total, loading, clearCart } = useCart();
+  const { cart, total, loading, clearCart, refreshCart } = useCart();
   const navigate = useNavigate();
   const orderPlaced = useRef(false);
   // Latest phase for the async submit handler (the closure must not read a stale phase after an
@@ -51,6 +51,20 @@ export default function CheckoutPage() {
     // the user's real cart may still be arriving.
     if (!loading && cart.length === 0 && !orderPlaced.current) navigate('/cart', { replace: true });
   }, [loading, cart.length, navigate]);
+
+  // Fresh server verdict per line on arrival (stock, archived listings, order rules). A line the
+  // server would refuse sends the buyer back to the cart, where the reason is shown on that line.
+  useEffect(() => {
+    void refreshCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit
+  }, []);
+  const blockingIssues = cart.filter((item) => item.issue).length;
+  useEffect(() => {
+    if (blockingIssues > 0 && !orderPlaced.current) {
+      showToast('Some items in your cart need attention before checkout.', 'warning');
+      navigate('/cart', { replace: true });
+    }
+  }, [blockingIssues, navigate]);
 
   // Stale-pricing + inventory check (P1): the server is the final source of truth for unit price
   // and stock, but a cart snapshot goes stale the moment a seller edits a listing. On checkout we
@@ -135,6 +149,14 @@ export default function CheckoutPage() {
       }
     }
     setPlacingOrder(true);
+    // Last-moment re-check: stock may have sold out while the buyer filled in the form.
+    const fresh = await refreshCart();
+    if (fresh && fresh.some((item) => item.issue)) {
+      setPlacingOrder(false);
+      showToast('Some cart quantities are no longer available. Review your cart and try again.', 'error');
+      navigate('/cart');
+      return;
+    }
     const addr = [address.trim(), locationLine(location.cityName, location.stateName)].filter(Boolean).join(', ');
     const order = await placeOrder(cart, {
       address: addr,

@@ -187,6 +187,20 @@ export async function getOrderById(id: string): Promise<Order | null> {
   }
 }
 
+/** Cancels an UNPAID order (buyer, a sole seller, or admin). The backend refuses paid orders -
+ *  those are refunded by AgroBaba support - and releases reserved stock + coupon use. */
+export async function cancelOrder(orderId: string, reason?: string): Promise<boolean> {
+  try {
+    await api.put(`/api/orders/${orderId}/cancel`, { reason: reason?.trim() || null });
+    showToast('Order cancelled. Reserved stock has been released.', 'success');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to cancel this order';
+    showToast(message, 'error');
+    return false;
+  }
+}
+
 export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<boolean> {
   try {
     await api.put(`/api/orders/${orderId}/status`, { status });

@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, starString } from '../lib/format';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { CATEGORY_ICONS } from '../lib/constants';
 import { OptimizedImage } from './common/OptimizedImage';
 import type { Product } from '../types';
@@ -16,13 +17,21 @@ export const ProductCard = memo(function ProductCard({
 }) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const icon = CATEGORY_ICONS[product.category] || CATEGORY_ICONS.default;
 
   const isService = product.type === 'service';
   const detailPath = isService ? `/shop/service/${product.id}` : `/shop/product/${product.id}`;
+  // The seller sees "Manage" instead of buy/book/quote actions on their own listing. The backend
+  // rejects carting your own listing regardless; this just avoids offering a dead-end button.
+  const isOwner = Boolean(user && String(user.id) === String(product.sellerId));
 
   function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation();
+    if (isOwner) {
+      navigate(`/account/listings/${product.id}/edit`);
+      return;
+    }
     if (isService || product.negotiated) {
       navigate(detailPath);
       return;
@@ -65,7 +74,7 @@ export const ProductCard = memo(function ProductCard({
             <span className="cat-label">{product.category}</span>
           </div>
         )}
-        {!isService && !product.negotiated && (
+        {!isService && !product.negotiated && !isOwner && (
           <button
             className="quick-add"
             onClick={handleQuickAdd}
@@ -138,10 +147,11 @@ export const ProductCard = memo(function ProductCard({
 
           <button
             type="button"
-            className={`card-add-btn ${product.type === 'service' ? 'is-service' : product.negotiated ? 'is-quote' : ''}`}
+            className={`card-add-btn ${isOwner ? 'is-quote' : product.type === 'service' ? 'is-service' : product.negotiated ? 'is-quote' : ''}`}
             onClick={handleQuickAdd}
+            title={isOwner ? 'This is your listing' : undefined}
           >
-            {product.type === 'service' ? 'Book' : product.negotiated ? 'Quote' : 'Add'}
+            {isOwner ? 'Manage' : product.type === 'service' ? 'Book' : product.negotiated ? 'Quote' : 'Add'}
           </button>
         </div>
       </div>
