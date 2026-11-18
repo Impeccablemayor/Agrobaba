@@ -260,6 +260,20 @@ export default function AdminPaymentsPage() {
                     <p style={{ fontSize: 12, color: 'var(--muted)' }}>Provider tx: <code>{detail.payment.providerTransactionId}</code></p>
                   )}
                   {detail.payment.paidAt && <p style={{ fontSize: 12, color: 'var(--muted)' }}>Paid {formatDate(detail.payment.paidAt)}</p>}
+                  {detail.payment.gatewayFee != null && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Flutterwave fee: {formatPrice(detail.payment.gatewayFee)}
+                      {detail.payment.expectedSettlementAmount != null && <> · expected settlement {formatPrice(detail.payment.expectedSettlementAmount)}</>}
+                    </p>
+                  )}
+                  {detail.payment.settlementStatus && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Settlement:{' '}
+                      {detail.payment.settlementStatus === 'SETTLED'
+                        ? <><span className="chip chip-success">Settled</span> {detail.payment.settledAt ? formatDate(detail.payment.settledAt) : ''} · <code>{detail.payment.settlementReference}</code></>
+                        : <span className="chip chip-pending">Awaiting settlement</span>}
+                    </p>
+                  )}
                 </div>
 
                 <div className="admin-drawer-section">

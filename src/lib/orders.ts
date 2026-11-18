@@ -236,6 +236,8 @@ export interface OrderEarning {
   netAmount: number;
   paidAt: string | null;
   deliveryConfirmed: boolean;
+  /** The payment has been confirmed as settled into AgroBaba's Flutterwave balance. */
+  fundsSettled: boolean;
   payoutId: number | null;
   paidOutAt: string | null;
   createdAt: string | null;
@@ -275,3 +277,10 @@ export const FINANCIAL_STATUS_LABELS: Record<FinancialStatus, string> = {
   CANCELLED: 'Cancelled',
   UNDER_REVIEW: 'Under review',
 };
+
+/** Label for one order's earnings: HELD is split into "held until delivery" and "awaiting
+ *  settlement" (delivered, but the payment hasn't reached AgroBaba's Flutterwave balance yet). */
+export function financialStatusLabel(e: Pick<OrderEarning, 'financialStatus' | 'deliveryConfirmed' | 'fundsSettled'>): string {
+  if (e.financialStatus === 'HELD' && e.deliveryConfirmed && !e.fundsSettled) return 'Paid · awaiting settlement';
+  return FINANCIAL_STATUS_LABELS[e.financialStatus];
+}

@@ -119,6 +119,16 @@ export interface PaymentAdminSummary {
   paidAt: string | null;
   requiresReview: boolean;
   createdAt: string;
+  /** Flutterwave's figures from verification (null until verified). */
+  chargedAmount: number | null;
+  gatewayFee: number | null;
+  merchantFee: number | null;
+  expectedSettlementAmount: number | null;
+  /** PENDING = verified but not yet confirmed in AgroBaba's Flutterwave balance. */
+  settlementStatus: 'PENDING' | 'SETTLED' | null;
+  settledAt: string | null;
+  settlementReference: string | null;
+  settlementRecordedBy: string | null;
 }
 
 export interface AttemptView {

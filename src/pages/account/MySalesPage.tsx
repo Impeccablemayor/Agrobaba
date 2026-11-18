@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSalesOrders, useSellerEarnings } from '../../hooks/queries/useOrders';
-import { FINANCIAL_STATUS_LABELS, type FinancialStatus } from '../../lib/orders';
+import { financialStatusLabel } from '../../lib/orders';
 import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -249,7 +249,8 @@ export default function MySalesPage() {
           <p className="earnings-note">
             <i className="fa-solid fa-shield-halved"></i>{' '}
             Money counts only after the buyer&apos;s payment is verified. AgroBaba holds it until the buyer
-            confirms delivery, then it becomes available for payout and is sent to your bank account.
+            confirms delivery and the payment has settled into AgroBaba&apos;s account, then it becomes
+            available for payout and is sent to your bank account.
             {earnings && <> Amounts shown are after AgroBaba&apos;s {earnings.platformFeePercent}% platform fee.</>} Unpaid orders are not earnings.
             {earnings && earnings.refunded > 0 && <> Refunded so far: <strong>{formatPrice(earnings.refunded)}</strong>.</>}
             {earnings && earnings.underReview > 0 && <> Under review by AgroBaba: <strong>{formatPrice(earnings.underReview)}</strong>.</>}
@@ -295,7 +296,7 @@ export default function MySalesPage() {
                         <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(myOrderValue(order))}</div>
                         {earningByOrder.get(order.id) && (
                           <span className={`financial-chip fs-${earningByOrder.get(order.id)!.financialStatus.toLowerCase()}`}>
-                            {FINANCIAL_STATUS_LABELS[earningByOrder.get(order.id)!.financialStatus as FinancialStatus]}
+                            {financialStatusLabel(earningByOrder.get(order.id)!)}
                           </span>
                         )}
                       </td>

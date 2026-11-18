@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPayoutHistory, getPayoutQueue, releasePayout, voidPayout } from '../../lib/payouts';
+import { getPendingSettlements, recordSettlement } from '../../lib/settlements';
 
 export function usePayoutQueue(enabled = true) {
   return useQuery({ queryKey: ['admin', 'payouts', 'queue'], queryFn: getPayoutQueue, enabled, staleTime: 15 * 1000 });
@@ -34,4 +35,13 @@ export function useVoidPayout() {
     mutationFn: ({ id, reason }: { id: number; reason: string }) => voidPayout(id, reason),
     onSuccess: (r) => { if (r) invalidate(); },
   });
+}
+
+export function usePendingSettlements(enabled = true) {
+  return useQuery({ queryKey: ['admin', 'payouts', 'settlements'], queryFn: getPendingSettlements, enabled, staleTime: 15 * 1000 });
+}
+
+export function useRecordSettlement() {
+  const invalidate = useInvalidatePayouts();
+  return useMutation({ mutationFn: recordSettlement, onSuccess: (r) => { if (r) invalidate(); } });
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { usePayoutHistory, usePayoutQueue, useReleasePayout, useVoidPayout } from '../../hooks/queries/usePayouts';
+import { usePayoutHistory, usePayoutQueue, usePendingSettlements, useRecordSettlement, useReleasePayout, useVoidPayout } from '../../hooks/queries/usePayouts';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { formatDate, formatPrice } from '../../lib/format';
@@ -10,7 +10,7 @@ import type { Payout, PayoutCandidate } from '../../lib/payouts';
  *  Flutterwave dashboard; this page lists what is ready, records each release, and keeps the
  *  history. Amounts and eligibility are computed by the backend. */
 export default function AdminPayoutsPage() {
-  const [tab, setTab] = useState<'queue' | 'history'>('queue');
+  const [tab, setTab] = useState<'queue' | 'settlement' | 'history'>('queue');
   const [page, setPage] = useState(0);
   const [releasing, setReleasing] = useState<PayoutCandidate | null>(null);
   const [voiding, setVoiding] = useState<Payout | null>(null);
@@ -18,6 +18,7 @@ export default function AdminPayoutsPage() {
   const queue = usePayoutQueue();
   const history = usePayoutHistory(page, tab === 'history');
   const voidMutation = useVoidPayout();
+  const settlements = usePendingSettlements();
 
   const ready = queue.data ?? [];
   const totalToRelease = ready.reduce((s, c) => s + c.earning.netAmount, 0);
@@ -34,8 +35,9 @@ export default function AdminPayoutsPage() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Seller Payouts</h1>
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          Funds are released only after the payment is verified and the buyer has confirmed delivery.
-          Send the transfer in the Flutterwave dashboard, then record it here.
+          Funds are released only after the payment is verified, the money has settled into AgroBaba&apos;s
+          Flutterwave balance, and the buyer has confirmed delivery. Send the transfer in the Flutterwave
+          dashboard, then record it here.
         </p>
       </div>
 
@@ -43,18 +45,20 @@ export default function AdminPayoutsPage() {
         <div className="admin-stat-card"><div className="admin-stat-value">{queue.data ? ready.length : '—'}</div><div className="admin-stat-label">Ready to release</div></div>
         <div className="admin-stat-card"><div className="admin-stat-value">{queue.data ? formatPrice(totalToRelease) : '—'}</div><div className="admin-stat-label">Total to send (after fees)</div></div>
         <div className="admin-stat-card"><div className="admin-stat-value">{queue.data ? missingBank : '—'}</div><div className="admin-stat-label">Missing bank details</div></div>
+        <div className="admin-stat-card"><div className="admin-stat-value">{settlements.data ? settlements.data.length : '—'}</div><div className="admin-stat-label">Awaiting settlement</div></div>
       </div>
 
       <div className="status-tabs">
         <button className={`status-tab ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>Ready to release</button>
+        <button className={`status-tab ${tab === 'settlement' ? 'active' : ''}`} onClick={() => setTab('settlement')}>Awaiting settlement</button>
         <button className={`status-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>History</button>
       </div>
 
-      {tab === 'queue' ? (
+      {tab === 'settlement' ? <SettlementPanel /> : tab === 'queue' ? (
         queue.isLoading ? <PageLoadingSpinner message="Loading payouts…" />
           : queue.isError ? <div className="empty-cart"><i className="fa-solid fa-triangle-exclamation"></i><p>Unable to load the payout queue.</p></div>
           : ready.length === 0 ? (
-            <div className="empty-cart"><i className="fa-solid fa-circle-check"></i><p>Nothing to release. Sellers' funds appear here once payment is verified and the buyer confirms delivery.</p></div>
+            <div className="empty-cart"><i className="fa-solid fa-circle-check"></i><p>Nothing to release. Sellers&apos; funds appear here once the payment is verified and settled, and the buyer confirms delivery.</p></div>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -186,7 +190,7 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
           <h4>Record the transfer</h4>
           <div className="form-group">
             <label htmlFor="payout-ref">Flutterwave transfer reference <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <input id="payout-ref" maxLength={120} value={reference} onChange={(ev) => setReference(ev.target.value)} placeholder="e.g. TRF-1234567890" />
+            <input id="payout-ref" type="text" maxLength={120} value={reference} onChange={(ev) => setReference(ev.target.value)} placeholder="e.g. TRF-1234567890" />
           </div>
           <div className="form-group">
             <label htmlFor="payout-note">Note (optional)</label>
@@ -202,5 +206,96 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
         </div>
       </div>
     </div>
+  );
+}
+
+/** Verified payments whose money hasn't been confirmed in AgroBaba's Flutterwave balance yet. The
+ *  admin ticks the payments included in a Flutterwave settlement and records its reference. */
+function SettlementPanel() {
+  const pending = usePendingSettlements();
+  const record = useRecordSettlement();
+  const [selected, setSelected] = useState<number[]>([]);
+  const [reference, setReference] = useState('');
+  const [settledAt, setSettledAt] = useState('');
+  const [note, setNote] = useState('');
+  const [checked, setChecked] = useState(false);
+  const rows = pending.data ?? [];
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local time
+  const chosen = rows.filter((r) => selected.includes(r.paymentId));
+  const total = chosen.reduce((sum, r) => sum + r.amountNaira, 0);
+  const canSubmit = chosen.length > 0 && reference.trim().length > 0 && checked && !record.isPending;
+
+  function toggle(id: number) {
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }
+
+  async function submit() {
+    if (!canSubmit) return;
+    const ok = await record.mutateAsync({
+      paymentIds: chosen.map((r) => r.paymentId),
+      settlementReference: reference.trim(),
+      // A past day is recorded as that day's end; today (or blank) as now.
+      settledAt: settledAt && settledAt !== today ? `${settledAt}T23:59:59` : undefined,
+      note: note.trim() || undefined,
+    });
+    if (ok) { setSelected([]); setReference(''); setSettledAt(''); setNote(''); setChecked(false); }
+  }
+
+  if (pending.isLoading) return <PageLoadingSpinner message="Loading settlements…" />;
+  if (pending.isError) return <div className="empty-cart"><i className="fa-solid fa-triangle-exclamation"></i><p>Unable to load payments awaiting settlement.</p></div>;
+  if (rows.length === 0) return <div className="empty-cart"><i className="fa-solid fa-circle-check"></i><p>Every verified payment is recorded as settled.</p></div>;
+
+  return (
+    <>
+      <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 12px' }}>
+        Open the Flutterwave dashboard&apos;s settlement report, tick the payments included in one settlement,
+        and record its reference. Sellers&apos; money for these orders stays held until this is done.
+      </p>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead><tr><th></th><th>Order</th><th>Reference</th><th>Paid</th><th>Amount</th><th>Flutterwave fee</th><th>Expected settlement</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.paymentId}>
+                <td><input type="checkbox" aria-label={`Select ${r.invoiceNumber ?? r.paymentId}`} checked={selected.includes(r.paymentId)} onChange={() => toggle(r.paymentId)} /></td>
+                <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                  {r.invoiceNumber ?? `Order #${r.orderId}`}
+                  {r.requiresReview && <span className="chip chip-danger" style={{ marginLeft: 6 }}>Review</span>}
+                </td>
+                <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{r.reference}{r.providerTransactionId ? ` · ${r.providerTransactionId}` : ''}</td>
+                <td>{r.paidAt ? formatDate(r.paidAt) : '—'}</td>
+                <td style={{ fontWeight: 700 }}>{formatPrice(r.amountNaira)}</td>
+                <td>{r.gatewayFee != null ? formatPrice(r.gatewayFee) : '—'}</td>
+                <td>{r.expectedSettlementAmount != null ? formatPrice(r.expectedSettlementAmount) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="admin-drawer-section" style={{ marginTop: 16, maxWidth: 520 }}>
+        <h4>Record settlement</h4>
+        <p style={{ fontSize: 13 }}>{chosen.length} selected · {formatPrice(total)}</p>
+        <div className="form-group">
+          <label htmlFor="settle-ref">Flutterwave settlement reference <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <input id="settle-ref" type="text" maxLength={120} value={reference} onChange={(ev) => setReference(ev.target.value)} placeholder="Settlement ID from the Flutterwave dashboard" />
+        </div>
+        <div className="form-group">
+          <label htmlFor="settle-at">Settlement date (optional, defaults to now)</label>
+          <input id="settle-at" type="date" max={today} value={settledAt} onChange={(ev) => setSettledAt(ev.target.value)} />
+        </div>
+        <div className="form-group">
+          <label htmlFor="settle-note">Note (optional)</label>
+          <textarea id="settle-note" rows={2} maxLength={1000} value={note} onChange={(ev) => setNote(ev.target.value)} />
+        </div>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, margin: '4px 0 12px' }}>
+          <input type="checkbox" checked={checked} onChange={(ev) => setChecked(ev.target.checked)} style={{ marginTop: 3 }} />
+          I have checked these payments against the Flutterwave settlement report.
+        </label>
+        <button className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center' }} disabled={!canSubmit} onClick={() => void submit()}>
+          {record.isPending ? 'Recording…' : 'Record settlement'}
+        </button>
+      </div>
+    </>
   );
 }
