@@ -133,13 +133,18 @@ export default function MyOrdersPage() {
 
   const inTransit = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
   const delivered = orders.filter((o) => o.status === 'delivered').length;
-  const totalSpent = orders.reduce((s, o) => s + o.total, 0);
+  // Only money actually received counts as spent - an order exists before it is paid, and
+  // failed/abandoned checkouts or fully refunded payments are not spending.
+  const PAID_STATUSES = ['SUCCESS', 'REFUND_PENDING', 'PARTIALLY_REFUNDED'];
+  const totalSpent = orders
+    .filter((o) => o.paymentStatus != null && PAID_STATUSES.includes(o.paymentStatus))
+    .reduce((s, o) => s + o.total, 0);
 
   const stats = [
     { icon: 'fa-box', label: 'Total Orders', value: orders.length, color: 'var(--primary)' },
     { icon: 'fa-truck', label: 'In Transit', value: inTransit, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
-    { icon: 'fa-naira-sign', label: 'Total Spent', value: formatPrice(totalSpent), color: 'var(--primary)' },
+    { icon: 'fa-naira-sign', label: 'Total Paid', value: formatPrice(totalSpent), color: 'var(--primary)' },
   ];
 
   let filtered = orders;

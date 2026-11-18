@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSalesOrders } from '../../hooks/queries/useOrders';
+import { useSalesOrders, useSellerEarnings } from '../../hooks/queries/useOrders';
+import { FINANCIAL_STATUS_LABELS, type FinancialStatus } from '../../lib/orders';
 import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
@@ -23,6 +24,9 @@ export default function MySalesPage() {
   const [filter, setFilter] = useState<Filter>('all');
 
   const { data: sales = [], isLoading: loading } = useSalesOrders();
+  // Money figures come from the backend, which counts only verified payments. An order exists
+  // as soon as a buyer clicks "Place Order" - before paying - so it must never be summed here.
+  const { data: earnings } = useSellerEarnings();
   const updateStatusMutation = useUpdateOrderStatus();
 
   // Delivery Profile State
@@ -93,17 +97,20 @@ export default function MySalesPage() {
   const title = isServiceProvider ? 'My Earnings' : 'My Sales';
   const subtitle = isServiceProvider ? 'Track bookings and earnings from your services.' : 'Manage orders customers have placed for your listings.';
 
-  function getMyEarnings(order: Order) {
-    return order.items.filter((it) => it.sellerId === user!.id).reduce((s, it) => s + it.price * it.quantity, 0);
+  const earningByOrder = new Map((earnings?.orders ?? []).map((e) => [String(e.orderId), e]));
+  /** This seller's items on the order - an order value, not earnings. */
+  function myOrderValue(order: Order) {
+    return order.items.filter((it) => String(it.sellerId) === String(user!.id)).reduce((s, it) => s + it.price * it.quantity, 0);
   }
-
-  const totalEarnings = sales.reduce((s, o) => s + getMyEarnings(o), 0);
+  const money = (v: number | null | undefined) => (earnings ? formatPrice(v ?? 0) : '—');
   const toFulfill = sales.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
   const delivered = sales.filter((o) => o.status === 'delivered').length;
 
   const stats = [
-    { icon: 'fa-cart-shopping', label: 'Total Sales', value: sales.length, color: 'var(--primary)' },
-    { icon: 'fa-naira-sign', label: 'Earnings', value: formatPrice(totalEarnings), color: 'var(--success)' },
+    { icon: 'fa-cart-shopping', label: 'Paid Orders', value: earnings ? earnings.paidOrderCount : '—', color: 'var(--primary)' },
+    { icon: 'fa-lock', label: 'Held (paid, awaiting delivery)', value: money(earnings?.held), color: 'var(--accent)' },
+    { icon: 'fa-naira-sign', label: 'Available for Payout', value: money(earnings?.availableForPayout), color: 'var(--success)' },
+    { icon: 'fa-hourglass-half', label: 'Awaiting Payment (not earnings)', value: money(earnings?.awaitingPayment), color: 'var(--muted)' },
     { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
   ];
@@ -229,7 +236,7 @@ export default function MySalesPage() {
           <PageLoadingSpinner message="Loading your sales…" />
         ) : (
           <>
-          <div className="stats-grid" style={{ marginBottom: 28 }}>
+          <div className="stats-grid" style={{ marginBottom: 12 }}>
           {stats.map((s) => (
             <div className="stat-card" key={s.label}>
               <div className="stat-icon"><i className={`fa-solid ${s.icon}`} style={{ color: s.color }}></i></div>
@@ -238,6 +245,14 @@ export default function MySalesPage() {
             </div>
           ))}
           </div>
+          <p className="earnings-note">
+            <i className="fa-solid fa-shield-halved"></i>{' '}
+            Money counts only after the buyer&apos;s payment is verified. AgroBaba holds it until the buyer
+            confirms delivery, then it becomes available for payout. Unpaid orders are not earnings.
+            {earnings && earnings.refunded > 0 && <> Refunded so far: <strong>{formatPrice(earnings.refunded)}</strong>.</>}
+            {earnings && earnings.underReview > 0 && <> Under review by AgroBaba: <strong>{formatPrice(earnings.underReview)}</strong>.</>}
+            {!earnings && ' (Earnings are temporarily unavailable.)'}
+          </p>
 
           <div className="shop-tabs">
             {(['all', 'delivered'] as const).map((f) => (
@@ -262,7 +277,7 @@ export default function MySalesPage() {
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Earnings</th><th>Date</th><th>Fulfillment</th><th>Shipment</th>
+                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Amount</th><th>Date</th><th>Fulfillment</th><th>Shipment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -274,7 +289,14 @@ export default function MySalesPage() {
                         <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Message buyer for delivery details'}</div>
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(getMyEarnings(order))}</td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(myOrderValue(order))}</div>
+                        {earningByOrder.get(order.id) && (
+                          <span className={`financial-chip fs-${earningByOrder.get(order.id)!.financialStatus.toLowerCase()}`}>
+                            {FINANCIAL_STATUS_LABELS[earningByOrder.get(order.id)!.financialStatus as FinancialStatus]}
+                          </span>
+                        )}
+                      </td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>
                         {order.status === 'cancelled' ? (

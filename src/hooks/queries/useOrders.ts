@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { getAllOrdersAdmin, getMyOrders, getMySales, getOrderById } from '../../lib/orders';
+import { getAllOrdersAdmin, getMyOrders, getMySales, getOrderById, getSellerEarnings } from '../../lib/orders';
 import type { Order } from '../../types';
 
 export function useMyOrders() {
@@ -35,5 +35,15 @@ export function useOrder(id?: string) {
     queryFn: () => (id ? getOrderById(id) : Promise.resolve(null)),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** The signed-in seller's earnings from verified payments (see SellerEarningsService). */
+export function useSellerEarnings(enabled = true) {
+  return useQuery({
+    queryKey: ['orders', 'sales', 'earnings'],
+    queryFn: () => getSellerEarnings(),
+    enabled,
+    staleTime: 60 * 1000,
   });
 }

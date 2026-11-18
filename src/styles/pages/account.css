@@ -320,3 +320,37 @@
   .service-listing-card { padding: 18px; }
   .service-listing-actions > * { flex: 1 1 100%; justify-content: center; }
 }
+
+/* Seller earnings: explanation line + per-order financial status chip */
+.earnings-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--primary-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0 0 24px;
+}
+
+.earnings-note i {
+  color: var(--primary);
+}
+
+.financial-chip {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--bg-soft);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.financial-chip.fs-held { background: var(--accent-light); color: var(--accent-dark); border-color: transparent; }
+.financial-chip.fs-available_for_payout,
+.financial-chip.fs-paid_out { background: var(--primary-light); color: var(--primary-dark); border-color: transparent; }
+.financial-chip.fs-refunded,
+.financial-chip.fs-under_review { background: var(--danger-light); color: var(--danger); border-color: transparent; }

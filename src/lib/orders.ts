@@ -212,3 +212,60 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Seller earnings - computed by the backend from VERIFIED payments only (GET /api/orders/sales/earnings).
+// Never derive earnings from orders or carts in the browser: an order exists before it is paid.
+// ---------------------------------------------------------------------------------------------
+
+export type FinancialStatus =
+  | 'UNPAID' | 'PAYMENT_PENDING' | 'HELD' | 'AVAILABLE_FOR_PAYOUT'
+  | 'PAID_OUT' | 'REFUNDED' | 'CANCELLED' | 'UNDER_REVIEW';
+
+export interface OrderEarning {
+  orderId: number;
+  invoiceNumber: string;
+  orderStatus: string | null;
+  paymentStatus: string | null;
+  financialStatus: FinancialStatus;
+  grossAmount: number;
+  refundedAmount: number;
+  netAmount: number;
+  paidAt: string | null;
+  deliveryConfirmed: boolean;
+  createdAt: string | null;
+}
+
+export interface SellerEarnings {
+  currency: string;
+  awaitingPayment: number;
+  held: number;
+  availableForPayout: number;
+  /** null: payouts happen outside the app and aren't recorded yet. */
+  paidOut: number | null;
+  refunded: number;
+  underReview: number;
+  totalEarned: number;
+  paidOrderCount: number;
+  payoutTracking: boolean;
+  orders: OrderEarning[];
+}
+
+export async function getSellerEarnings(): Promise<SellerEarnings | null> {
+  try {
+    return await api.get<SellerEarnings>('/api/orders/sales/earnings');
+  } catch {
+    return null; // callers show "unavailable" rather than a misleading zero
+  }
+}
+
+export const FINANCIAL_STATUS_LABELS: Record<FinancialStatus, string> = {
+  UNPAID: 'Awaiting payment',
+  PAYMENT_PENDING: 'Payment in progress',
+  HELD: 'Paid · held until delivery',
+  AVAILABLE_FOR_PAYOUT: 'Available for payout',
+  PAID_OUT: 'Paid out',
+  REFUNDED: 'Refunded',
+  CANCELLED: 'Cancelled',
+  UNDER_REVIEW: 'Under review',
+};

@@ -121,7 +121,7 @@ export default function AdminOrdersPage() {
             </div>
             <div className="admin-stat-card">
               <div className="admin-stat-value">{formatPrice(totalValue)}</div>
-              <div className="admin-stat-label">Total order value</div>
+              <div className="admin-stat-label">Total order value (incl. unpaid; revenue is on Overview)</div>
             </div>
             <div className="admin-stat-card">
               <div className="admin-stat-value">{orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length}</div>
