@@ -99,15 +99,15 @@ export function AdminLayout() {
           <AdminSearch />
           <div className="admin-topbar-actions">
             <span className={`admin-env-badge ${import.meta.env.DEV ? 'is-dev' : 'is-prod'}`}>
-              <i className="fa-solid fa-circle"></i> {import.meta.env.DEV ? 'Development' : 'Production'}
+              <i className="fa-solid fa-circle"></i> <span className="admin-topbar-label">{import.meta.env.DEV ? 'Development' : 'Production'}</span>
             </span>
             <NotificationBell />
             <div className="admin-topbar-user">
               <i className="fa-solid fa-user-shield"></i>
-              <span>{user?.name || 'Admin'}</span>
+              <span className="admin-topbar-label">{user?.name || 'Admin'}</span>
             </div>
-            <button className="btn-outline btn-sm btn-inline" onClick={() => setLogoutOpen(true)}>
-              <i className="fa-solid fa-right-from-bracket"></i> Logout
+            <button className="btn-outline btn-sm btn-inline" aria-label="Logout" onClick={() => setLogoutOpen(true)}>
+              <i className="fa-solid fa-right-from-bracket"></i> <span className="admin-topbar-label">Logout</span>
             </button>
           </div>
         </header>
