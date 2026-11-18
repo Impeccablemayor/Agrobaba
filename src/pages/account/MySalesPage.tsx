@@ -110,6 +110,7 @@ export default function MySalesPage() {
     { icon: 'fa-cart-shopping', label: 'Paid Orders', value: earnings ? earnings.paidOrderCount : '—', color: 'var(--primary)' },
     { icon: 'fa-lock', label: 'Held (paid, awaiting delivery)', value: money(earnings?.held), color: 'var(--accent)' },
     { icon: 'fa-naira-sign', label: 'Available for Payout', value: money(earnings?.availableForPayout), color: 'var(--success)' },
+    { icon: 'fa-money-bill-transfer', label: 'Paid Out', value: money(earnings?.paidOut), color: 'var(--primary)' },
     { icon: 'fa-hourglass-half', label: 'Awaiting Payment (not earnings)', value: money(earnings?.awaitingPayment), color: 'var(--muted)' },
     { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
@@ -248,7 +249,8 @@ export default function MySalesPage() {
           <p className="earnings-note">
             <i className="fa-solid fa-shield-halved"></i>{' '}
             Money counts only after the buyer&apos;s payment is verified. AgroBaba holds it until the buyer
-            confirms delivery, then it becomes available for payout. Unpaid orders are not earnings.
+            confirms delivery, then it becomes available for payout and is sent to your bank account.
+            {earnings && <> Amounts shown are after AgroBaba&apos;s {earnings.platformFeePercent}% platform fee.</>} Unpaid orders are not earnings.
             {earnings && earnings.refunded > 0 && <> Refunded so far: <strong>{formatPrice(earnings.refunded)}</strong>.</>}
             {earnings && earnings.underReview > 0 && <> Under review by AgroBaba: <strong>{formatPrice(earnings.underReview)}</strong>.</>}
             {!earnings && ' (Earnings are temporarily unavailable.)'}

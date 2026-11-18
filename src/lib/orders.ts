@@ -230,19 +230,25 @@ export interface OrderEarning {
   financialStatus: FinancialStatus;
   grossAmount: number;
   refundedAmount: number;
+  /** AgroBaba's platform fee on (gross - refunded); the recorded fee once paid out. */
+  platformFee: number;
+  /** What the seller receives (after refunds and fee), 0 when no verified payment backs it. */
   netAmount: number;
   paidAt: string | null;
   deliveryConfirmed: boolean;
+  payoutId: number | null;
+  paidOutAt: string | null;
   createdAt: string | null;
 }
 
 export interface SellerEarnings {
   currency: string;
+  platformFeePercent: number;
   awaitingPayment: number;
   held: number;
   availableForPayout: number;
-  /** null: payouts happen outside the app and aren't recorded yet. */
-  paidOut: number | null;
+  /** Released to the seller (recorded payouts). */
+  paidOut: number;
   refunded: number;
   underReview: number;
   totalEarned: number;
