@@ -508,6 +508,16 @@ export interface Coupon {
   expiresAt: string | null;
   active: boolean;
   createdAt: string;
+  /** How many orders one customer may use the code on (default 1). */
+  maxUsesPerBuyer: number;
+  /** PLATFORM = AgroBaba pays the discount; SELLER = sellerId pays (only their items). */
+  fundedBy: 'PLATFORM' | 'SELLER';
+  sellerId: number | null;
+  sellerName: string | null;
+  influencerId: number | null;
+  influencerName: string | null;
+  /** % of the order the influencer earns, paid by AgroBaba. */
+  influencerRate: number;
 }
 
 export interface Notification {

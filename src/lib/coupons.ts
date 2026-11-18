@@ -12,6 +12,13 @@ interface ApiCoupon {
   expiresAt: string | null;
   active: boolean;
   createdAt: string;
+  maxUsesPerBuyer?: number;
+  fundedBy?: 'PLATFORM' | 'SELLER';
+  sellerId?: number | null;
+  sellerName?: string | null;
+  influencerId?: number | null;
+  influencerName?: string | null;
+  influencerRate?: number;
 }
 
 function mapCoupon(c: ApiCoupon): Coupon {
@@ -25,6 +32,13 @@ function mapCoupon(c: ApiCoupon): Coupon {
     expiresAt: c.expiresAt,
     active: c.active,
     createdAt: c.createdAt,
+    maxUsesPerBuyer: c.maxUsesPerBuyer ?? 1,
+    fundedBy: c.fundedBy ?? 'PLATFORM',
+    sellerId: c.sellerId ?? null,
+    sellerName: c.sellerName ?? null,
+    influencerId: c.influencerId ?? null,
+    influencerName: c.influencerName ?? null,
+    influencerRate: c.influencerRate ?? 0,
   };
 }
 
@@ -57,6 +71,41 @@ export interface CreateCouponInput {
   discountValue: number;
   maxUses: number | null;
   expiresAt: string | null;
+  maxUsesPerBuyer?: number | null;
+  fundedBy?: 'PLATFORM' | 'SELLER';
+  sellerId?: number | null;
+  influencerId?: number | null;
+  influencerRate?: number | null;
+}
+
+export interface UpdateCouponInput {
+  expiresAt?: string | null;
+  noExpiry?: boolean;
+  maxUses?: number | null;
+  unlimitedUses?: boolean;
+  maxUsesPerBuyer?: number | null;
+  active?: boolean;
+}
+
+export async function updateCoupon(id: string, input: UpdateCouponInput): Promise<Coupon | false> {
+  try {
+    const data = await api.put<ApiCoupon>(`/api/admin/coupons/${id}`, input);
+    showToast('Coupon updated.', 'success');
+    return mapCoupon(data);
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'Unable to update coupon', 'error');
+    return false;
+  }
+}
+
+/** The part of the order a coupon can discount, mirroring the server: items (+ quote extra fees),
+ *  never delivery; a seller-funded code only counts that seller's items. Display only. */
+export function couponDiscount(coupon: Coupon, lines: { price: number; quantity: number; sellerId?: string | number | null }[]): number {
+  const base = lines
+    .filter((l) => coupon.fundedBy !== 'SELLER' || String(l.sellerId) === String(coupon.sellerId))
+    .reduce((s, l) => s + l.price * l.quantity, 0);
+  const raw = coupon.discountType === 'percent' ? (base * coupon.discountValue) / 100 : coupon.discountValue;
+  return Math.round(Math.min(raw, base) * 100) / 100;
 }
 
 export async function createCoupon(input: CreateCouponInput): Promise<Coupon | false> {
@@ -74,7 +123,7 @@ export async function createCoupon(input: CreateCouponInput): Promise<Coupon | f
 export async function deleteCoupon(id: string): Promise<boolean> {
   try {
     await api.delete(`/api/admin/coupons/${id}`);
-    showToast('Coupon removed.', 'success');
+    showToast('Coupon deactivated. Past orders keep their record.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to delete coupon';

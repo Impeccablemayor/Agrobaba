@@ -25,6 +25,8 @@ export interface DeliveryInput {
   fulfillmentPreferences?: Record<number, string>;
   /** ONLINE adds the seller's delivery fee (computed by the server) to this payment. */
   deliveryPayment?: 'ONLINE' | 'ON_DELIVERY';
+  /** The buyer's delivery state (states.id) - checked against sellers' delivery coverage. */
+  deliveryStateId?: number | null;
 }
 
 interface BackendOrderItem {
@@ -136,6 +138,7 @@ export async function placeOrder(cartItems: CartItem[], deliveryData: DeliveryIn
       fulfillmentType: deliveryData.fulfillmentType || 'SELLER_MANAGED',
       fulfillmentPreferences: deliveryData.fulfillmentPreferences || null,
       deliveryPayment: deliveryData.deliveryPayment || 'ON_DELIVERY',
+      deliveryStateId: deliveryData.deliveryStateId ?? null,
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);

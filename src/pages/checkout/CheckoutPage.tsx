@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { placeOrder } from '../../lib/orders';
 import { estimateDeliveryFee } from '../../lib/logistics';
-import { previewCoupon } from '../../lib/coupons';
+import { couponDiscount, previewCoupon } from '../../lib/coupons';
 import { getProductById } from '../../lib/products';
 import { resolveUnitPrice } from '../../lib/units';
 import { showToast } from '../../lib/toastBus';
@@ -43,7 +43,7 @@ export default function CheckoutPage() {
   const [deliveryPayment, setDeliveryPayment] = useState<'ONLINE' | 'ON_DELIVERY'>('ON_DELIVERY');
   // Each seller's own delivery fee (their delivery profile), for display only - the server
   // recalculates it when the order is placed.
-  const [deliveryQuotes, setDeliveryQuotes] = useState<Record<string, number>>({});
+  const [deliveryQuotes, setDeliveryQuotes] = useState<Record<string, { fee: number; covered: boolean; reason: string | null; seller: string }>>({});
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
@@ -110,35 +110,43 @@ export default function CheckoutPage() {
   }, [cart]);
 
   // Sellers' delivery fees for the "pay delivery now" option. Quote lines already include delivery.
-  const quoteKey = cart.map((i) => `${i.sellerId}:${i.price * i.quantity}:${i.acceptedQuoteId ?? ''}`).join('|');
+  // ...and whether each seller delivers to the buyer's state (the server re-checks both at checkout).
+  const quoteKey = cart.map((i) => `${i.sellerId}:${i.price * i.quantity}:${i.acceptedQuoteId ?? ''}`).join('|') + `@${location.stateId ?? ''}`;
   useEffect(() => {
     let active = true;
     const subtotals = new Map<string, number>();
+    const names = new Map<string, string>();
     const quoted = new Set(cart.filter((i) => i.acceptedQuoteId).map((i) => String(i.sellerId)));
     cart.filter((i) => !i.acceptedQuoteId && i.sellerId).forEach((i) => {
       subtotals.set(String(i.sellerId), (subtotals.get(String(i.sellerId)) ?? 0) + i.price * i.quantity);
+      names.set(String(i.sellerId), i.sellerName || 'This seller');
     });
     Promise.allSettled([...subtotals.entries()].filter(([id]) => !quoted.has(id)).map(([id, sub]) =>
-      estimateDeliveryFee(Number(id), sub).then((r) => [id, r.fee] as const)))
+      estimateDeliveryFee(Number(id), sub, location.stateId ?? undefined).then((r) => [id, r] as const)))
       .then((results) => {
         if (!active) return;
-        const next: Record<string, number> = {};
-        results.forEach((r) => { if (r.status === 'fulfilled' && r.value[1] > 0) next[r.value[0]] = r.value[1]; });
+        const next: Record<string, { fee: number; covered: boolean; reason: string | null; seller: string }> = {};
+        results.forEach((r) => {
+          if (r.status === 'fulfilled') {
+            const [id, q] = r.value;
+            next[id] = { fee: q.fee, covered: q.covered !== false, reason: q.reason ?? null, seller: names.get(id) ?? 'This seller' };
+          }
+        });
         setDeliveryQuotes(next);
       });
     return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the cart's seller subtotals
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the cart's seller subtotals and state
   }, [quoteKey]);
 
   if (loading) return null;
   if (cart.length === 0 && !orderPlaced.current) return null;
 
-  const discountAmount = appliedCoupon
-    ? appliedCoupon.discountType === 'percent'
-      ? total * (appliedCoupon.discountValue / 100)
-      : Math.min(appliedCoupon.discountValue, total)
-    : 0;
-  const sellerDeliveryTotal = Object.values(deliveryQuotes).reduce((s, f) => s + f, 0);
+  // Same rule as the server: the sale only (never delivery); a seller's own code only their items.
+  const discountAmount = appliedCoupon ? couponDiscount(appliedCoupon, cart) : 0;
+  const coverageProblems = fulfillmentType === 'SELLER_MANAGED'
+    ? Object.values(deliveryQuotes).filter((q) => !q.covered).map((q) => q.reason || `${q.seller} doesn't deliver to your state.`)
+    : [];
+  const sellerDeliveryTotal = Object.values(deliveryQuotes).filter((q) => q.covered).reduce((s, q) => s + q.fee, 0);
   const canPayDeliveryOnline = fulfillmentType === 'SELLER_MANAGED' && sellerDeliveryTotal > 0;
   const deliveryOnline = canPayDeliveryOnline && deliveryPayment === 'ONLINE' ? sellerDeliveryTotal : 0;
   // The coupon never applies to delivery (same rule as the server).
@@ -160,6 +168,14 @@ export default function CheckoutPage() {
     if (placingOrder) return;
     if (!name.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in your name, phone number and delivery address.', 'error');
+      return;
+    }
+    if (!location.stateId) {
+      showToast('Please choose your delivery state.', 'error');
+      return;
+    }
+    if (coverageProblems.length > 0) {
+      showToast(coverageProblems[0], 'error');
       return;
     }
     // Auth gate (Phase 5): never create an order without a confirmed 'live' session. If we're not
@@ -194,6 +210,7 @@ export default function CheckoutPage() {
       couponCode: appliedCoupon?.code,
       fulfillmentType,
       deliveryPayment: canPayDeliveryOnline ? deliveryPayment : 'ON_DELIVERY',
+      deliveryStateId: location.stateId,
     });
     if (order) {
       orderPlaced.current = true;
@@ -363,6 +380,11 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                 </div>
+                {coverageProblems.length > 0 && (
+                  <div role="alert" style={{ marginTop: 14, padding: '10px 12px', borderRadius: 8, background: 'var(--warning-soft)', border: '1px solid #e0a800', fontSize: 12.5 }}>
+                    {coverageProblems.map((p) => <div key={p}><i className="fa-solid fa-triangle-exclamation" style={{ color: '#a06000', marginRight: 6 }}></i>{p}</div>)}
+                  </div>
+                )}
                 {canPayDeliveryOnline ? (
                   <div style={{ marginTop: 14 }}>
                     <label style={{ fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 8 }}>Delivery fee payment</label>
@@ -450,7 +472,7 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={placingOrder}
+                disabled={placingOrder || coverageProblems.length > 0}
                 className="btn-primary btn-inline"
                 style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
               >

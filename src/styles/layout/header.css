@@ -949,3 +949,15 @@ button.nav-action-icon {
 
 .cat-scroll-btn-left { left: 4px; }
 .cat-scroll-btn-right { right: 4px; }
+
+/* Very small phones (≤380px): the logged-in icons need a little less room so the header fits. */
+@media (max-width: 380px) {
+  .header-actions { gap: 4px; }
+  .user-nav-actions { gap: 2px; }
+  .nav-action-icon { width: 32px; height: 32px; }
+  .user-avatar-trigger { padding: 2px; gap: 4px; width: 32px; height: 32px; justify-content: center; overflow: hidden; }
+  .mobile-toggle-btn, .mobile-search-toggle { padding: 6px; }
+}
+@media (max-width: 340px) {
+  .nav-action-icon { width: 30px; }
+}

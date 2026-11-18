@@ -60,6 +60,7 @@ const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage'));
 const AdminLogisticsPage = lazy(() => import('./pages/admin/AdminLogisticsPage'));
 const AdminFlashSalesPage = lazy(() => import('./pages/admin/AdminFlashSalesPage'));
 const AdminCouponsPage = lazy(() => import('./pages/admin/AdminCouponsPage'));
+const AdminInfluencersPage = lazy(() => import('./pages/admin/AdminInfluencersPage'));
 const AdminTicketsPage = lazy(() => import('./pages/admin/AdminTicketsPage'));
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage'));
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage'));
@@ -136,6 +137,7 @@ function App() {
         <Route path="admin/verifications" element={<AdminVerificationsPage />} />
         <Route path="admin/flash-sales" element={<AdminFlashSalesPage />} />
         <Route path="admin/coupons" element={<AdminCouponsPage />} />
+        <Route path="admin/influencers" element={<AdminInfluencersPage />} />
         <Route path="admin/tickets" element={<AdminTicketsPage />} />
         <Route path="admin/categories" element={<AdminCategoriesPage />} />
         <Route path="admin/activity" element={<AdminActivityPage />} />
