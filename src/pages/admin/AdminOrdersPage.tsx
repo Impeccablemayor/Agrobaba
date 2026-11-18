@@ -8,6 +8,7 @@ import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CancelOrderButton } from '../../components/CancelOrderButton';
 import type { Order } from '../../types';
+import { VendorOrdersList } from '../../components/VendorOrdersList';
 
 type TabKey = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -215,6 +216,13 @@ export default function AdminOrdersPage() {
               <p style={{ fontSize: 12, color: 'var(--muted)' }}>{selected.buyerPhone || 'No phone on file'}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)' }}>{selected.buyerAddress || 'No address on file'}</p>
             </div>
+
+            {(selected.vendorOrders?.length ?? 0) > 0 && (
+              <div className="admin-drawer-section">
+                <h4>Sellers ({selected.vendorOrders!.length})</h4>
+                <VendorOrdersList vendorOrders={selected.vendorOrders!} />
+              </div>
+            )}
 
             <div className="admin-drawer-section">
               <h4>Items</h4>

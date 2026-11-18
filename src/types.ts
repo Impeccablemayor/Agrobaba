@@ -346,9 +346,26 @@ export interface AcceptedQuote {
   acceptedAt: string;
 }
 
+/** One seller's part of a checkout (vendor order). */
+export interface VendorOrderView {
+  id: number;
+  vendorOrderNumber: string;
+  sellerId: number;
+  sellerName: string | null;
+  status: OrderStatus;
+  itemsSubtotal: number;
+  additionalFees: number;
+  deliveryFee: number;
+  total: number;
+  cancelReason: string | null;
+  updatedAt: string;
+}
+
 export interface CartItem {
   /** On order lines only: delivery fee included in the online payment for this line. */
   deliveryFee?: number;
+  /** On order lines only: the seller's vendor order this line belongs to. */
+  vendorOrderId?: number | null;
   id: string;
   productId: string;
   name: string;
@@ -457,6 +474,8 @@ export interface Order {
   deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
   /** Delivery fees included in the online payment (0 when paid on delivery). */
   deliveryFeeTotal?: number;
+  /** Buyer/admin: every seller's part. Seller: only their own (the server filters). */
+  vendorOrders?: VendorOrderView[];
 }
 
 export interface FlashSaleItem {

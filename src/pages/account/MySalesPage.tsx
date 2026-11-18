@@ -300,7 +300,7 @@ export default function MySalesPage() {
                             : 'Delivery fee: paid on delivery'}
                         </div>
                       </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.vendorOrders?.[0]?.vendorOrderNumber ?? order.invoiceNumber}</td>
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(myOrderValue(order))}</div>
                         {earningByOrder.get(order.id) && (

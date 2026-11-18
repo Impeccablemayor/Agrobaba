@@ -10,6 +10,7 @@ import { CancelOrderButton } from '../../components/CancelOrderButton';
 import { getShipmentsForOrder, confirmDelivery } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
 import type { Order, Shipment } from '../../types';
+import { VendorOrdersList } from '../../components/VendorOrdersList';
 
 type Filter = 'all' | 'delivered';
 
@@ -388,6 +389,16 @@ export default function MyOrdersPage() {
                 )}
               </div>
 
+              {(activeOrder.vendorOrders?.length ?? 0) > 1 && (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Sellers in this order</h4>
+                  <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+                    You paid once. Each seller prepares and sends their part separately.
+                  </p>
+                  <VendorOrdersList vendorOrders={activeOrder.vendorOrders ?? []} />
+                </div>
+              )}
+
               <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>Items</h4>
               {activeOrder.items.map((item) => (
                 <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
@@ -399,7 +410,8 @@ export default function MyOrdersPage() {
                     <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(item.price * item.quantity)}</div>
                   </div>
 
-                  {activeOrder.status === 'delivered' && (
+                  {(activeOrder.status === 'delivered'
+                    || activeOrder.vendorOrders?.find((v) => v.id === item.vendorOrderId)?.status === 'delivered') && (
                     reviewedProductIds.has(item.productId) ? (
                       <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--primary)', fontWeight: 600 }}>
                         <i className="fa-solid fa-circle-check"></i> Reviewed

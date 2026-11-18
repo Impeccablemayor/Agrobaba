@@ -2,7 +2,7 @@ import { showToast } from './toastBus';
 import { getCurrentUser } from './auth';
 import { api } from './api';
 import { uid } from './format';
-import type { CartItem, Order, OrderStatus, PaymentStatus } from '../types';
+import type { CartItem, Order, OrderStatus, PaymentStatus, VendorOrderView } from '../types';
 
 /** Key held in sessionStorage for the lifetime of one checkout attempt. Reused on retries (same
  *  tab, same cart) so a retried "Place Order" is idempotent server-side; cleared once the order
@@ -39,6 +39,7 @@ interface BackendOrderItem {
   type: string;
   deliveryFee?: number;
   additionalFees?: number;
+  vendorOrderId?: number | null;
 }
 
 interface BackendOrderResponse {
@@ -60,6 +61,7 @@ interface BackendOrderResponse {
   paymentAuthorizationUrl: string | null;
   paymentInitializationFailed: boolean;
   deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
+  vendorOrders?: VendorOrderView[];
 }
 
 function mapOrder(response: BackendOrderResponse): Order {
@@ -76,6 +78,7 @@ function mapOrder(response: BackendOrderResponse): Order {
     type: (item.type as Order['items'][number]['type']) || 'product',
     addedAt: response.createdAt,
     deliveryFee: item.deliveryFee ?? 0,
+    vendorOrderId: item.vendorOrderId ?? null,
   }));
 
   return {
@@ -98,6 +101,7 @@ function mapOrder(response: BackendOrderResponse): Order {
     paymentInitializationFailed: Boolean(response.paymentInitializationFailed),
     deliveryPayment: response.deliveryPayment ?? null,
     deliveryFeeTotal: response.items.reduce((sum, i) => sum + (i.deliveryFee ?? 0), 0),
+    vendorOrders: response.vendorOrders ?? [],
   };
 }
 
