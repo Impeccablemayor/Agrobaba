@@ -6,6 +6,9 @@ import { respondToDemand, deleteDemand, acceptDemandResponse } from '../../lib/d
 import { formatPrice, timeAgo, roleLabel } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { Breadcrumb } from '../../components/Breadcrumb';
+import { StateCitySelect } from '../../components/StateCitySelect';
+import { prefillFromUser } from '../../lib/locationSelect';
+import { locationLine, type LocationSelection } from '../../lib/locations';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DemandResponse } from '../../types';
 
@@ -14,12 +17,21 @@ function AcceptResponseForm({ demandId, response, onAccepted }: { demandId: stri
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const [location, setLocation] = useState<LocationSelection>(() => {
+    const p = prefillFromUser(user);
+    return { stateId: p.stateId ?? null, stateName: p.stateName ?? null, cityId: p.cityId ?? null, cityName: p.cityName ?? null };
+  });
+  const [fulfillmentType, setFulfillmentType] = useState<'SELLER_MANAGED' | 'AGROBABA_MANAGED'>('SELLER_MANAGED');
 
   async function handleAccept(e: FormEvent) {
     e.preventDefault();
-    if (!address.trim() || !phone.trim()) return;
+    if (!address.trim() || !phone.trim() || !location.stateId) return;
     setSubmitting(true);
-    const order = await acceptDemandResponse(demandId, response.id, { quantity, address, phone });
+    const fullAddress = [address.trim(), locationLine(location.cityName, location.stateName)].filter(Boolean).join(', ');
+    const order = await acceptDemandResponse(demandId, response.id, {
+      quantity, address: fullAddress, phone, deliveryStateId: location.stateId, fulfillmentType,
+    });
     setSubmitting(false);
     if (order) onAccepted();
   }
@@ -30,6 +42,12 @@ function AcceptResponseForm({ demandId, response, onAccepted }: { demandId: stri
       <input type="number" min="1" required value={quantity} onChange={(e) => setQuantity(e.target.value)} style={{ marginBottom: 6 }} />
       <label style={{ fontSize: 11 }}>Delivery Address</label>
       <input type="text" required placeholder="Where should this be delivered?" value={address} onChange={(e) => setAddress(e.target.value)} style={{ marginBottom: 6 }} />
+      <StateCitySelect idPrefix={`accept-${response.id}`} initial={prefillFromUser(user)} onChange={setLocation} required fieldClassName="form-group" stateLabel="Delivery state" />
+      <label style={{ fontSize: 11 }} htmlFor={`accept-${response.id}-method`}>Delivery</label>
+      <select id={`accept-${response.id}-method`} value={fulfillmentType} onChange={(e) => setFulfillmentType(e.target.value as 'SELLER_MANAGED' | 'AGROBABA_MANAGED')} style={{ marginBottom: 6 }}>
+        <option value="SELLER_MANAGED">The seller delivers</option>
+        <option value="AGROBABA_MANAGED">AgroBaba arranges delivery</option>
+      </select>
       <label style={{ fontSize: 11 }}>Phone</label>
       <input type="tel" required placeholder="Contact number" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ marginBottom: 8 }} />
       <button type="submit" className="btn-primary btn-sm btn-inline" disabled={submitting}>

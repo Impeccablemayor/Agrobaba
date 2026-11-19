@@ -7,6 +7,8 @@ export interface RequestQuoteInput {
   requestedQuantity?: number | string | null;
   buyerNotes?: string;
   deliveryLocation?: string;
+  /** states.id - the seller prices delivery for this state; checkout is held to it. */
+  deliveryStateId?: number | null;
 }
 
 export interface SendOfferInput {
@@ -25,6 +27,7 @@ export async function requestQuote(data: RequestQuoteInput): Promise<QuoteReques
       requestedQuantity: data.requestedQuantity ? Number(data.requestedQuantity) : null,
       buyerNotes: data.buyerNotes || '',
       deliveryLocation: data.deliveryLocation || '',
+      deliveryStateId: data.deliveryStateId ?? null,
     });
     showToast('Quote request sent!', 'success');
     return quote;

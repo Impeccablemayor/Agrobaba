@@ -95,6 +95,9 @@ export interface AcceptResponseInput {
   quantity: number | string;
   address: string;
   phone: string;
+  /** states.id - checked against the seller's delivery coverage. */
+  deliveryStateId?: number | null;
+  fulfillmentType?: 'SELLER_MANAGED' | 'AGROBABA_MANAGED';
 }
 
 export async function deleteDemand(id: string): Promise<boolean> {
@@ -131,6 +134,8 @@ export async function acceptDemandResponse(demandId: string, responseId: string,
       quantity: Number(input.quantity),
       address: input.address,
       phone: input.phone,
+      deliveryStateId: input.deliveryStateId ?? null,
+      fulfillmentType: input.fulfillmentType ?? 'SELLER_MANAGED',
     });
     showToast('Response accepted — order placed!', 'success');
     return order;

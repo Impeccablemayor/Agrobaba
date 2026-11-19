@@ -58,11 +58,16 @@ export default function MySalesPage() {
   const [receiptUrlInput, setReceiptUrlInput] = useState('');
   const [submittingStatus, setSubmittingStatus] = useState(false);
 
+  // No saved profile yet (the server returns a default with no id): buyers outside the seller's
+  // own state must use AgroBaba delivery until they set one up.
+  const [deliveryNotSetUp, setDeliveryNotSetUp] = useState(false);
+
   useEffect(() => {
     if (user && user.role !== 'buyer') {
       getMyDeliveryProfile()
         .then((p) => {
           if (p) setProfileForm(p);
+          setDeliveryNotSetUp(!p || p.id == null);
         })
         .catch(() => {});
     }
@@ -146,6 +151,7 @@ export default function MySalesPage() {
     setProfileLoading(true);
     try {
       await saveMyDeliveryProfile(profileForm);
+      setDeliveryNotSetUp(false);
       showToast('Delivery configuration saved successfully!', 'success');
       setProfileModalOpen(false);
     } catch (e: any) {
@@ -237,6 +243,17 @@ export default function MySalesPage() {
           )}
         </div>
 
+        {deliveryNotSetUp && !isServiceProvider && (
+          <div role="note" style={{ margin: '0 0 14px', padding: '10px 12px', borderRadius: 8, background: 'var(--warning-soft)', border: '1px solid #e0a800', fontSize: 12.5 }}>
+            <i className="fa-solid fa-truck-ramp-box" style={{ color: '#a06000', marginRight: 6 }}></i>
+            You haven&apos;t set up delivery yet. Until you do, you deliver only within your own state and buyers
+            elsewhere must choose AgroBaba delivery.{' '}
+            <button type="button" className="btn-link" onClick={() => setProfileModalOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+              Set up delivery
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <PageLoadingSpinner message="Loading your sales…" />
         ) : (
@@ -292,8 +309,9 @@ export default function MySalesPage() {
                     <tr key={order.id}>
                       <td>#{i + 1}</td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{order.buyerName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Message buyer for delivery details'}</div>
+                        {/* The server only sends buyer details once the payment is verified. */}
+                        <div style={{ fontWeight: 600 }}>{order.buyerName || 'Buyer'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Buyer and delivery details appear once payment is confirmed'}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                           {myDeliveryPaid(order) > 0
                             ? <>Delivery fee paid online: {formatPrice(myDeliveryPaid(order))}</>
@@ -497,7 +515,7 @@ export default function MySalesPage() {
                   Logistics & Fulfillment: #{activeOrderForShipment.invoiceNumber}
                 </h3>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  Buyer: <strong>{activeOrderForShipment.buyerName}</strong> • {activeOrderForShipment.buyerAddress}
+                  Buyer: <strong>{activeOrderForShipment.buyerName || 'Buyer'}</strong> • {activeOrderForShipment.buyerAddress || 'Details appear once payment is confirmed'}
                 </span>
               </div>
               <button onClick={() => setActiveOrderForShipment(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)' }}>
