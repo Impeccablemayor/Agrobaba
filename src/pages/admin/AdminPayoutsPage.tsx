@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { formatDate, formatPrice } from '../../lib/format';
 import type { Payout, PayoutCandidate } from '../../lib/payouts';
+import { useFees } from '../../hooks/queries/useLedger';
 
 /** Seller payouts from AgroBaba's Flutterwave balance (the escrow). Money is sent in the
  *  Flutterwave dashboard; this page lists what is ready, records each release, and keeps the
@@ -95,7 +96,8 @@ export default function AdminPayoutsPage() {
                       <td>{formatDate(p.releasedAt)}</td>
                       <td>{p.sellerName || `Seller #${p.sellerId}`}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{p.invoiceNumber}</td>
-                      <td style={{ fontWeight: 700 }}>{formatPrice(p.netAmount)}</td>
+                      <td style={{ fontWeight: 700 }}>{formatPrice(p.amountSent ?? p.netAmount)}
+                        {p.transferFee > 0 && <div style={{ fontSize: 10, color: 'var(--muted)' }}>transfer fee {formatPrice(p.transferFee)} ({p.transferFeeBearer === 'SELLER' ? 'seller' : 'AgroBaba'})</div>}</td>
                       <td>{formatPrice(p.feeAmount)} <span style={{ fontSize: 10, color: 'var(--muted)' }}>({p.feeRate}%)</span></td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{p.transferReference}</td>
                       <td style={{ fontSize: 11 }}>{p.releasedBy}</td>
@@ -142,11 +144,16 @@ export default function AdminPayoutsPage() {
 
 function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; onClose: () => void }) {
   const release = useReleasePayout();
+  const { data: fees } = useFees();
+  // The transfer fee and who pays it are configured on the server, which also records them on the payout.
+  const transferFee = fees?.sellerTransferFee ?? 0;
+  const sellerPaysTransfer = fees?.sellerTransferFeeBearer === 'SELLER' && transferFee > 0;
   const [reference, setReference] = useState('');
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
   const e = c.earning;
   const canSubmit = reference.trim().length > 0 && sent && !release.isPending;
+  const toSend = sellerPaysTransfer ? Math.max(0, e.netAmount - transferFee) : e.netAmount;
 
   async function submit() {
     if (!canSubmit) return;
@@ -184,7 +191,9 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
           {e.refundedAmount > 0 && <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Refunded to buyer</span><span>−{formatPrice(e.refundedAmount)}</span></p>}
           <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Platform fee (on items only)</span><span>−{formatPrice(e.platformFee)}</span></p>
           {e.deliveryFee > 0 && <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Delivery fee (seller delivered, no fee)</span><span>+{formatPrice(e.deliveryFee)}</span></p>}
-          <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, color: 'var(--primary)' }}><span>Send exactly</span><span>{formatPrice(e.netAmount)}</span></p>
+          {sellerPaysTransfer && <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>Flutterwave transfer fee (seller pays)</span><span>−{formatPrice(transferFee)}</span></p>}
+          <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, color: 'var(--primary)' }}><span>Send exactly</span><span>{formatPrice(toSend)}</span></p>
+          {!sellerPaysTransfer && transferFee > 0 && <p style={{ fontSize: 12, color: 'var(--muted)' }}>Flutterwave's {formatPrice(transferFee)} transfer fee is paid by AgroBaba.</p>}
         </div>
 
         <div className="admin-drawer-section">
@@ -199,7 +208,7 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
           </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, margin: '4px 0 12px' }}>
             <input type="checkbox" checked={sent} onChange={(ev) => setSent(ev.target.checked)} style={{ marginTop: 3 }} />
-            I have sent {formatPrice(e.netAmount)} to this seller in the Flutterwave dashboard.
+            I have sent {formatPrice(toSend)} to this seller in the Flutterwave dashboard.
           </label>
           <button className="btn-primary btn-inline" style={{ width: '100%', justifyContent: 'center' }} disabled={!canSubmit} onClick={() => void submit()}>
             {release.isPending ? 'Recording…' : 'Record payout'}

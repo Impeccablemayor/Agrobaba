@@ -10,6 +10,8 @@ import { getProductById } from '../../lib/products';
 import { resolveUnitPrice } from '../../lib/units';
 import { showToast } from '../../lib/toastBus';
 import { formatPrice } from '../../lib/format';
+import { collectionFeeFor } from '../../lib/fees';
+import { useFees } from '../../hooks/queries/useLedger';
 import { groupCartBySeller } from '../../lib/cart';
 import { prefillFromUser } from '../../lib/locationSelect';
 import { locationLine, type LocationSelection } from '../../lib/locations';
@@ -18,6 +20,7 @@ import type { Coupon } from '../../types';
 export default function CheckoutPage() {
   const { user, phase, renewSession } = useAuth();
   const { cart, total, loading, clearCart, refreshCart } = useCart();
+  const { data: fees } = useFees();
   const navigate = useNavigate();
   const orderPlaced = useRef(false);
   // Latest phase for the async submit handler (the closure must not read a stale phase after an
@@ -150,7 +153,10 @@ export default function CheckoutPage() {
   const canPayDeliveryOnline = fulfillmentType === 'SELLER_MANAGED' && sellerDeliveryTotal > 0;
   const deliveryOnline = canPayDeliveryOnline && deliveryPayment === 'ONLINE' ? sellerDeliveryTotal : 0;
   // The coupon never applies to delivery (same rule as the server).
-  const finalTotal = total - discountAmount + deliveryOnline;
+  const beforeFees = total - discountAmount + deliveryOnline;
+  // Payment processing fee, only if AgroBaba configures one (shown as its own line; the server's figure is charged).
+  const collectionFee = collectionFeeFor(beforeFees, fees);
+  const finalTotal = beforeFees + collectionFee;
   const sellerGroups = groupCartBySeller(cart);
 
   async function handleApplyCoupon() {
@@ -462,6 +468,13 @@ export default function CheckoutPage() {
                   <button onClick={handleApplyCoupon} disabled={checkingCoupon} className="btn-outline btn-sm btn-inline">
                     {checkingCoupon ? 'Checking…' : 'Apply'}
                   </button>
+                </div>
+              )}
+
+              {collectionFee > 0 && (
+                <div className="summary-row">
+                  <span>Payment processing fee</span>
+                  <span>{formatPrice(collectionFee)}</span>
                 </div>
               )}
 

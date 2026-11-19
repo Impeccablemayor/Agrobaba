@@ -28,6 +28,10 @@ export interface Payout {
   /** Included in netAmount; 0 when AgroBaba delivered. */
   deliveryFee: number;
   netAmount: number;
+  /** Flutterwave's transfer fee, who bore it, and what actually reached the seller (Batch 3). */
+  transferFee: number;
+  transferFeeBearer: 'PLATFORM' | 'SELLER';
+  amountSent: number;
   currency: string;
   status: 'RELEASED' | 'VOIDED';
   transferReference: string;
