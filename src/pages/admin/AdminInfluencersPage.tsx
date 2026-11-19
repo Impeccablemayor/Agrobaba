@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useInfluencer, useInfluencers, usePayInfluencer, useSaveInfluencer, useVoidInfluencerPayout } from '../../hooks/queries/useInfluencers';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { RevealNumberButton } from '../../components/BankAccountAdmin';
+import { revealInfluencerBank } from '../../lib/bankAccounts';
 import { formatDate, formatPrice } from '../../lib/format';
 import { COMMISSION_LABELS, type Influencer, type InfluencerInput, type InfluencerPayout } from '../../lib/influencers';
 
@@ -61,7 +63,8 @@ function InfluencerForm({ influencer, onClose }: { influencer: Influencer | null
   const [f, setF] = useState<InfluencerInput>({
     name: influencer?.name ?? '', phone: influencer?.phone ?? '', email: influencer?.email ?? '',
     bankName: influencer?.bankName ?? '', bankAccountName: influencer?.bankAccountName ?? '',
-    bankAccountNumber: influencer?.bankAccountNumber ?? '', notes: influencer?.notes ?? '', active: influencer?.active ?? true,
+    // The saved number is never sent to the browser in full; leave blank to keep it.
+    bankAccountNumber: '', notes: influencer?.notes ?? '', active: influencer?.active ?? true,
   });
   const set = (k: keyof InfluencerInput) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -81,7 +84,8 @@ function InfluencerForm({ influencer, onClose }: { influencer: Influencer | null
         <div className="form-group"><label htmlFor="i-email">Email</label><input id="i-email" type="email" value={f.email} onChange={set('email')} /></div>
         <div className="form-group"><label htmlFor="i-bank">Bank</label><input id="i-bank" type="text" value={f.bankName} onChange={set('bankName')} /></div>
         <div className="form-group"><label htmlFor="i-acct-name">Account name</label><input id="i-acct-name" type="text" value={f.bankAccountName} onChange={set('bankAccountName')} /></div>
-        <div className="form-group"><label htmlFor="i-acct">Account number</label><input id="i-acct" type="text" inputMode="numeric" maxLength={10} value={f.bankAccountNumber} onChange={set('bankAccountNumber')} /></div>
+        <div className="form-group"><label htmlFor="i-acct">Account number</label><input id="i-acct" type="text" inputMode="numeric" maxLength={10} value={f.bankAccountNumber} onChange={set('bankAccountNumber')}
+          placeholder={influencer?.bankAccountNumber ? `Leave blank to keep ${influencer.bankAccountNumber}` : '10 digits'} /></div>
         <div className="form-group"><label htmlFor="i-notes">Notes</label><textarea id="i-notes" rows={2} value={f.notes} onChange={set('notes')} /></div>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, margin: '4px 0 14px' }}>
           <input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Active
@@ -122,6 +126,11 @@ function InfluencerDrawer({ id, onClose }: { id: number; onClose: () => void }) 
               <p style={{ fontSize: 12, color: 'var(--muted)' }}>
                 {i.bankAccountNumber ? `${i.bankName ?? ''} · ${i.bankAccountName ?? ''} · ${i.bankAccountNumber}` : 'No bank details on file - edit the influencer first.'}
               </p>
+              {i.bankAccountNumber && i.payable > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <RevealNumberButton defaultReason={`Paying commission to ${i.name}`} reveal={(reason) => revealInfluencerBank(i.id, reason)} />
+                </div>
+              )}
               {i.payable > 0 && (
                 <>
                   <div className="form-group">

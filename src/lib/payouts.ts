@@ -11,7 +11,12 @@ export interface PayoutCandidate {
   businessName: string | null;
   bankName: string | null;
   bankAccountName: string | null;
+  /** Masked ("******6789"); the full number only through the audited reveal. */
   bankAccountNumber: string | null;
+  bankAccountId: number | null;
+  /** False while ID verification, bank account confirmation or the cooling-off period block payment. */
+  payoutReady: boolean;
+  payoutBlockers: string[];
   earning: OrderEarning;
 }
 

@@ -42,6 +42,7 @@ const MyOrdersPage = lazy(() => import('./pages/account/MyOrdersPage'));
 const MyBookingsPage = lazy(() => import('./pages/account/MyBookingsPage'));
 const MySalesPage = lazy(() => import('./pages/account/MySalesPage'));
 const VerifyAccountPage = lazy(() => import('./pages/account/VerifyAccountPage'));
+const PayoutAccountPage = lazy(() => import('./pages/account/PayoutAccountPage'));
 const QuoteDetailPage = lazy(() => import('./pages/quotes/QuoteDetailPage'));
 const MyQuotesPage = lazy(() => import('./pages/quotes/MyQuotesPage'));
 const ReceivedQuotesPage = lazy(() => import('./pages/quotes/ReceivedQuotesPage'));
@@ -115,6 +116,7 @@ function App() {
         <Route path="account/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
+        <Route path="account/payout-account" element={<ProtectedRoute><PayoutAccountPage /></ProtectedRoute>} />
         <Route path="account/quotes" element={<ProtectedRoute><MyQuotesPage /></ProtectedRoute>} />
         <Route path="account/quotes/received" element={<ProtectedRoute><ReceivedQuotesPage /></ProtectedRoute>} />
         <Route path="account/quotes/:id" element={<ProtectedRoute><QuoteDetailPage /></ProtectedRoute>} />

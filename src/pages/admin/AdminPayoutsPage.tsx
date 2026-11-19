@@ -6,6 +6,8 @@ import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { formatDate, formatPrice } from '../../lib/format';
 import type { Payout, PayoutCandidate } from '../../lib/payouts';
 import { useFees } from '../../hooks/queries/useLedger';
+import { RevealNumberButton } from '../../components/BankAccountAdmin';
+import { revealBankAccount } from '../../lib/bankAccounts';
 
 /** Seller payouts from AgroBaba's Flutterwave balance (the escrow). Money is sent in the
  *  Flutterwave dashboard; this page lists what is ready, records each release, and keeps the
@@ -74,9 +76,10 @@ export default function AdminPayoutsPage() {
                       <td>{formatPrice(c.earning.platformFee)}</td>
                       <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{formatPrice(c.earning.netAmount)}</td>
                       <td>{c.bankAccountNumber
-                        ? <span style={{ fontSize: 12 }}>{c.bankName} · {c.bankAccountNumber}</span>
-                        : <span className="chip chip-danger">Missing</span>}</td>
-                      <td><button className="btn-primary btn-sm btn-inline" onClick={() => setReleasing(c)}>Release</button></td>
+                        ? <span style={{ fontSize: 12 }}>{c.bankName} · <span style={{ fontFamily: 'monospace' }}>{c.bankAccountNumber}</span></span>
+                        : <span className="chip chip-danger">Missing</span>}
+                        {!c.payoutReady && <div><span className="chip chip-pending" title={c.payoutBlockers.join(' ')}>Not payable yet</span></div>}</td>
+                      <td><button className="btn-primary btn-sm btn-inline" onClick={() => setReleasing(c)}>{c.payoutReady ? 'Release' : 'Details'}</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -152,7 +155,7 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
   const e = c.earning;
-  const canSubmit = reference.trim().length > 0 && sent && !release.isPending;
+  const canSubmit = c.payoutReady && reference.trim().length > 0 && sent && !release.isPending;
   const toSend = sellerPaysTransfer ? Math.max(0, e.netAmount - transferFee) : e.netAmount;
 
   async function submit() {
@@ -174,14 +177,21 @@ function ReleaseDrawer({ candidate: c, onClose }: { candidate: PayoutCandidate; 
           {c.bankAccountNumber ? (
             <>
               <p><strong>Bank:</strong> {c.bankName}</p>
-              <p><strong>Account name:</strong> {c.bankAccountName}</p>
+              <p><strong>Name at the bank:</strong> {c.bankAccountName ?? '—'}</p>
               <p><strong>Account number:</strong> <span style={{ fontFamily: 'monospace' }}>{c.bankAccountNumber}</span></p>
+              {c.payoutReady && c.bankAccountId != null && (
+                <RevealNumberButton defaultReason={`Sending payout for ${e.invoiceNumber}`} reveal={(reason) => revealBankAccount(c.bankAccountId!, reason)} />
+              )}
             </>
           ) : (
-            <p style={{ color: 'var(--danger)' }}>
-              No bank details on file. Ask the seller to complete verification (bank details) before sending money.
-              {' '}<Link to={`/admin/users/${c.sellerId}`}>Open seller</Link>
-            </p>
+            <p style={{ color: 'var(--danger)' }}>No payout bank account on file. The seller adds it on their Payout account page.</p>
+          )}
+          {!c.payoutReady && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ fontWeight: 700, color: 'var(--danger)', margin: '0 0 4px' }}>This seller can&apos;t be paid yet:</p>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{c.payoutBlockers.map((b) => <li key={b}>{b}</li>)}</ul>
+              <Link to={`/admin/users/${c.sellerId}`} style={{ fontSize: 13 }}>Open seller</Link>
+            </div>
           )}
         </div>
 

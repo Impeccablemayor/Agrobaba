@@ -35,6 +35,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'agro-dealer': [
@@ -48,6 +49,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'service-provider': [
@@ -59,6 +61,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   buyer: [

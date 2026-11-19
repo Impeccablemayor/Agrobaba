@@ -7,9 +7,10 @@ export interface SubmitVerificationInput {
   idNumber: string;
   governmentIdDocument: string;
   selfieDocument?: string;
-  bankAccountName: string;
-  bankAccountNumber: string;
-  bankName: string;
+  /** Not sent since Batch 4 (the payout account page collects and checks bank details). */
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
   declarationAccepted: boolean;
   // Farmer
   farmName?: string;

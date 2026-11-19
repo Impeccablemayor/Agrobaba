@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSalesOrders, useSellerEarnings } from '../../hooks/queries/useOrders';
+import { useMyPayoutAccount } from '../../hooks/queries/useBankAccounts';
+import { sellerPayoutHint } from '../../lib/bankAccounts';
 import { financialStatusLabel } from '../../lib/orders';
 import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
@@ -27,6 +29,7 @@ export default function MySalesPage() {
   // Money figures come from the backend, which counts only verified payments. An order exists
   // as soon as a buyer clicks "Place Order" - before paying - so it must never be summed here.
   const { data: earnings } = useSellerEarnings();
+  const { data: payoutAccount } = useMyPayoutAccount();
   const updateStatusMutation = useUpdateOrderStatus();
 
   // Delivery Profile State
@@ -225,6 +228,14 @@ export default function MySalesPage() {
             <li className="breadcrumb-item active">{title}</li>
           </ol>
         </nav>
+
+        {payoutAccount && !payoutAccount.readiness.ready && (
+          <div role="note" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 'var(--radius)', padding: 12, marginBottom: 16, fontSize: 13 }}>
+            <i className="fa-solid fa-building-columns" style={{ marginRight: 6 }}></i>
+            <strong>AgroBaba can&apos;t pay you yet.</strong> {sellerPayoutHint(payoutAccount.readiness)}{' '}
+            <Link to="/account/payout-account">Set up your payout account</Link>
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
