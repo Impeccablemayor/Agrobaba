@@ -17,6 +17,7 @@ import {
   confirmDelivery,
 } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
+import { describeStage } from '../../lib/fulfilmentRules';
 import type { Order, OrderStatus, SellerDeliveryProfile, Shipment, ShipmentStatus } from '../../types';
 
 type Filter = 'all' | 'delivered';
@@ -59,6 +60,10 @@ export default function MySalesPage() {
   const [statusLocation, setStatusLocation] = useState('');
   const [deliveryOtpInput, setDeliveryOtpInput] = useState('');
   const [receiptUrlInput, setReceiptUrlInput] = useState('');
+  // Batch 5: who is carrying the goods when the seller sends them.
+  const [carrierName, setCarrierName] = useState('');
+  const [carrierPhone, setCarrierPhone] = useState('');
+  const [trackingRef, setTrackingRef] = useState('');
   const [submittingStatus, setSubmittingStatus] = useState(false);
 
   // No saved profile yet (the server returns a default with no id): buyers outside the seller's
@@ -193,6 +198,9 @@ export default function MySalesPage() {
           status: nextStatus,
           note: statusNote.trim() || undefined,
           location: statusLocation.trim() || undefined,
+          carrierName: carrierName.trim() || undefined,
+          carrierPhone: carrierPhone.trim() || undefined,
+          trackingRef: trackingRef.trim() || undefined,
         });
       }
 
@@ -215,6 +223,9 @@ export default function MySalesPage() {
     setStatusLocation('');
     setDeliveryOtpInput('');
     setReceiptUrlInput('');
+    setCarrierName('');
+    setCarrierPhone('');
+    setTrackingRef('');
     setSelectedShipment(null);
   }
 
@@ -337,6 +348,14 @@ export default function MySalesPage() {
                             {financialStatusLabel(earningByOrder.get(order.id)!)}
                           </span>
                         )}
+                        {order.vendorOrders?.[0]?.fulfilmentStage && (() => {
+                          const d = describeStage(order.vendorOrders[0], 'seller');
+                          return d.label ? (
+                            <div style={{ fontSize: 11, marginTop: 4, maxWidth: 260 }}>
+                              <strong>{d.label}</strong>{d.detail ? <span style={{ color: 'var(--text-secondary)' }}> — {d.detail}</span> : null}
+                            </div>
+                          ) : null;
+                        })()}
                       </td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>
@@ -656,6 +675,24 @@ export default function MySalesPage() {
                   <option value="DELIVERY_EXCEPTION">Delivery Exception / Delay</option>
                 </select>
               </div>
+
+              {nextStatus === 'IN_TRANSIT' && selectedShipment.fulfillmentType !== 'AGROBABA_MANAGED' && (
+                <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid var(--border-light)', display: 'grid', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>Who is delivering it?</div>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+                    Required. Add the rider, driver or courier (or &quot;Myself&quot;), and a phone number or tracking reference.
+                  </p>
+                  <input aria-label="Carrier name" type="text" maxLength={120} placeholder="e.g. Musa (rider) / GIG Logistics / Myself"
+                    value={carrierName} onChange={(e) => setCarrierName(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                  <input aria-label="Carrier phone" type="tel" maxLength={30} placeholder="Phone number"
+                    value={carrierPhone} onChange={(e) => setCarrierPhone(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                  <input aria-label="Tracking reference" type="text" maxLength={120} placeholder="Tracking / waybill number (optional if phone given)"
+                    value={trackingRef} onChange={(e) => setTrackingRef(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                </div>
+              )}
 
               {nextStatus === 'DELIVERED' && (
                 <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid var(--border-light)' }}>

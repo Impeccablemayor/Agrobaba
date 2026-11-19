@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/payouts', icon: 'fa-money-bill-transfer', label: 'Payouts', isActive: (p) => p === '/admin/payouts' },
   { to: '/admin/ledger', icon: 'fa-book', label: 'Ledger', isActive: (p) => p === '/admin/ledger' },
   { to: '/admin/transactions', icon: 'fa-handshake', label: 'Bookings & Quotes', isActive: (p) => p === '/admin/transactions' },
+  { to: '/admin/inspection', icon: 'fa-magnifying-glass-chart', label: 'Inspection Periods', isActive: (p) => p === '/admin/inspection' },
   { to: '/admin/logistics', icon: 'fa-truck-ramp-box', label: 'Logistics & Transporters', isActive: (p) => p.startsWith('/admin/logistics') },
   { to: '/admin/verifications', icon: 'fa-user-check', label: 'Verifications', isActive: (p) => p === '/admin/verifications' },
   { to: '/admin/flash-sales', icon: 'fa-fire', label: 'Flash Sales', isActive: (p) => p === '/admin/flash-sales' },

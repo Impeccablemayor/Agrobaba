@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getOrderById } from '../../lib/orders';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMyOrders } from '../../hooks/queries/useOrders';
@@ -96,6 +98,7 @@ export default function MyOrdersPage() {
   const [confirmingShipmentId, setConfirmingShipmentId] = useState<number | null>(null);
 
   const { data: orders = [], isLoading: loading } = useMyOrders();
+  const queryClient = useQueryClient();
 
   if (!user) return null;
 
@@ -118,13 +121,19 @@ export default function MyOrdersPage() {
     }
   }
 
-  async function handleConfirmDelivery(shipmentId: number) {
-    if (!window.confirm('Have you physically received and verified all items in this package?')) return;
+  async function handleConfirmDelivery(shipmentId: number, collected = false) {
+    if (!window.confirm(collected ? 'Did you collect all the items in this package yourself?' : 'Have you received all the items in this package?')) return;
     setConfirmingShipmentId(shipmentId);
     try {
-      const updated = await confirmDelivery(shipmentId, { proofType: 'BUYER_CONFIRMATION' });
-      showToast('Delivery confirmed! Thank you.', 'success');
+      const updated = await confirmDelivery(shipmentId, { proofType: 'BUYER_CONFIRMATION', collected });
+      showToast('Thank you! You can now check your goods; report a problem if anything is wrong.', 'success');
       setOrderShipments((prev) => prev.map((s) => (s.id === shipmentId ? updated : s)));
+      // Receipt starts the inspection period: refresh each seller's stage and deadline.
+      if (activeOrder) {
+        const fresh = await getOrderById(String(activeOrder.id));
+        if (fresh) setActiveOrder(fresh);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (e: any) {
       showToast(e.message || 'Failed to confirm delivery', 'error');
     } finally {
@@ -353,7 +362,15 @@ export default function MyOrdersPage() {
                         )}
 
                         {shp.status !== 'DELIVERED' && (
-                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => handleConfirmDelivery(shp.id, true)}
+                              disabled={confirmingShipmentId === shp.id}
+                              className="btn-outline btn-sm btn-inline"
+                              style={{ fontSize: 11, padding: '5px 12px' }}
+                            >
+                              I collected it myself
+                            </button>
                             <button
                               onClick={() => handleConfirmDelivery(shp.id)}
                               disabled={confirmingShipmentId === shp.id}
@@ -389,13 +406,18 @@ export default function MyOrdersPage() {
                 )}
               </div>
 
-              {(activeOrder.vendorOrders?.length ?? 0) > 1 && (
+              {(activeOrder.vendorOrders?.length ?? 0) > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Sellers in this order</h4>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{(activeOrder.vendorOrders?.length ?? 0) > 1 ? 'Sellers in this order' : 'Progress'}</h4>
                   <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '0 0 10px' }}>
-                    You paid once. Each seller prepares and sends their part separately.
+                    {(activeOrder.vendorOrders?.length ?? 0) > 1 ? 'You paid once. Each seller prepares and sends their part separately. ' : ''}
+                    After you receive your goods you have time to check them before the seller is paid.
                   </p>
-                  <VendorOrdersList vendorOrders={activeOrder.vendorOrders ?? []} />
+                  <VendorOrdersList vendorOrders={activeOrder.vendorOrders ?? []} viewer="buyer"
+                    onChanged={(u) => {
+                      setActiveOrder((o) => o ? { ...o, vendorOrders: (o.vendorOrders ?? []).map((x) => (x.id === u.id ? u : x)) } : o);
+                      void queryClient.invalidateQueries({ queryKey: ['orders'] });
+                    }} />
                 </div>
               )}
 

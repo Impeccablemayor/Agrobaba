@@ -359,6 +359,20 @@ export interface VendorOrderView {
   total: number;
   cancelReason: string | null;
   updatedAt: string;
+  platformDiscount?: number;
+  sellerDiscount?: number;
+  /** Batch 5 fulfilment stage and milestones (ISO, UTC). */
+  fulfilmentStage?: import('./lib/fulfilmentRules').FulfilmentStage | null;
+  dispatchedAt?: string | null;
+  deliveryClaimedAt?: string | null;
+  autoConfirmAt?: string | null;
+  receivedAt?: string | null;
+  receiptMethod?: string | null;
+  inspectionHours?: number | null;
+  inspectionEndsAt?: string | null;
+  completedAt?: string | null;
+  completionMethod?: string | null;
+  onHold?: boolean;
 }
 
 export interface CartItem {

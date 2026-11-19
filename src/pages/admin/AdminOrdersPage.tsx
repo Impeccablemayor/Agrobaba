@@ -220,7 +220,8 @@ export default function AdminOrdersPage() {
             {(selected.vendorOrders?.length ?? 0) > 0 && (
               <div className="admin-drawer-section">
                 <h4>Sellers ({selected.vendorOrders!.length})</h4>
-                <VendorOrdersList vendorOrders={selected.vendorOrders!} />
+                <VendorOrdersList vendorOrders={selected.vendorOrders!} viewer="admin"
+                  onChanged={(u) => setSelected((prev) => prev ? { ...prev, vendorOrders: (prev.vendorOrders ?? []).map((x) => (x.id === u.id ? u : x)) } : prev)} />
               </div>
             )}
 

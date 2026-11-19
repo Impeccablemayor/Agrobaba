@@ -36,6 +36,8 @@ export async function confirmDelivery(
     deliveryOtp?: string;
     receiptImageUrl?: string;
     note?: string;
+    /** Buyer only: they collected the goods themselves. */
+    collected?: boolean;
   }
 ): Promise<Shipment> {
   return api.post<Shipment>(`/api/logistics/shipments/${shipmentId}/confirm-delivery`, data);
@@ -69,6 +71,10 @@ export async function updateSellerShipmentStatus(
     note?: string;
     location?: string;
     estimatedDeliveryDate?: string;
+    /** Required when sending your own delivery: who carries it, and a phone number or tracking ref. */
+    carrierName?: string;
+    carrierPhone?: string;
+    trackingRef?: string;
   }
 ): Promise<Shipment> {
   return api.put<Shipment>(`/api/logistics/seller/shipments/${shipmentId}/status`, data);
