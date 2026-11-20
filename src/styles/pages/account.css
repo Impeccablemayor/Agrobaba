@@ -351,6 +351,7 @@
 
 .financial-chip.fs-held { background: var(--accent-light); color: var(--accent-dark); border-color: transparent; }
 .financial-chip.fs-available_for_payout,
+.financial-chip.fs-payout_processing,
 .financial-chip.fs-paid_out { background: var(--primary-light); color: var(--primary-dark); border-color: transparent; }
 .financial-chip.fs-refunded,
 .financial-chip.fs-under_review { background: var(--danger-light); color: var(--danger); border-color: transparent; }

@@ -242,7 +242,7 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
 
 export type FinancialStatus =
   | 'UNPAID' | 'PAYMENT_PENDING' | 'HELD' | 'AVAILABLE_FOR_PAYOUT'
-  | 'PAID_OUT' | 'REFUNDED' | 'CANCELLED' | 'UNDER_REVIEW';
+  | 'PAID_OUT' | 'PAYOUT_PROCESSING' | 'REFUNDED' | 'CANCELLED' | 'UNDER_REVIEW';
 
 export interface OrderEarning {
   orderId: number;
@@ -297,6 +297,7 @@ export const FINANCIAL_STATUS_LABELS: Record<FinancialStatus, string> = {
   HELD: 'Paid · held until delivery',
   AVAILABLE_FOR_PAYOUT: 'Available for payout',
   PAID_OUT: 'Paid out',
+  PAYOUT_PROCESSING: 'Payout on its way',
   REFUNDED: 'Refunded',
   CANCELLED: 'Cancelled',
   UNDER_REVIEW: 'Under review',

@@ -8,12 +8,14 @@ import type { Payout, PayoutCandidate } from '../../lib/payouts';
 import { useFees } from '../../hooks/queries/useLedger';
 import { RevealNumberButton } from '../../components/BankAccountAdmin';
 import { revealBankAccount } from '../../lib/bankAccounts';
+import { AutomaticPayoutsPanel } from '../../components/AutomaticPayoutsPanel';
+import { PAYOUT_STATUS_LABELS, PAYOUT_STATUS_TONE } from '../../lib/payoutRules';
 
 /** Seller payouts from AgroBaba's Flutterwave balance (the escrow). Money is sent in the
  *  Flutterwave dashboard; this page lists what is ready, records each release, and keeps the
  *  history. Amounts and eligibility are computed by the backend. */
 export default function AdminPayoutsPage() {
-  const [tab, setTab] = useState<'queue' | 'settlement' | 'history'>('queue');
+  const [tab, setTab] = useState<'auto' | 'queue' | 'settlement' | 'history'>('auto');
   const [page, setPage] = useState(0);
   const [releasing, setReleasing] = useState<PayoutCandidate | null>(null);
   const [voiding, setVoiding] = useState<Payout | null>(null);
@@ -39,8 +41,9 @@ export default function AdminPayoutsPage() {
         <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.04em', marginBottom: 4 }}>Seller Payouts</h1>
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>
           Funds are released only after the payment is verified, the money has settled into AgroBaba&apos;s
-          Flutterwave balance, and the buyer has confirmed delivery. Send the transfer in the Flutterwave
-          dashboard, then record it here.
+          Flutterwave balance, the buyer has received the goods and the inspection period is over, with no hold or
+          dispute. Automatic payouts send the transfer through Flutterwave; a manual payout is sent in the Flutterwave
+          dashboard and recorded here.
         </p>
       </div>
 
@@ -52,12 +55,13 @@ export default function AdminPayoutsPage() {
       </div>
 
       <div className="status-tabs">
-        <button className={`status-tab ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>Ready to release</button>
+        <button className={`status-tab ${tab === 'auto' ? 'active' : ''}`} onClick={() => setTab('auto')}>Automatic payouts</button>
+        <button className={`status-tab ${tab === 'queue' ? 'active' : ''}`} onClick={() => setTab('queue')}>Ready (manual)</button>
         <button className={`status-tab ${tab === 'settlement' ? 'active' : ''}`} onClick={() => setTab('settlement')}>Awaiting settlement</button>
         <button className={`status-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>History</button>
       </div>
 
-      {tab === 'settlement' ? <SettlementPanel /> : tab === 'queue' ? (
+      {tab === 'auto' ? <AutomaticPayoutsPanel /> : tab === 'settlement' ? <SettlementPanel /> : tab === 'queue' ? (
         queue.isLoading ? <PageLoadingSpinner message="Loading payouts…" />
           : queue.isError ? <div className="empty-cart"><i className="fa-solid fa-triangle-exclamation"></i><p>Unable to load the payout queue.</p></div>
           : ready.length === 0 ? (
@@ -96,7 +100,8 @@ export default function AdminPayoutsPage() {
                 <tbody>
                   {history.data!.content.map((p) => (
                     <tr key={p.id}>
-                      <td>{formatDate(p.releasedAt)}</td>
+                      <td>{p.releasedAt ? formatDate(p.releasedAt) : formatDate(p.createdAt)}
+                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>{p.method === 'AUTOMATED' ? 'automatic' : 'manual'}</div></td>
                       <td>{p.sellerName || `Seller #${p.sellerId}`}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{p.invoiceNumber}</td>
                       <td style={{ fontWeight: 700 }}>{formatPrice(p.amountSent ?? p.netAmount)}
@@ -104,9 +109,8 @@ export default function AdminPayoutsPage() {
                       <td>{formatPrice(p.feeAmount)} <span style={{ fontSize: 10, color: 'var(--muted)' }}>({p.feeRate}%)</span></td>
                       <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{p.transferReference}</td>
                       <td style={{ fontSize: 11 }}>{p.releasedBy}</td>
-                      <td>{p.status === 'RELEASED'
-                        ? <span className="chip chip-success">Released</span>
-                        : <span className="chip chip-danger" title={p.voidReason || ''}>Voided</span>}</td>
+                      <td><span className={`chip ${({ neutral: 'chip-neutral', pending: 'chip-pending', success: 'chip-success', danger: 'chip-danger' } as const)[PAYOUT_STATUS_TONE[p.status]]}`}
+                        title={p.voidReason || p.failureReason || p.cancelReason || ''}>{PAYOUT_STATUS_LABELS[p.status]}</span></td>
                       <td>{p.status === 'RELEASED' && (
                         <button className="btn-outline btn-sm btn-inline" style={{ color: 'var(--danger)' }} onClick={() => setVoiding(p)}>Void</button>
                       )}</td>

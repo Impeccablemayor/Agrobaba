@@ -1,6 +1,9 @@
 import { api } from './api';
 import { showToast } from './toastBus';
 import type { OrderEarning } from './orders';
+import type { PayoutGates, PayoutStatus } from './payoutRules';
+
+export * from './payoutRules';
 
 /** Admin seller payouts (GET/POST /api/admin/payouts). AgroBaba's Flutterwave balance is the
  *  escrow: the admin sends the transfer in the Flutterwave dashboard, then records it here. */
@@ -38,15 +41,91 @@ export interface Payout {
   transferFeeBearer: 'PLATFORM' | 'SELLER';
   amountSent: number;
   currency: string;
-  status: 'RELEASED' | 'VOIDED';
+  status: PayoutStatus;
   transferReference: string;
   note: string | null;
-  releasedBy: string;
-  releasedAt: string;
+  /** Set once the money is confirmed sent. */
+  releasedBy: string | null;
+  releasedAt: string | null;
   voidedBy: string | null;
   voidedAt: string | null;
   voidReason: string | null;
+  /** Batch 7: MANUAL (sent in the Flutterwave dashboard) or AUTOMATED (sent by AgroBaba through the API). */
+  method: 'MANUAL' | 'AUTOMATED';
+  vendorOrderId: number | null;
+  batchId: number | null;
+  approvalReason: 'APPROVAL_MODE' | 'LARGE_AMOUNT' | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  attemptCount: number;
+  submittedAt: string | null;
+  providerStatus: string | null;
+  failureReason: string | null;
+  createdAt: string;
+  cancelReason: string | null;
 }
+
+export interface PayoutBatch {
+  id: number;
+  trigger: 'SCHEDULED' | 'MANUAL';
+  createdBy: string | null;
+  createdAt: string;
+  payoutCount: number;
+  totalAmount: number;
+  skipped: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+}
+
+export interface PayoutPipeline {
+  gates: PayoutGates;
+  awaitingApproval: Payout[];
+  queued: Payout[];
+  inFlight: Payout[];
+  recentProblems: Payout[];
+  batches: PayoutBatch[];
+}
+
+export interface PrepareResult {
+  batchId: number | null;
+  created: number;
+  awaitingApproval: number;
+  total: number;
+  skipped: string[];
+  blocked: string | null;
+}
+
+const AUTO = '/api/admin/payouts/automation';
+
+async function attempt<T>(fn: () => Promise<T>, ok: (r: T) => string | null, fail: string): Promise<T | false> {
+  try {
+    const r = await fn();
+    const m = ok(r);
+    if (m) showToast(m, 'success');
+    return r;
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : fail, 'error');
+    return false;
+  }
+}
+
+export const getPayoutPipeline = () => api.get<PayoutPipeline>(AUTO);
+export const preparePayouts = () => attempt(() => api.post<PrepareResult>(`${AUTO}/prepare`, {}), (r) => r.blocked
+  ? null : `${r.created} payout${r.created === 1 ? '' : 's'} prepared${r.skipped.length ? `, ${r.skipped.length} left out (see the batch)` : ''}.`,
+  'Unable to prepare payouts');
+export const approvePayoutBatch = (id: number) => attempt(() => api.post<{ approved: number }>(`${AUTO}/batches/${id}/approve`, {}),
+  (r) => `${r.approved} payout${r.approved === 1 ? '' : 's'} approved and being sent.`, 'Unable to approve');
+export const approvePayout = (id: number) => attempt(() => api.post<Payout>(`${AUTO}/${id}/approve`, {}), () => 'Approved and being sent.', 'Unable to approve');
+export const cancelAutoPayout = (id: number, reason: string) => attempt(() => api.post<Payout>(`${AUTO}/${id}/cancel`, { reason }),
+  () => 'Payout cancelled. The money stays available for the seller.', 'Unable to cancel');
+export const sendApprovedPayouts = () => attempt(() => api.post<{ submitted: number; blocked: string | null }>(`${AUTO}/send`, {}),
+  (r) => r.blocked ? null : `${r.submitted} sent to Flutterwave.`, 'Unable to send');
+export const checkPayoutStatuses = () => attempt(() => api.post<{ checked: number; released: number; failed: number }>(`${AUTO}/reconcile`, {}),
+  (r) => `Checked ${r.checked}: ${r.released} paid, ${r.failed} failed.`, 'Unable to check');
+export const pausePayouts = (reason: string) => attempt(() => api.post<PayoutGates>(`${AUTO}/pause`, { reason }), () => 'All payouts paused.', 'Unable to pause');
+export const resumePayouts = () => attempt(() => api.post<PayoutGates>(`${AUTO}/resume`, {}), () => 'Payouts resumed.', 'Unable to resume');
+export const savePayoutSettings = (s: { mode?: string; approvalThreshold?: number; minimum?: number }) =>
+  attempt(() => api.put<PayoutGates>(`${AUTO}/settings`, s), () => 'Payout settings saved.', 'Unable to save settings');
 
 export interface PayoutPage {
   content: Payout[];
