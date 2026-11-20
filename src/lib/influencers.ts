@@ -1,5 +1,6 @@
 import { api } from './api';
 import { showToast } from './toastBus';
+import { isApprovalPending } from './adminAccessRules';
 
 /** Influencers own AgroBaba-funded coupon codes and earn a commission (paid by AgroBaba, recorded
  *  here after a manual transfer). Admin only. */
@@ -102,7 +103,7 @@ export const getInfluencer = (id: number) => api.get<InfluencerDetail>(`/api/adm
 async function attempt<T>(fn: () => Promise<T>, ok: string, fail: string): Promise<T | false> {
   try {
     const r = await fn();
-    showToast(ok, 'success');
+    showToast(isApprovalPending(r) ? r.message : ok, 'success');
     return r;
   } catch (error) {
     showToast(error instanceof Error ? error.message : fail, 'error');

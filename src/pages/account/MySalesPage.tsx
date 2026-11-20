@@ -124,13 +124,21 @@ export default function MySalesPage() {
   const toFulfill = sales.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
   const delivered = sales.filter((o) => o.status === 'delivered').length;
 
+  // Batch 8: each kind of money on its own, never one generic "earnings" number.
   const stats = [
-    { icon: 'fa-cart-shopping', label: 'Paid Orders', value: earnings ? earnings.paidOrderCount : '—', color: 'var(--primary)' },
-    { icon: 'fa-lock', label: 'Held (paid, awaiting delivery)', value: money(earnings?.held), color: 'var(--accent)' },
-    { icon: 'fa-naira-sign', label: 'Available for Payout', value: money(earnings?.availableForPayout), color: 'var(--success)' },
-    { icon: 'fa-money-bill-transfer', label: 'Paid Out', value: money(earnings?.paidOut), color: 'var(--primary)' },
-    { icon: 'fa-hourglass-half', label: 'Awaiting Payment (not earnings)', value: money(earnings?.awaitingPayment), color: 'var(--muted)' },
-    { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--accent)' },
+    { icon: 'fa-chart-line', label: 'Total sales (paid orders)', value: money(earnings?.totalSales), color: 'var(--primary)' },
+    { icon: 'fa-hourglass-half', label: 'Pending payment (not earnings yet)', value: money(earnings?.awaitingPayment), color: 'var(--muted)' },
+    { icon: 'fa-lock', label: 'Held (until received and inspected)', value: money(earnings?.held), color: 'var(--accent)' },
+    { icon: 'fa-naira-sign', label: 'Available for payout', value: money(earnings?.availableForPayout), color: 'var(--success)' },
+    { icon: 'fa-paper-plane', label: 'Payout on its way', value: money(earnings?.payoutProcessing), color: 'var(--primary)' },
+    { icon: 'fa-money-bill-transfer', label: 'Paid out', value: money(earnings?.paidOut), color: 'var(--primary)' },
+    { icon: 'fa-triangle-exclamation', label: `Failed payouts${earnings?.failedPayoutCount ? ` (${earnings.failedPayoutCount}, we'll retry)` : ''}`,
+      value: money(earnings?.failedPayouts), color: (earnings?.failedPayouts ?? 0) > 0 ? 'var(--danger)' : 'var(--muted)' },
+    { icon: 'fa-rotate-left', label: 'Refund deductions', value: money(earnings?.refundDeductions), color: 'var(--muted)' },
+    ...((earnings?.recoveryObligations ?? 0) > 0
+      ? [{ icon: 'fa-scale-unbalanced', label: 'Owed back to AgroBaba', value: money(earnings?.recoveryObligations), color: 'var(--danger)' }] : []),
+    { icon: 'fa-cart-shopping', label: 'Paid orders', value: earnings ? earnings.paidOrderCount : '—', color: 'var(--primary)' },
+    { icon: 'fa-truck', label: 'To fulfil', value: toFulfill, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
   ];
 

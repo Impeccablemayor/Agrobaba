@@ -1,5 +1,6 @@
 import { api } from './api';
 import { showToast } from './toastBus';
+import { isApprovalPending } from './adminAccessRules';
 import type { OrderEarning } from './orders';
 import type { PayoutGates, PayoutStatus } from './payoutRules';
 
@@ -100,7 +101,7 @@ const AUTO = '/api/admin/payouts/automation';
 async function attempt<T>(fn: () => Promise<T>, ok: (r: T) => string | null, fail: string): Promise<T | false> {
   try {
     const r = await fn();
-    const m = ok(r);
+    const m = isApprovalPending(r) ? r.message : ok(r);
     if (m) showToast(m, 'success');
     return r;
   } catch (error) {
@@ -144,7 +145,8 @@ export const getPayoutHistory = (page = 0, size = 20) =>
 export async function releasePayout(input: { orderId: number; sellerId: number; transferReference: string; note?: string }): Promise<Payout | false> {
   try {
     const payout = await api.post<Payout>('/api/admin/payouts/release', input);
-    showToast('Payout recorded. The seller has been notified.', 'success');
+    // Batch 8: above the two-person limit it waits for a second admin instead.
+    showToast(isApprovalPending(payout) ? payout.message : 'Payout recorded. The seller has been notified.', 'success');
     return payout;
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Unable to record payout', 'error');

@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationBell } from './NotificationBell';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { useQuery } from '@tanstack/react-query';
+import { canOpen, getAdminMe, PAGE_PERMISSION } from '../../lib/adminAccess';
 
 interface NavItem {
   to: string;
@@ -13,6 +15,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: 'fa-gauge', label: 'Overview', isActive: (p) => p === '/admin' },
+  { to: '/admin/finance', icon: 'fa-chart-pie', label: 'Finance', isActive: (p) => p === '/admin/finance' },
+  { to: '/admin/approvals', icon: 'fa-user-check', label: 'Approvals', isActive: (p) => p === '/admin/approvals' },
   { to: '/admin/users', icon: 'fa-users', label: 'Users', isActive: (p) => p.startsWith('/admin/users') },
   { to: '/admin/products', icon: 'fa-boxes-stacked', label: 'Products', isActive: (p) => p.startsWith('/admin/products') },
   { to: '/admin/demands', icon: 'fa-bullhorn', label: 'Buyer Demands', isActive: (p) => p.startsWith('/admin/demands') },
@@ -33,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/personalization', icon: 'fa-brain', label: 'Personalization', isActive: (p) => p === '/admin/personalization' },
   { to: '/admin/activity', icon: 'fa-clock-rotate-left', label: 'Admin Activity', isActive: (p) => p === '/admin/activity' },
   { to: '/admin/emails', icon: 'fa-envelope', label: 'Email Logs', isActive: (p) => p === '/admin/emails' || p.startsWith('/admin/emails') },
+  { to: '/admin/team', icon: 'fa-people-group', label: 'Admin Team', isActive: (p) => p === '/admin/team' },
 ];
 
 /** Best-effort admin search - order invoice numbers are the most common lookup, so route there
@@ -65,6 +70,11 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [logoutOpen, setLogoutOpen] = useState(false);
+  // Batch 8: the admin's role decides which pages show (the backend enforces it on every request).
+  const { data: me } = useQuery({ queryKey: ['admin', 'me'], queryFn: getAdminMe, staleTime: 60_000 });
+  const section = '/' + location.pathname.split('/').filter(Boolean).slice(0, 2).join('/');
+  const known = section in PAGE_PERMISSION;
+  const blocked = !!me && known && !canOpen(me, section);
 
   function handleLogout() {
     setLogoutOpen(false);
@@ -80,7 +90,7 @@ export function AdminLayout() {
           <span className="admin-sidebar-brand-tag">Admin</span>
         </Link>
         <nav className="admin-sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => !me || canOpen(me, item.to)).map((item) => (
             <Link
               key={item.to}
               to={item.to}
@@ -108,7 +118,7 @@ export function AdminLayout() {
             <NotificationBell />
             <div className="admin-topbar-user">
               <i className="fa-solid fa-user-shield"></i>
-              <span className="admin-topbar-label">{user?.name || 'Admin'}</span>
+              <span className="admin-topbar-label">{user?.name || 'Admin'}{me?.roleLabel ? ` · ${me.roleLabel}` : ''}</span>
             </div>
             <button className="btn-outline btn-sm btn-inline" aria-label="Logout" onClick={() => setLogoutOpen(true)}>
               <i className="fa-solid fa-right-from-bracket"></i> <span className="admin-topbar-label">Logout</span>
@@ -117,7 +127,12 @@ export function AdminLayout() {
         </header>
 
         <main className="admin-content">
-          <Outlet />
+          {blocked ? (
+            <div className="empty-cart">
+              <i className="fa-solid fa-lock"></i>
+              <p>This page isn’t available for your role ({me?.roleLabel ?? 'no admin role'}). Ask a super administrator if you need it.</p>
+            </div>
+          ) : <Outlet />}
         </main>
       </div>
 

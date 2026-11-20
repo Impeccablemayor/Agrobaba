@@ -1,5 +1,6 @@
 import { api } from './api';
 import { showToast } from './toastBus';
+import { isApprovalPending } from './adminAccessRules';
 import type { DisputeOutcome, DisputeReason, DisputeStatus, ShortfallReason } from './disputeRules';
 
 export * from './disputeRules';
@@ -54,7 +55,7 @@ export interface AdjustmentResult {
 async function attempt<T>(fn: () => Promise<T>, ok: string | ((r: T) => string), fail: string): Promise<T | false> {
   try {
     const r = await fn();
-    showToast(typeof ok === 'function' ? ok(r) : ok, 'success');
+    showToast(isApprovalPending(r) ? r.message : typeof ok === 'function' ? ok(r) : ok, 'success');
     return r;
   } catch (error) {
     showToast(error instanceof Error ? error.message : fail, 'error');

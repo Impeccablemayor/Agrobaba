@@ -66,6 +66,9 @@ const AdminInfluencersPage = lazy(() => import('./pages/admin/AdminInfluencersPa
 const AdminLedgerPage = lazy(() => import('./pages/admin/AdminLedgerPage'));
 const AdminInspectionPage = lazy(() => import('./pages/admin/AdminInspectionPage'));
 const AdminDisputesPage = lazy(() => import('./pages/admin/AdminDisputesPage'));
+const AdminFinancePage = lazy(() => import('./pages/admin/AdminFinancePage'));
+const AdminApprovalsPage = lazy(() => import('./pages/admin/AdminApprovalsPage'));
+const AdminTeamPage = lazy(() => import('./pages/admin/AdminTeamPage'));
 const AdminTicketsPage = lazy(() => import('./pages/admin/AdminTicketsPage'));
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage'));
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage'));
@@ -149,6 +152,9 @@ function App() {
         <Route path="admin/ledger" element={<AdminLedgerPage />} />
         <Route path="admin/inspection" element={<AdminInspectionPage />} />
         <Route path="admin/disputes" element={<AdminDisputesPage />} />
+        <Route path="admin/finance" element={<AdminFinancePage />} />
+        <Route path="admin/approvals" element={<AdminApprovalsPage />} />
+        <Route path="admin/team" element={<AdminTeamPage />} />
         <Route path="admin/tickets" element={<AdminTicketsPage />} />
         <Route path="admin/categories" element={<AdminCategoriesPage />} />
         <Route path="admin/activity" element={<AdminActivityPage />} />

@@ -281,6 +281,13 @@ export interface SellerEarnings {
   paidOrderCount: number;
   payoutTracking: boolean;
   orders: OrderEarning[];
+  /** Batch 8 breakdown. */
+  totalSales?: number;
+  payoutProcessing?: number;
+  failedPayouts?: number;
+  failedPayoutCount?: number;
+  refundDeductions?: number;
+  recoveryObligations?: number;
 }
 
 export async function getSellerEarnings(): Promise<SellerEarnings | null> {

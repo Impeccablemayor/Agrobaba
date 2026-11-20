@@ -1,4 +1,5 @@
 import { api } from './api';
+import { isApprovalPending } from './adminAccessRules';
 import { showToast } from './toastBus';
 
 // ------------------------------------------------------------------
@@ -249,8 +250,9 @@ export async function adminRefundPayment(
   reason: string,
 ): Promise<boolean> {
   try {
-    await api.post(`/api/admin/payments/${id}/refund`, { amount, reason });
-    showToast('Refund request sent to the provider.', 'success');
+    const r = await api.post<unknown>(`/api/admin/payments/${id}/refund`, { amount, reason });
+    // Batch 8: above the two-person limit the refund waits for a second admin.
+    showToast(isApprovalPending(r) ? r.message : 'Refund request sent to the provider.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Refund failed';
