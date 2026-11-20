@@ -86,6 +86,7 @@ export default function AdminFinancePage() {
                 <ul style={{ fontSize: 12, margin: '4px 0 0 16px' }}>{d.reconciliation.issues.map((i) => <li key={i}>{i}</li>)}</ul>
               )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <Link className="btn-outline btn-sm btn-inline" to="/admin/reconciliation">Flutterwave reconciliation &amp; health</Link>
                 <Link className="btn-outline btn-sm btn-inline" to="/admin/ledger">Ledger</Link>
                 <Link className="btn-outline btn-sm btn-inline" to="/admin/payouts">Payouts</Link>
                 <Link className="btn-outline btn-sm btn-inline" to="/admin/payments">Payments &amp; settlements</Link>

@@ -16,6 +16,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/admin', icon: 'fa-gauge', label: 'Overview', isActive: (p) => p === '/admin' },
   { to: '/admin/finance', icon: 'fa-chart-pie', label: 'Finance', isActive: (p) => p === '/admin/finance' },
+  { to: '/admin/reconciliation', icon: 'fa-scale-balanced', label: 'Reconciliation', isActive: (p) => p === '/admin/reconciliation' },
   { to: '/admin/approvals', icon: 'fa-user-check', label: 'Approvals', isActive: (p) => p === '/admin/approvals' },
   { to: '/admin/users', icon: 'fa-users', label: 'Users', isActive: (p) => p.startsWith('/admin/users') },
   { to: '/admin/products', icon: 'fa-boxes-stacked', label: 'Products', isActive: (p) => p.startsWith('/admin/products') },

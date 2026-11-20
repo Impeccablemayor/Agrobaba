@@ -29,6 +29,7 @@ export const PAGE_PERMISSION: Record<string, AdminPermission> = {
   '/admin': 'ADMIN_BASIC',
   '/admin/finance': 'FINANCE_VIEW',
   '/admin/approvals': 'FINANCE_VIEW',
+  '/admin/reconciliation': 'FINANCE_VIEW',
   '/admin/team': 'ADMINS_MANAGE',
   '/admin/users': 'SUPPORT_VIEW',
   '/admin/products': 'CATALOG_MANAGE',

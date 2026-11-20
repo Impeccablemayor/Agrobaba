@@ -69,6 +69,7 @@ const AdminDisputesPage = lazy(() => import('./pages/admin/AdminDisputesPage'));
 const AdminFinancePage = lazy(() => import('./pages/admin/AdminFinancePage'));
 const AdminApprovalsPage = lazy(() => import('./pages/admin/AdminApprovalsPage'));
 const AdminTeamPage = lazy(() => import('./pages/admin/AdminTeamPage'));
+const AdminReconciliationPage = lazy(() => import('./pages/admin/AdminReconciliationPage'));
 const AdminTicketsPage = lazy(() => import('./pages/admin/AdminTicketsPage'));
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage'));
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage'));
@@ -155,6 +156,7 @@ function App() {
         <Route path="admin/finance" element={<AdminFinancePage />} />
         <Route path="admin/approvals" element={<AdminApprovalsPage />} />
         <Route path="admin/team" element={<AdminTeamPage />} />
+        <Route path="admin/reconciliation" element={<AdminReconciliationPage />} />
         <Route path="admin/tickets" element={<AdminTicketsPage />} />
         <Route path="admin/categories" element={<AdminCategoriesPage />} />
         <Route path="admin/activity" element={<AdminActivityPage />} />
