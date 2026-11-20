@@ -108,6 +108,31 @@ export function resolveError(r: ResolveInput): string | null {
   return null;
 }
 
+export type ShortfallReason = 'OUT_OF_STOCK' | 'SPOILT_BEFORE_SENDING' | 'HARVEST_SMALLER' | 'OTHER';
+
+/** The seller picks one; the buyer sees it (founder decision, 20 Nov 2026). */
+export const SHORTFALL_REASONS: Record<ShortfallReason, string> = {
+  OUT_OF_STOCK: 'Out of stock',
+  SPOILT_BEFORE_SENDING: 'Spoilt or damaged before sending',
+  HARVEST_SMALLER: 'Harvest smaller than expected',
+  OTHER: 'Other reason',
+};
+
+/** Error for the reason/note, or null. "Other" needs a short note. */
+export function shortfallReasonError(reason: ShortfallReason | '', note: string): string | null {
+  if (reason === '') return 'Choose why you can’t supply it.';
+  if (reason === 'OTHER' && note.trim().length < 5) return 'Say briefly why you can’t supply it.';
+  return null;
+}
+
+/** "1 of 5 not supplied: Spoilt or damaged before sending - "two crates got wet"". */
+export function describeShortfall(it: { quantity: number; shortfallQuantity?: number; shortfallReason?: string | null; shortfallNote?: string | null }): string | null {
+  const short = it.shortfallQuantity ?? 0;
+  if (short <= 0) return null;
+  const label = it.shortfallReason ? SHORTFALL_REASONS[it.shortfallReason as ShortfallReason] : null;
+  return `${short} of ${it.quantity} not supplied (refunded)` + (label ? `: ${label}` : '') + (it.shortfallNote ? ` - “${it.shortfallNote}”` : '');
+}
+
 export interface ShortfallItem { id: string; quantity: number; shortfallQuantity?: number }
 
 /** Lines whose available quantity changed, ready for the API, or an error. `available` maps an

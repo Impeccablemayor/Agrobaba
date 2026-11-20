@@ -382,6 +382,9 @@ export interface CartItem {
   vendorOrderId?: number | null;
   /** On order lines only (Batch 6): units the seller couldn't supply; refunded to the buyer. */
   shortfallQuantity?: number;
+  /** Why the seller couldn't supply them (ShortfallReason) and their note. */
+  shortfallReason?: string | null;
+  shortfallNote?: string | null;
   id: string;
   productId: string;
   name: string;

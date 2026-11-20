@@ -23,6 +23,13 @@ export interface Influencer {
   payable: number;
   paidOut: number;
   createdAt: string;
+  /** Overpaid earlier (refunds reduced commission already paid), taken off the next payout. */
+  overpaid: number;
+  /** What the next payout would send: payable - overpaid. */
+  nextPayout: number;
+  /** This influencer's own minimum (null = default) and the minimum that applies. */
+  ownMinPayout: number | null;
+  minPayout: number;
 }
 
 export interface CommissionLine {
@@ -41,6 +48,8 @@ export interface CommissionLine {
    *  what the refunds now justify (to settle with the influencer by hand). */
   originalCommission?: number;
   overpaid?: number;
+  /** Of the amount paid, how much later payouts already took back. */
+  recovered?: number;
 }
 
 export interface InfluencerPayout {
@@ -52,6 +61,10 @@ export interface InfluencerPayout {
   releasedBy: string;
   releasedAt: string;
   voidReason: string | null;
+  /** Commission covered; amount = grossAmount - recoveredAmount (overpaid earlier). */
+  grossAmount: number;
+  recoveredAmount: number;
+  belowMinimumReason: string | null;
 }
 
 export interface InfluencerDetail {
@@ -69,6 +82,8 @@ export interface InfluencerInput {
   bankAccountNumber?: string;
   notes?: string;
   active?: boolean;
+  /** null = the default minimum payout. */
+  minPayout?: number | null;
 }
 
 export const COMMISSION_LABELS: Record<CommissionStatus, string> = {
@@ -99,9 +114,14 @@ export const saveInfluencer = (input: InfluencerInput, id?: number) =>
   attempt(() => (id ? api.put<Influencer>(`/api/admin/influencers/${id}`, input) : api.post<Influencer>('/api/admin/influencers', input)),
     id ? 'Influencer updated.' : 'Influencer added.', 'Unable to save influencer');
 
-export const payInfluencer = (id: number, transferReference: string, note?: string) =>
-  attempt(() => api.post<InfluencerPayout>(`/api/admin/influencers/${id}/payouts`, { transferReference, note }),
+export const payInfluencer = (id: number, transferReference: string, note?: string, belowMinimumReason?: string) =>
+  attempt(() => api.post<InfluencerPayout>(`/api/admin/influencers/${id}/payouts`, { transferReference, note, belowMinimumReason }),
     'Payout recorded.', 'Unable to record payout');
+
+export const getInfluencerSettings = () => api.get<{ minPayout: number }>('/api/admin/influencers/settings');
+export const saveInfluencerSettings = (minPayout: number) =>
+  attempt(() => api.put<{ minPayout: number }>('/api/admin/influencers/settings', { minPayout }),
+    'Minimum payout saved.', 'Unable to save the minimum payout');
 
 export const voidInfluencerPayout = (payoutId: number, reason: string) =>
   attempt(() => api.post<InfluencerPayout>(`/api/admin/influencers/payouts/${payoutId}/void`, { reason }),

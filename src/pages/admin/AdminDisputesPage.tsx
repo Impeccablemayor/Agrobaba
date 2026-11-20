@@ -6,7 +6,7 @@ import { DisputeSummary, DisputeThread } from '../../components/DisputeThread';
 import { formatPrice } from '../../lib/format';
 import { shortDateTime } from '../../lib/fulfilmentRules';
 import {
-  adminListDisputes, adminResolveDispute, allowedOutcomes, isOpenDispute, OUTCOME_LABELS, REASON_LABELS, resolveError, statusLabel,
+  adminListDisputes, adminListShortfalls, adminResolveDispute, allowedOutcomes, isOpenDispute, OUTCOME_LABELS, REASON_LABELS, resolveError, statusLabel,
   type Dispute, type DisputeOutcome,
 } from '../../lib/disputes';
 
@@ -15,6 +15,7 @@ const FILTERS = [
   { key: 'RESOLVED', label: 'Decided' },
   { key: 'WITHDRAWN', label: 'Withdrawn' },
   { key: '', label: 'All' },
+  { key: 'SHORTFALLS', label: 'Seller shortfalls' },
 ] as const;
 
 /** Batch 6: every dispute, oldest open first. An open dispute holds that seller's payout (only that
@@ -25,7 +26,9 @@ export default function AdminDisputesPage() {
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState<string>('OPEN');
   const selectedId = params.get('id') ? Number(params.get('id')) : null;
-  const { data = [], isLoading, isError } = useQuery({ queryKey: ['admin', 'disputes', filter], queryFn: () => adminListDisputes(filter || undefined) });
+  const { data = [], isLoading, isError } = useQuery({
+    queryKey: ['admin', 'disputes', filter], queryFn: () => adminListDisputes(filter || undefined), enabled: filter !== 'SHORTFALLS',
+  });
   const selectedFromList = data.find((d) => d.id === selectedId);
   const { data: all = [] } = useQuery({
     queryKey: ['admin', 'disputes', ''],
@@ -51,7 +54,8 @@ export default function AdminDisputesPage() {
       {selected && (
         <AdminDisputeDetail key={selected.id} d={selected} onClose={() => setParams({})} />
       )}
-      {isLoading ? <PageLoadingSpinner message="Loading disputes…" />
+      {filter === 'SHORTFALLS' ? <ShortfallList />
+        : isLoading ? <PageLoadingSpinner message="Loading disputes…" />
         : isError ? <div className="empty-cart"><i className="fa-solid fa-triangle-exclamation"></i><p>Unable to load disputes.</p></div>
         : data.length === 0 ? <div className="empty-cart"><i className="fa-solid fa-scale-balanced"></i><p>No disputes here.</p></div>
         : (
@@ -174,6 +178,44 @@ function ResolveForm({ d, onDone }: { d: Dispute; onDone: () => void }) {
       {err && (amount || note || outcome === 'FULL_REFUND' || outcome === 'RELEASE_TO_SELLER') && <small style={{ color: 'var(--danger)', fontSize: 12 }}>{err}</small>}
       <div>
         <button className="btn-primary btn-sm btn-inline" disabled={busy || !!err} onClick={() => void submit()}>{busy ? 'Recording…' : 'Record decision'}</button>
+      </div>
+    </div>
+  );
+}
+
+/** Units sellers couldn't supply after a buyer paid (refunded automatically), with the seller's reason -
+ *  to spot sellers who often sell what they don't have. */
+function ShortfallList() {
+  const { data = [], isLoading, isError } = useQuery({ queryKey: ['admin', 'shortfalls'], queryFn: adminListShortfalls });
+  if (isLoading) return <PageLoadingSpinner message="Loading shortfalls…" />;
+  if (isError) return <div className="empty-cart"><i className="fa-solid fa-triangle-exclamation"></i><p>Unable to load shortfalls.</p></div>;
+  if (data.length === 0) return <div className="empty-cart"><i className="fa-solid fa-boxes-stacked"></i><p>No shortfalls reported.</p></div>;
+  const bySeller = new Map<string, number>();
+  data.forEach((s) => { const k = s.sellerName ?? `Seller #${s.sellerId}`; bySeller.set(k, (bySeller.get(k) ?? 0) + 1); });
+  const top = [...bySeller.entries()].sort((a, b) => b[1] - a[1]);
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {top.map(([name, n]) => (
+          <span key={name} className={`chip ${n >= 3 ? 'chip-danger' : 'chip-neutral'}`}>{name}: {n} shortfall{n === 1 ? '' : 's'}</span>
+        ))}
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead><tr><th>Seller</th><th>Order</th><th>Item</th><th>Missing</th><th>Reason</th><th>Reported</th></tr></thead>
+          <tbody>
+            {data.map((s) => (
+              <tr key={s.orderItemId}>
+                <td>{s.sellerName ?? `#${s.sellerId}`}</td>
+                <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{s.vendorOrderNumber ?? '—'}</td>
+                <td>{s.itemName}</td>
+                <td>{s.shortfallQuantity} of {s.quantity}</td>
+                <td>{s.reason}{s.note && <div style={{ fontSize: 11, color: 'var(--muted)' }}>“{s.note}”</div>}</td>
+                <td style={{ fontSize: 12 }}>{s.reportedAt ? shortDateTime(s.reportedAt) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

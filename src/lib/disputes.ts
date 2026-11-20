@@ -1,6 +1,6 @@
 import { api } from './api';
 import { showToast } from './toastBus';
-import type { DisputeOutcome, DisputeReason, DisputeStatus } from './disputeRules';
+import type { DisputeOutcome, DisputeReason, DisputeStatus, ShortfallReason } from './disputeRules';
 
 export * from './disputeRules';
 
@@ -76,11 +76,25 @@ export const withdrawDispute = (id: number, note?: string) =>
 export const cancelPaidPart = (vendorOrderId: number, reason: string) =>
   attempt(() => api.post<AdjustmentResult>(`/api/orders/vendor-orders/${vendorOrderId}/cancel-paid`, { reason }),
     (r) => r.message, 'Unable to cancel');
-export const reportShortfall = (vendorOrderId: number, items: { orderItemId: number; availableQuantity: number }[], note?: string) =>
-  attempt(() => api.post<AdjustmentResult>(`/api/orders/vendor-orders/${vendorOrderId}/shortfall`, { items, note }),
+export const reportShortfall = (vendorOrderId: number, items: { orderItemId: number; availableQuantity: number }[], reason: ShortfallReason, note?: string) =>
+  attempt(() => api.post<AdjustmentResult>(`/api/orders/vendor-orders/${vendorOrderId}/shortfall`, { items, reason, note }),
     (r) => r.message, 'Unable to record the shortfall');
 
 export const adminListDisputes = (status?: string) =>
   api.get<Dispute[]>(`/api/admin/disputes${status ? `?status=${encodeURIComponent(status)}` : ''}`);
+export interface AdminShortfall {
+  orderItemId: number;
+  vendorOrderId: number | null;
+  vendorOrderNumber: string | null;
+  sellerId: number;
+  sellerName: string | null;
+  itemName: string;
+  quantity: number;
+  shortfallQuantity: number;
+  reason: string;
+  note: string | null;
+  reportedAt: string | null;
+}
+export const adminListShortfalls = () => api.get<AdminShortfall[]>('/api/admin/shortfalls');
 export const adminResolveDispute = (id: number, body: { outcome: DisputeOutcome; amount?: number; deliveryPortion?: number; note?: string }) =>
   attempt(() => api.post<Dispute>(`/api/admin/disputes/${id}/resolve`, body), 'Decision recorded. Both sides have been told.', 'Unable to record the decision');

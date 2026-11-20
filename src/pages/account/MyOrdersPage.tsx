@@ -13,6 +13,7 @@ import { getShipmentsForOrder, confirmDelivery } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
 import type { Order, Shipment } from '../../types';
 import { VendorOrdersList } from '../../components/VendorOrdersList';
+import { describeShortfall } from '../../lib/disputeRules';
 
 type Filter = 'all' | 'delivered';
 
@@ -428,6 +429,11 @@ export default function MyOrdersPage() {
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{item.quantity} &times; {formatPrice(item.price)} &middot; Sold by {item.sellerName}</div>
+                      {describeShortfall(item) && (
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          <i className="fa-solid fa-circle-info"></i> {describeShortfall(item)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(item.price * item.quantity)}</div>
                   </div>

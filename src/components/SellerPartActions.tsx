@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatPrice } from '../lib/format';
-import { canChangeBeforeDispatch, reportShortfall, shortfallLines } from '../lib/disputes';
+import {
+  canChangeBeforeDispatch, describeShortfall, reportShortfall, SHORTFALL_REASONS, shortfallLines, shortfallReasonError, type ShortfallReason,
+} from '../lib/disputes';
 import type { Order } from '../types';
 
 /** Batch 6, seller side of one order in My Sales: before sending, report that some units can't be
@@ -14,22 +16,25 @@ export function SellerPartActions({ order }: { order: Order }) {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
+  const [reason, setReason] = useState<ShortfallReason | ''>('');
   const [busy, setBusy] = useState(false);
   if (!vo) return null;
 
   const shorts = order.items.filter((it) => (it.shortfallQuantity ?? 0) > 0);
-  const { lines, error } = shortfallLines(order.items, available);
+  const { lines, error: qtyError } = shortfallLines(order.items, available);
   const touched = Object.values(available).some((v) => v.trim() !== '');
+  const error = qtyError ?? shortfallReasonError(reason, note);
 
   async function submit() {
-    if (!vo || error) return;
+    if (!vo || error || reason === '') return;
     setBusy(true);
-    const r = await reportShortfall(vo.id, lines, note.trim() || undefined);
+    const r = await reportShortfall(vo.id, lines, reason, note.trim() || undefined);
     setBusy(false);
     if (r) {
       setOpen(false);
       setAvailable({});
       setNote('');
+      setReason('');
       void qc.invalidateQueries({ queryKey: ['orders', 'sales'] });
     }
   }
@@ -38,7 +43,7 @@ export function SellerPartActions({ order }: { order: Order }) {
     <div style={{ marginTop: 6, display: 'grid', gap: 4 }}>
       {shorts.map((it) => (
         <div key={it.id} style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-          {it.name}: {it.shortfallQuantity} of {it.quantity} not supplied (refunded)
+          {it.name}: {describeShortfall(it)}
         </div>
       ))}
       {vo.onHold && (
@@ -63,15 +68,20 @@ export function SellerPartActions({ order }: { order: Order }) {
               </label>
             );
           })}
-          <input type="text" maxLength={500} placeholder="Reason (optional, kept on the order record)" value={note} onChange={(e) => setNote(e.target.value)}
-            aria-label="Reason for the shortfall" />
+          <select value={reason} onChange={(e) => setReason(e.target.value as ShortfallReason)} aria-label="Why can't you supply it?">
+            <option value="">Why can’t you supply it?</option>
+            {(Object.keys(SHORTFALL_REASONS) as ShortfallReason[]).map((k) => <option key={k} value={k}>{SHORTFALL_REASONS[k]}</option>)}
+          </select>
+          <input type="text" maxLength={500} placeholder={reason === 'OTHER' ? 'Say briefly why (shown to the buyer)' : 'Note for the buyer (optional)'}
+            value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note for the buyer" />
           <small style={{ color: 'var(--muted)', fontSize: 11 }}>
-            The buyer is refunded for the missing units straight away. Entering 0 for everything cancels your part with a full refund.
+            The buyer sees your reason and is refunded for the missing units straight away. Don’t share phone numbers or emails.
+            Entering 0 for everything cancels your part with a full refund.
           </small>
-          {touched && error && <small style={{ color: 'var(--danger)', fontSize: 11 }}>{error}</small>}
+          {(touched || reason !== '') && error && <small style={{ color: 'var(--danger)', fontSize: 11 }}>{error}</small>}
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn-primary btn-sm btn-inline" disabled={busy || !!error} onClick={() => void submit()}>{busy ? '…' : 'Refund missing units'}</button>
-            <button className="btn-outline btn-sm btn-inline" disabled={busy} onClick={() => { setOpen(false); setAvailable({}); }}>Cancel</button>
+            <button className="btn-outline btn-sm btn-inline" disabled={busy} onClick={() => { setOpen(false); setAvailable({}); setReason(''); setNote(''); }}>Cancel</button>
           </div>
         </div>
       )}

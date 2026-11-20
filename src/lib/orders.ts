@@ -43,6 +43,8 @@ interface BackendOrderItem {
   additionalFees?: number;
   vendorOrderId?: number | null;
   shortfallQuantity?: number;
+  shortfallReason?: string | null;
+  shortfallNote?: string | null;
 }
 
 interface BackendOrderResponse {
@@ -83,6 +85,8 @@ function mapOrder(response: BackendOrderResponse): Order {
     deliveryFee: item.deliveryFee ?? 0,
     vendorOrderId: item.vendorOrderId ?? null,
     shortfallQuantity: item.shortfallQuantity ?? 0,
+    shortfallReason: item.shortfallReason ?? null,
+    shortfallNote: item.shortfallNote ?? null,
   }));
 
   return {

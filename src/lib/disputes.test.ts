@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  allowedOutcomes, canChangeBeforeDispatch, canOpenDispute, evidenceFileError, resolveError, shortfallLines, statusLabel,
+  allowedOutcomes, canChangeBeforeDispatch, describeShortfall, shortfallReasonError, canOpenDispute, evidenceFileError, resolveError, shortfallLines, statusLabel,
 } from './disputeRules.ts';
 
 test('a dispute opens after the part is sent and before it is completed, never twice', () => {
@@ -61,4 +61,18 @@ test('each side sees a status in their own words', () => {
   assert.equal(statusLabel('AWAITING_SELLER', 'seller'), 'Your response needed');
   assert.equal(statusLabel('AWAITING_SELLER', 'buyer'), 'Waiting for the seller');
   assert.equal(statusLabel('RESOLVED', 'admin'), 'Decided');
+});
+
+test('a shortfall needs a reason; "Other" needs a short note', () => {
+  assert.match(shortfallReasonError('', '')!, /Choose why/);
+  assert.equal(shortfallReasonError('OUT_OF_STOCK', ''), null);
+  assert.match(shortfallReasonError('OTHER', 'no')!, /Say briefly/);
+  assert.equal(shortfallReasonError('OTHER', 'Truck broke down'), null);
+});
+
+test('the buyer sees what was not supplied and why', () => {
+  assert.equal(describeShortfall({ quantity: 5 }), null);
+  assert.equal(describeShortfall({ quantity: 5, shortfallQuantity: 1, shortfallReason: 'SPOILT_BEFORE_SENDING', shortfallNote: 'One crate got wet' }),
+    '1 of 5 not supplied (refunded): Spoilt or damaged before sending - “One crate got wet”');
+  assert.equal(describeShortfall({ quantity: 2, shortfallQuantity: 2, shortfallReason: null }), '2 of 2 not supplied (refunded)', 'older rows had no reason');
 });
