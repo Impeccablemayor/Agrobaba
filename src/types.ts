@@ -380,6 +380,8 @@ export interface CartItem {
   deliveryFee?: number;
   /** On order lines only: the seller's vendor order this line belongs to. */
   vendorOrderId?: number | null;
+  /** On order lines only (Batch 6): units the seller couldn't supply; refunded to the buyer. */
+  shortfallQuantity?: number;
   id: string;
   productId: string;
   name: string;

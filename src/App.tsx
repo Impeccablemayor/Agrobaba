@@ -43,6 +43,7 @@ const MyBookingsPage = lazy(() => import('./pages/account/MyBookingsPage'));
 const MySalesPage = lazy(() => import('./pages/account/MySalesPage'));
 const VerifyAccountPage = lazy(() => import('./pages/account/VerifyAccountPage'));
 const PayoutAccountPage = lazy(() => import('./pages/account/PayoutAccountPage'));
+const DisputesPage = lazy(() => import('./pages/account/DisputesPage'));
 const QuoteDetailPage = lazy(() => import('./pages/quotes/QuoteDetailPage'));
 const MyQuotesPage = lazy(() => import('./pages/quotes/MyQuotesPage'));
 const ReceivedQuotesPage = lazy(() => import('./pages/quotes/ReceivedQuotesPage'));
@@ -64,6 +65,7 @@ const AdminCouponsPage = lazy(() => import('./pages/admin/AdminCouponsPage'));
 const AdminInfluencersPage = lazy(() => import('./pages/admin/AdminInfluencersPage'));
 const AdminLedgerPage = lazy(() => import('./pages/admin/AdminLedgerPage'));
 const AdminInspectionPage = lazy(() => import('./pages/admin/AdminInspectionPage'));
+const AdminDisputesPage = lazy(() => import('./pages/admin/AdminDisputesPage'));
 const AdminTicketsPage = lazy(() => import('./pages/admin/AdminTicketsPage'));
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage'));
 const AdminEmailsPage = lazy(() => import('./pages/admin/AdminEmailsPage'));
@@ -118,6 +120,8 @@ function App() {
         <Route path="account/my-sales" element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
         <Route path="account/verify" element={<ProtectedRoute><VerifyAccountPage /></ProtectedRoute>} />
         <Route path="account/payout-account" element={<ProtectedRoute><PayoutAccountPage /></ProtectedRoute>} />
+        <Route path="account/disputes" element={<ProtectedRoute><DisputesPage /></ProtectedRoute>} />
+        <Route path="account/disputes/:id" element={<ProtectedRoute><DisputesPage /></ProtectedRoute>} />
         <Route path="account/quotes" element={<ProtectedRoute><MyQuotesPage /></ProtectedRoute>} />
         <Route path="account/quotes/received" element={<ProtectedRoute><ReceivedQuotesPage /></ProtectedRoute>} />
         <Route path="account/quotes/:id" element={<ProtectedRoute><QuoteDetailPage /></ProtectedRoute>} />
@@ -144,6 +148,7 @@ function App() {
         <Route path="admin/influencers" element={<AdminInfluencersPage />} />
         <Route path="admin/ledger" element={<AdminLedgerPage />} />
         <Route path="admin/inspection" element={<AdminInspectionPage />} />
+        <Route path="admin/disputes" element={<AdminDisputesPage />} />
         <Route path="admin/tickets" element={<AdminTicketsPage />} />
         <Route path="admin/categories" element={<AdminCategoriesPage />} />
         <Route path="admin/activity" element={<AdminActivityPage />} />

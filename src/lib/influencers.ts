@@ -37,6 +37,10 @@ export interface CommissionLine {
   status: CommissionStatus;
   payoutId: number | null;
   createdAt: string;
+  /** Batch 6: commission before item refunds reduced it; for paid lines, how much was paid above
+   *  what the refunds now justify (to settle with the influencer by hand). */
+  originalCommission?: number;
+  overpaid?: number;
 }
 
 export interface InfluencerPayout {

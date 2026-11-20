@@ -150,7 +150,15 @@ function InfluencerDrawer({ id, onClose }: { id: number; onClose: () => void }) 
               {data.commissions.map((c) => (
                 <div key={c.redemptionId} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
                   <span><span style={{ fontFamily: 'monospace' }}>{c.invoiceNumber}</span><br /><span style={{ color: 'var(--muted)' }}>{COMMISSION_LABELS[c.status]} · {formatDate(c.createdAt)}</span></span>
-                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{formatPrice(c.commission)}</span>
+                  <span style={{ fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    {formatPrice(c.commission)}
+                    {c.payoutId == null && c.originalCommission != null && c.originalCommission > c.commission && (
+                      <><br /><span style={{ fontWeight: 400, color: 'var(--muted)' }}>was {formatPrice(c.originalCommission)} before refunds</span></>
+                    )}
+                    {(c.overpaid ?? 0) > 0 && (
+                      <><br /><span style={{ fontWeight: 400, color: 'var(--danger)' }}>overpaid {formatPrice(c.overpaid ?? 0)} after a refund</span></>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>

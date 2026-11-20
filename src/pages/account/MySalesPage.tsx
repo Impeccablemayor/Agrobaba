@@ -9,6 +9,7 @@ import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { CancelOrderButton } from '../../components/CancelOrderButton';
+import { SellerPartActions } from '../../components/SellerPartActions';
 import {
   getMyDeliveryProfile,
   saveMyDeliveryProfile,
@@ -392,6 +393,7 @@ export default function MySalesPage() {
                         >
                           <i className="fa-solid fa-truck-fast"></i> Logistics
                         </button>
+                        <SellerPartActions order={order} />
                       </td>
                     </tr>
                   ))}
