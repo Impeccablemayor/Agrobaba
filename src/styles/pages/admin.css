@@ -389,3 +389,20 @@
 @media (max-width: 900px) {
   .admin-queue-layout { grid-template-columns: 1fr; }
 }
+
+/* Logistics page keeps its own outer padding on wide screens; on phones the admin content padding is enough. */
+.admin-logistics-page { padding: 24px 32px; }
+@media (max-width: 640px) { .admin-logistics-page { padding: 0; } }
+
+/* Phones: the top bar must fit the screen - tighter spacing, search shrinks, and the env badge,
+   admin name and Logout collapse to their icons (labels stay available to screen readers). */
+@media (max-width: 640px) {
+  .admin-topbar { padding: 0 12px; gap: 8px; }
+  .admin-topbar-search { width: auto; flex: 1 1 auto; min-width: 0; }
+  .admin-topbar-search input { width: 100%; min-width: 0; }
+  .admin-topbar-actions { gap: 8px; flex-shrink: 0; }
+  .admin-topbar-label {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+}

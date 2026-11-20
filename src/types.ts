@@ -346,7 +346,45 @@ export interface AcceptedQuote {
   acceptedAt: string;
 }
 
+/** One seller's part of a checkout (vendor order). */
+export interface VendorOrderView {
+  id: number;
+  vendorOrderNumber: string;
+  sellerId: number;
+  sellerName: string | null;
+  status: OrderStatus;
+  itemsSubtotal: number;
+  additionalFees: number;
+  deliveryFee: number;
+  total: number;
+  cancelReason: string | null;
+  updatedAt: string;
+  platformDiscount?: number;
+  sellerDiscount?: number;
+  /** Batch 5 fulfilment stage and milestones (ISO, UTC). */
+  fulfilmentStage?: import('./lib/fulfilmentRules').FulfilmentStage | null;
+  dispatchedAt?: string | null;
+  deliveryClaimedAt?: string | null;
+  autoConfirmAt?: string | null;
+  receivedAt?: string | null;
+  receiptMethod?: string | null;
+  inspectionHours?: number | null;
+  inspectionEndsAt?: string | null;
+  completedAt?: string | null;
+  completionMethod?: string | null;
+  onHold?: boolean;
+}
+
 export interface CartItem {
+  /** On order lines only: delivery fee included in the online payment for this line. */
+  deliveryFee?: number;
+  /** On order lines only: the seller's vendor order this line belongs to. */
+  vendorOrderId?: number | null;
+  /** On order lines only (Batch 6): units the seller couldn't supply; refunded to the buyer. */
+  shortfallQuantity?: number;
+  /** Why the seller couldn't supply them (ShortfallReason) and their note. */
+  shortfallReason?: string | null;
+  shortfallNote?: string | null;
   id: string;
   productId: string;
   name: string;
@@ -450,6 +488,13 @@ export interface Order {
    *  The order itself is still recoverable; the customer can retry payment from the order
    *  detail page. */
   paymentInitializationFailed: boolean;
+  /** Buyer's checkout choice: ONLINE = delivery fee included in this payment; ON_DELIVERY = paid
+   *  to whoever delivers. Null on older list views. */
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
+  /** Delivery fees included in the online payment (0 when paid on delivery). */
+  deliveryFeeTotal?: number;
+  /** Buyer/admin: every seller's part. Seller: only their own (the server filters). */
+  vendorOrders?: VendorOrderView[];
 }
 
 export interface FlashSaleItem {
@@ -482,6 +527,16 @@ export interface Coupon {
   expiresAt: string | null;
   active: boolean;
   createdAt: string;
+  /** How many orders one customer may use the code on (default 1). */
+  maxUsesPerBuyer: number;
+  /** PLATFORM = AgroBaba pays the discount; SELLER = sellerId pays (only their items). */
+  fundedBy: 'PLATFORM' | 'SELLER';
+  sellerId: number | null;
+  sellerName: string | null;
+  influencerId: number | null;
+  influencerName: string | null;
+  /** % of the order the influencer earns, paid by AgroBaba. */
+  influencerRate: number;
 }
 
 export interface Notification {

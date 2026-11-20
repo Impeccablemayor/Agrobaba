@@ -2,7 +2,7 @@ import { showToast } from './toastBus';
 import { getCurrentUser } from './auth';
 import { api } from './api';
 import { uid } from './format';
-import type { CartItem, Order, OrderStatus, PaymentStatus } from '../types';
+import type { CartItem, Order, OrderStatus, PaymentStatus, VendorOrderView } from '../types';
 
 /** Key held in sessionStorage for the lifetime of one checkout attempt. Reused on retries (same
  *  tab, same cart) so a retried "Place Order" is idempotent server-side; cleared once the order
@@ -23,6 +23,10 @@ export interface DeliveryInput {
   couponCode?: string;
   fulfillmentType?: string;
   fulfillmentPreferences?: Record<number, string>;
+  /** ONLINE adds the seller's delivery fee (computed by the server) to this payment. */
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY';
+  /** The buyer's delivery state (states.id) - checked against sellers' delivery coverage. */
+  deliveryStateId?: number | null;
 }
 
 interface BackendOrderItem {
@@ -35,6 +39,12 @@ interface BackendOrderItem {
   sellerId: number;
   sellerName: string;
   type: string;
+  deliveryFee?: number;
+  additionalFees?: number;
+  vendorOrderId?: number | null;
+  shortfallQuantity?: number;
+  shortfallReason?: string | null;
+  shortfallNote?: string | null;
 }
 
 interface BackendOrderResponse {
@@ -55,6 +65,8 @@ interface BackendOrderResponse {
   paymentReference: string | null;
   paymentAuthorizationUrl: string | null;
   paymentInitializationFailed: boolean;
+  deliveryPayment?: 'ONLINE' | 'ON_DELIVERY' | null;
+  vendorOrders?: VendorOrderView[];
 }
 
 function mapOrder(response: BackendOrderResponse): Order {
@@ -70,6 +82,11 @@ function mapOrder(response: BackendOrderResponse): Order {
     sellerName: item.sellerName,
     type: (item.type as Order['items'][number]['type']) || 'product',
     addedAt: response.createdAt,
+    deliveryFee: item.deliveryFee ?? 0,
+    vendorOrderId: item.vendorOrderId ?? null,
+    shortfallQuantity: item.shortfallQuantity ?? 0,
+    shortfallReason: item.shortfallReason ?? null,
+    shortfallNote: item.shortfallNote ?? null,
   }));
 
   return {
@@ -90,6 +107,9 @@ function mapOrder(response: BackendOrderResponse): Order {
     paymentReference: response.paymentReference || null,
     paymentAuthorizationUrl: response.paymentAuthorizationUrl || null,
     paymentInitializationFailed: Boolean(response.paymentInitializationFailed),
+    deliveryPayment: response.deliveryPayment ?? null,
+    deliveryFeeTotal: response.items.reduce((sum, i) => sum + (i.deliveryFee ?? 0), 0),
+    vendorOrders: response.vendorOrders ?? [],
   };
 }
 
@@ -123,6 +143,8 @@ export async function placeOrder(cartItems: CartItem[], deliveryData: DeliveryIn
       idempotencyKey: checkoutIdempotencyKey(),
       fulfillmentType: deliveryData.fulfillmentType || 'SELLER_MANAGED',
       fulfillmentPreferences: deliveryData.fulfillmentPreferences || null,
+      deliveryPayment: deliveryData.deliveryPayment || 'ON_DELIVERY',
+      deliveryStateId: deliveryData.deliveryStateId ?? null,
     };
 
     const response = await api.post<BackendOrderResponse>('/api/orders', payload);
@@ -211,4 +233,86 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     showToast(message, 'error');
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Seller earnings - computed by the backend from VERIFIED payments only (GET /api/orders/sales/earnings).
+// Never derive earnings from orders or carts in the browser: an order exists before it is paid.
+// ---------------------------------------------------------------------------------------------
+
+export type FinancialStatus =
+  | 'UNPAID' | 'PAYMENT_PENDING' | 'HELD' | 'AVAILABLE_FOR_PAYOUT'
+  | 'PAID_OUT' | 'PAYOUT_PROCESSING' | 'REFUNDED' | 'CANCELLED' | 'UNDER_REVIEW';
+
+export interface OrderEarning {
+  orderId: number;
+  invoiceNumber: string;
+  orderStatus: string | null;
+  paymentStatus: string | null;
+  financialStatus: FinancialStatus;
+  grossAmount: number;
+  refundedAmount: number;
+  /** AgroBaba's platform fee on (gross - refunded); the recorded fee once paid out. */
+  platformFee: number;
+  /** Delivery fee paid online and credited to this seller (they deliver); 0 when AgroBaba delivers. No platform fee on it. */
+  deliveryFee: number;
+  /** What the seller receives (after refunds and fee), 0 when no verified payment backs it. */
+  netAmount: number;
+  paidAt: string | null;
+  deliveryConfirmed: boolean;
+  /** The payment has been confirmed as settled into AgroBaba's Flutterwave balance. */
+  fundsSettled: boolean;
+  payoutId: number | null;
+  paidOutAt: string | null;
+  createdAt: string | null;
+}
+
+export interface SellerEarnings {
+  currency: string;
+  platformFeePercent: number;
+  awaitingPayment: number;
+  held: number;
+  availableForPayout: number;
+  /** Released to the seller (recorded payouts). */
+  paidOut: number;
+  refunded: number;
+  underReview: number;
+  totalEarned: number;
+  paidOrderCount: number;
+  payoutTracking: boolean;
+  orders: OrderEarning[];
+  /** Batch 8 breakdown. */
+  totalSales?: number;
+  payoutProcessing?: number;
+  failedPayouts?: number;
+  failedPayoutCount?: number;
+  refundDeductions?: number;
+  recoveryObligations?: number;
+}
+
+export async function getSellerEarnings(): Promise<SellerEarnings | null> {
+  try {
+    return await api.get<SellerEarnings>('/api/orders/sales/earnings');
+  } catch {
+    return null; // callers show "unavailable" rather than a misleading zero
+  }
+}
+
+export const FINANCIAL_STATUS_LABELS: Record<FinancialStatus, string> = {
+  UNPAID: 'Awaiting payment',
+  PAYMENT_PENDING: 'Payment in progress',
+  HELD: 'Paid · held until delivery',
+  AVAILABLE_FOR_PAYOUT: 'Available for payout',
+  PAID_OUT: 'Paid out',
+  PAYOUT_PROCESSING: 'Payout on its way',
+  REFUNDED: 'Refunded',
+  CANCELLED: 'Cancelled',
+  UNDER_REVIEW: 'Under review',
+};
+
+/** Label for one order's earnings: HELD is split into "held until delivery" and "awaiting
+ *  settlement" (delivered, but the payment hasn't reached AgroBaba's Flutterwave balance yet). */
+export function financialStatusLabel(e: Pick<OrderEarning, 'financialStatus' | 'deliveryConfirmed' | 'fundsSettled'>): string {
+  if (e.financialStatus === 'HELD' && e.deliveryConfirmed && !e.fundsSettled) return 'Paid · awaiting settlement';
+  return FINANCIAL_STATUS_LABELS[e.financialStatus];
 }

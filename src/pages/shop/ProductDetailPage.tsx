@@ -13,6 +13,9 @@ import { ProductCard } from '../../components/ProductCard';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { OptimizedImage } from '../../components/common/OptimizedImage';
+import { StateCitySelect } from '../../components/StateCitySelect';
+import { prefillFromUser } from '../../lib/locationSelect';
+import { locationLine, type LocationSelection } from '../../lib/locations';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -24,6 +27,11 @@ export default function ProductDetailPage() {
   const [size, setSize] = useState('Standard');
   const [buyerNotes, setBuyerNotes] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
+  // Structured delivery state for quotes: a quoted delivery fee only applies to this state.
+  const [quoteLocation, setQuoteLocation] = useState<LocationSelection>(() => {
+    const p = prefillFromUser(user);
+    return { stateId: p.stateId ?? null, stateName: p.stateName ?? null, cityId: p.cityId ?? null, cityName: p.cityName ?? null };
+  });
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews'>('description');
 
   const { data: product, isLoading: loading } = useProduct(id);
@@ -106,12 +114,17 @@ export default function ProductDetailPage() {
       return;
     }
     const p = product!;
+    if (!quoteLocation.stateId) {
+      showToast('Choose the state you want this delivered to.', 'warning');
+      return;
+    }
     void (async () => {
       const result = await requestQuote.mutateAsync({
         productId: p.id,
         requestedQuantity: quantity || null,
         buyerNotes,
-        deliveryLocation,
+        deliveryLocation: [deliveryLocation.trim(), locationLine(quoteLocation.cityName, quoteLocation.stateName)].filter(Boolean).join(', '),
+        deliveryStateId: quoteLocation.stateId,
       });
       if (result) navigate(`/account/quotes/${result.id}`);
     })();
@@ -297,10 +310,18 @@ export default function ProductDetailPage() {
                     style={{ padding: '10px 12px' }}
                   />
                 </div>
+                <StateCitySelect
+                  idPrefix="quote-loc"
+                  initial={prefillFromUser(user)}
+                  onChange={setQuoteLocation}
+                  required
+                  fieldClassName="form-group"
+                  stateLabel="Delivery state"
+                />
                 <div className="form-group">
-                  <label>Delivery Location <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <label>Delivery address <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></label>
                   <input
-                    type="text" placeholder="Where should this be delivered?"
+                    type="text" placeholder="Street, area or landmark"
                     value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)}
                     style={{ padding: '10px 12px' }}
                   />

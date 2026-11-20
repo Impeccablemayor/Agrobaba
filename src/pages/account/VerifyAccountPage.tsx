@@ -88,7 +88,7 @@ export default function VerifyAccountPage() {
 
   const [form, setForm] = useState<SubmitVerificationInput>({
     idNumber: '', governmentIdDocument: '', selfieDocument: undefined,
-    bankAccountName: '', bankAccountNumber: '', bankName: '',
+    
     declarationAccepted: false,
     farmName: '', cropsOrLivestock: '',
     businessName: '', businessAddress: '', productCategoriesSold: '',
@@ -111,9 +111,6 @@ export default function VerifyAccountPage() {
       setForm((f) => ({
         ...f,
         idNumber: verificationStatus.idNumber || '',
-        bankAccountName: verificationStatus.bankAccountName || '',
-        bankAccountNumber: verificationStatus.bankAccountNumber || '',
-        bankName: verificationStatus.bankName || '',
         farmName: verificationStatus.farmName || '',
         cropsOrLivestock: verificationStatus.cropsOrLivestock || '',
         businessName: verificationStatus.businessName || '',
@@ -255,18 +252,9 @@ export default function VerifyAccountPage() {
               </>
             )}
 
-            <h3 style={{ fontSize: 14, fontWeight: 800, margin: '24px 0 4px' }}>Bank Account Details</h3>
-            <div className="form-group">
-              <label>Account Name <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input type="text" required value={form.bankAccountName} onChange={(e) => set('bankAccountName', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Account Number <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input type="text" required value={form.bankAccountNumber} onChange={(e) => set('bankAccountNumber', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Bank Name <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input type="text" required value={form.bankName} onChange={(e) => set('bankName', e.target.value)} />
+            <div style={{ margin: '24px 0 4px', padding: 12, background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
+              <i className="fa-solid fa-building-columns" style={{ marginRight: 6 }}></i>
+              Bank details are now added on your <Link to="/account/payout-account">Payout account</Link> page, where your bank confirms the account name.
             </div>
 
             <div style={{ margin: '24px 0 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

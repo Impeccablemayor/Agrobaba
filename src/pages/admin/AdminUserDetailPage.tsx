@@ -11,6 +11,8 @@ import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { suspendUser, reinstateUser } from '../../lib/adminUsers';
 import { showToast } from '../../lib/toastBus';
+import { SellerPayoutAccountPanel } from '../../components/BankAccountAdmin';
+import { revealBankAccount } from '../../lib/bankAccounts';
 
 type DetailTab = 'overview' | 'orders' | 'transactions' | 'activity';
 
@@ -369,7 +371,7 @@ export default function AdminUserDetailPage() {
             </div>
 
             {v ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 20 }}>
                 {/* Identity Verification Track */}
                 <div style={{ padding: '16px', background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -404,7 +406,6 @@ export default function AdminUserDetailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
                     <InfoItem label="CAC Registration Number" value={v.cacNumber} />
                     <InfoItem label="Registered Business Address" value={v.businessAddress} />
-                    <InfoItem label="Bank Account" value={v.bankAccountName ? `${v.bankAccountName} · ${v.bankAccountNumber} (${v.bankName})` : null} />
                     <InfoItem label="Reviewed At" value={v.businessReviewedAt ? formatDate(v.businessReviewedAt) : null} />
                     {v.businessNote && <InfoItem label="Business Review Notes" value={v.businessNote} />}
 
@@ -428,6 +429,12 @@ export default function AdminUserDetailPage() {
               <p className="text-muted" style={{ fontSize: 12.5 }}>No verification profile submitted by this user yet.</p>
             )}
           </div>
+          {['farmer', 'agro-dealer', 'service-provider'].includes(u.role) && (
+            <div className="admin-panel" style={{ marginTop: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>Payout account</h3>
+              <SellerPayoutAccountPanel sellerId={Number(u.id)} reveal={revealBankAccount} />
+            </div>
+          )}
         </div>
       )}
 

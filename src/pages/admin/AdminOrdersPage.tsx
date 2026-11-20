@@ -8,6 +8,7 @@ import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CancelOrderButton } from '../../components/CancelOrderButton';
 import type { Order } from '../../types';
+import { VendorOrdersList } from '../../components/VendorOrdersList';
 
 type TabKey = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -121,7 +122,7 @@ export default function AdminOrdersPage() {
             </div>
             <div className="admin-stat-card">
               <div className="admin-stat-value">{formatPrice(totalValue)}</div>
-              <div className="admin-stat-label">Total order value</div>
+              <div className="admin-stat-label">Total order value (incl. unpaid; revenue is on Overview)</div>
             </div>
             <div className="admin-stat-card">
               <div className="admin-stat-value">{orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length}</div>
@@ -215,6 +216,14 @@ export default function AdminOrdersPage() {
               <p style={{ fontSize: 12, color: 'var(--muted)' }}>{selected.buyerPhone || 'No phone on file'}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)' }}>{selected.buyerAddress || 'No address on file'}</p>
             </div>
+
+            {(selected.vendorOrders?.length ?? 0) > 0 && (
+              <div className="admin-drawer-section">
+                <h4>Sellers ({selected.vendorOrders!.length})</h4>
+                <VendorOrdersList vendorOrders={selected.vendorOrders!} viewer="admin"
+                  onChanged={(u) => setSelected((prev) => prev ? { ...prev, vendorOrders: (prev.vendorOrders ?? []).map((x) => (x.id === u.id ? u : x)) } : prev)} />
+              </div>
+            )}
 
             <div className="admin-drawer-section">
               <h4>Items</h4>

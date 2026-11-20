@@ -1,4 +1,5 @@
 import { api } from './api';
+import { isApprovalPending } from './adminAccessRules';
 import { showToast } from './toastBus';
 
 // ------------------------------------------------------------------
@@ -119,6 +120,16 @@ export interface PaymentAdminSummary {
   paidAt: string | null;
   requiresReview: boolean;
   createdAt: string;
+  /** Flutterwave's figures from verification (null until verified). */
+  chargedAmount: number | null;
+  gatewayFee: number | null;
+  merchantFee: number | null;
+  expectedSettlementAmount: number | null;
+  /** PENDING = verified but not yet confirmed in AgroBaba's Flutterwave balance. */
+  settlementStatus: 'PENDING' | 'SETTLED' | null;
+  settledAt: string | null;
+  settlementReference: string | null;
+  settlementRecordedBy: string | null;
 }
 
 export interface AttemptView {
@@ -239,8 +250,9 @@ export async function adminRefundPayment(
   reason: string,
 ): Promise<boolean> {
   try {
-    await api.post(`/api/admin/payments/${id}/refund`, { amount, reason });
-    showToast('Refund request sent to the provider.', 'success');
+    const r = await api.post<unknown>(`/api/admin/payments/${id}/refund`, { amount, reason });
+    // Batch 8: above the two-person limit the refund waits for a second admin.
+    showToast(isApprovalPending(r) ? r.message : 'Refund request sent to the provider.', 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Refund failed';

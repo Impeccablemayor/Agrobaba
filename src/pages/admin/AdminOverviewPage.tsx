@@ -215,7 +215,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Two Column Grid: Users Breakdown + Orders Pipeline */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20 }}>
         {/* User Breakdown Panel */}
         <div className="admin-panel" style={{ margin: 0 }}>
           <div className="admin-panel-hdr">
@@ -380,7 +380,7 @@ export default function AdminOverviewPage() {
                   fontSize: 12.5,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <div
                     style={{
                       width: 28,
@@ -397,7 +397,7 @@ export default function AdminOverviewPage() {
                   >
                     <i className="fa-solid fa-shield-halved"></i>
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                     <span style={{ fontWeight: 700 }}>{a.event.replace(/_/g, ' ')}</span>
                     <span style={{ color: 'var(--muted)', marginLeft: 6 }}>by {a.actor}</span>
                     {a.detail && (

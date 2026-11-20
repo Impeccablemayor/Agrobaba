@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getOrderById } from '../../lib/orders';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMyOrders } from '../../hooks/queries/useOrders';
@@ -10,6 +12,8 @@ import { CancelOrderButton } from '../../components/CancelOrderButton';
 import { getShipmentsForOrder, confirmDelivery } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
 import type { Order, Shipment } from '../../types';
+import { VendorOrdersList } from '../../components/VendorOrdersList';
+import { describeShortfall } from '../../lib/disputeRules';
 
 type Filter = 'all' | 'delivered';
 
@@ -95,6 +99,7 @@ export default function MyOrdersPage() {
   const [confirmingShipmentId, setConfirmingShipmentId] = useState<number | null>(null);
 
   const { data: orders = [], isLoading: loading } = useMyOrders();
+  const queryClient = useQueryClient();
 
   if (!user) return null;
 
@@ -117,13 +122,19 @@ export default function MyOrdersPage() {
     }
   }
 
-  async function handleConfirmDelivery(shipmentId: number) {
-    if (!window.confirm('Have you physically received and verified all items in this package?')) return;
+  async function handleConfirmDelivery(shipmentId: number, collected = false) {
+    if (!window.confirm(collected ? 'Did you collect all the items in this package yourself?' : 'Have you received all the items in this package?')) return;
     setConfirmingShipmentId(shipmentId);
     try {
-      const updated = await confirmDelivery(shipmentId, { proofType: 'BUYER_CONFIRMATION' });
-      showToast('Delivery confirmed! Thank you.', 'success');
+      const updated = await confirmDelivery(shipmentId, { proofType: 'BUYER_CONFIRMATION', collected });
+      showToast('Thank you! You can now check your goods; report a problem if anything is wrong.', 'success');
       setOrderShipments((prev) => prev.map((s) => (s.id === shipmentId ? updated : s)));
+      // Receipt starts the inspection period: refresh each seller's stage and deadline.
+      if (activeOrder) {
+        const fresh = await getOrderById(String(activeOrder.id));
+        if (fresh) setActiveOrder(fresh);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['orders'] });
     } catch (e: any) {
       showToast(e.message || 'Failed to confirm delivery', 'error');
     } finally {
@@ -133,13 +144,18 @@ export default function MyOrdersPage() {
 
   const inTransit = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
   const delivered = orders.filter((o) => o.status === 'delivered').length;
-  const totalSpent = orders.reduce((s, o) => s + o.total, 0);
+  // Only money actually received counts as spent - an order exists before it is paid, and
+  // failed/abandoned checkouts or fully refunded payments are not spending.
+  const PAID_STATUSES = ['SUCCESS', 'REFUND_PENDING', 'PARTIALLY_REFUNDED'];
+  const totalSpent = orders
+    .filter((o) => o.paymentStatus != null && PAID_STATUSES.includes(o.paymentStatus))
+    .reduce((s, o) => s + o.total, 0);
 
   const stats = [
     { icon: 'fa-box', label: 'Total Orders', value: orders.length, color: 'var(--primary)' },
     { icon: 'fa-truck', label: 'In Transit', value: inTransit, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
-    { icon: 'fa-naira-sign', label: 'Total Spent', value: formatPrice(totalSpent), color: 'var(--primary)' },
+    { icon: 'fa-naira-sign', label: 'Total Paid', value: formatPrice(totalSpent), color: 'var(--primary)' },
   ];
 
   let filtered = orders;
@@ -211,7 +227,12 @@ export default function MyOrdersPage() {
                         <td>#{i + 1}</td>
                         <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
                         <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                          {formatPrice(order.total)}
+                          <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}>
+                            {(order.deliveryFeeTotal ?? 0) > 0 ? `incl. ${formatPrice(order.deliveryFeeTotal ?? 0)} delivery` : 'Delivery paid on arrival'}
+                          </div>
+                        </td>
                         <td>{formatDate(order.createdAt)}</td>
                         <td><span className={`status-${statusClass}`} style={{ textTransform: 'capitalize' }}>{order.status}</span></td>
                         <td style={{ fontSize: 12, color: order.paymentStatus === 'SUCCESS' ? 'var(--success)' : unpaid ? 'var(--accent)' : 'var(--muted)' }}>
@@ -342,7 +363,15 @@ export default function MyOrdersPage() {
                         )}
 
                         {shp.status !== 'DELIVERED' && (
-                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => handleConfirmDelivery(shp.id, true)}
+                              disabled={confirmingShipmentId === shp.id}
+                              className="btn-outline btn-sm btn-inline"
+                              style={{ fontSize: 11, padding: '5px 12px' }}
+                            >
+                              I collected it myself
+                            </button>
                             <button
                               onClick={() => handleConfirmDelivery(shp.id)}
                               disabled={confirmingShipmentId === shp.id}
@@ -378,6 +407,21 @@ export default function MyOrdersPage() {
                 )}
               </div>
 
+              {(activeOrder.vendorOrders?.length ?? 0) > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{(activeOrder.vendorOrders?.length ?? 0) > 1 ? 'Sellers in this order' : 'Progress'}</h4>
+                  <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+                    {(activeOrder.vendorOrders?.length ?? 0) > 1 ? 'You paid once. Each seller prepares and sends their part separately. ' : ''}
+                    After you receive your goods you have time to check them before the seller is paid.
+                  </p>
+                  <VendorOrdersList vendorOrders={activeOrder.vendorOrders ?? []} viewer="buyer"
+                    onChanged={(u) => {
+                      setActiveOrder((o) => o ? { ...o, vendorOrders: (o.vendorOrders ?? []).map((x) => (x.id === u.id ? u : x)) } : o);
+                      void queryClient.invalidateQueries({ queryKey: ['orders'] });
+                    }} />
+                </div>
+              )}
+
               <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>Items</h4>
               {activeOrder.items.map((item) => (
                 <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
@@ -385,11 +429,17 @@ export default function MyOrdersPage() {
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{item.quantity} &times; {formatPrice(item.price)} &middot; Sold by {item.sellerName}</div>
+                      {describeShortfall(item) && (
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          <i className="fa-solid fa-circle-info"></i> {describeShortfall(item)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(item.price * item.quantity)}</div>
                   </div>
 
-                  {activeOrder.status === 'delivered' && (
+                  {(activeOrder.status === 'delivered'
+                    || activeOrder.vendorOrders?.find((v) => v.id === item.vendorOrderId)?.status === 'delivered') && (
                     reviewedProductIds.has(item.productId) ? (
                       <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--primary)', fontWeight: 600 }}>
                         <i className="fa-solid fa-circle-check"></i> Reviewed

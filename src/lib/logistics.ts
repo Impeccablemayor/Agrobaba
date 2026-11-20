@@ -36,22 +36,24 @@ export async function confirmDelivery(
     deliveryOtp?: string;
     receiptImageUrl?: string;
     note?: string;
+    /** Buyer only: they collected the goods themselves. */
+    collected?: boolean;
   }
 ): Promise<Shipment> {
   return api.post<Shipment>(`/api/logistics/shipments/${shipmentId}/confirm-delivery`, data);
 }
 
-export async function estimateDeliveryFee(
-  sellerId: number,
-  subtotal: number,
-  state?: string
-): Promise<{ sellerId: number; fee: number; free: boolean }> {
+export interface DeliveryEstimate { sellerId: number; fee: number; free: boolean; covered?: boolean; reason?: string | null }
+
+/** The seller's delivery fee and whether they deliver to the buyer's state (stateId from the
+ *  location picker). Display only - the server applies the same rule when the order is placed. */
+export async function estimateDeliveryFee(sellerId: number, subtotal: number, stateId?: number): Promise<DeliveryEstimate> {
   const query = new URLSearchParams({
     sellerId: String(sellerId),
     subtotal: String(subtotal),
   });
-  if (state) query.set('state', state);
-  return api.get<{ sellerId: number; fee: number; free: boolean }>(`/api/logistics/estimate-fee?${query.toString()}`);
+  if (stateId) query.set('stateId', String(stateId));
+  return api.get<DeliveryEstimate>(`/api/logistics/estimate-fee?${query.toString()}`);
 }
 
 // -------------------------------------------------------------
@@ -69,6 +71,10 @@ export async function updateSellerShipmentStatus(
     note?: string;
     location?: string;
     estimatedDeliveryDate?: string;
+    /** Required when sending your own delivery: who carries it, and a phone number or tracking ref. */
+    carrierName?: string;
+    carrierPhone?: string;
+    trackingRef?: string;
   }
 ): Promise<Shipment> {
   return api.put<Shipment>(`/api/logistics/seller/shipments/${shipmentId}/status`, data);

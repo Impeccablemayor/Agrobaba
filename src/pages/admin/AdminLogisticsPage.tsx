@@ -309,10 +309,10 @@ export default function AdminLogisticsPage() {
   }
 
   return (
-    <div style={{ padding: '24px 32px' }}>
+    <div className="admin-logistics-page">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+        <div style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 6px 0', letterSpacing: '-0.03em' }}>
             <i className="fa-solid fa-truck-ramp-box" style={{ color: 'var(--primary)', marginRight: 10 }}></i>
             Logistics & Transport Oversight
@@ -321,7 +321,7 @@ export default function AdminLogisticsPage() {
             Phase 1 internal transportation coordination, approved transporter directory, offline quotations & proof-of-delivery.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           <button
             onClick={() => { resetTransporterForm(); setTransporterModalOpen(true); }}
             className="btn-primary btn-sm btn-inline"
@@ -378,7 +378,7 @@ export default function AdminLogisticsPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '2px solid var(--border-light)', marginBottom: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, borderBottom: '2px solid var(--border-light)', marginBottom: 20 }}>
         <button
           onClick={() => setTab('shipments')}
           style={{

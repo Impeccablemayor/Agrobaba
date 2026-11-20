@@ -1,5 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createCoupon, deleteCoupon, type CreateCouponInput } from '../../lib/coupons';
+import { createCoupon, deleteCoupon, updateCoupon, type CreateCouponInput, type UpdateCouponInput } from '../../lib/coupons';
+
+export function useUpdateCoupon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateCouponInput }) => updateCoupon(id, input),
+    onSuccess: (result) => {
+      if (result) void queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+    },
+  });
+}
 import { updateTicketStatus } from '../../lib/tickets';
 import type { TicketStatus } from '../../types';
 

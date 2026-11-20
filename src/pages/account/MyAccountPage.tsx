@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMyProducts } from '../../hooks/queries/useProducts';
-import { useMyOrders, useSalesOrders } from '../../hooks/queries/useOrders';
+import { useMyOrders, useSalesOrders, useSellerEarnings } from '../../hooks/queries/useOrders';
 import { useMyDemands } from '../../hooks/queries/useDemands';
 import { useMyConversations } from '../../hooks/queries/useMessages';
 import { useMyVerificationStatus } from '../../hooks/queries/useVerification';
@@ -28,6 +28,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Produce' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/disputes', icon: 'fa-scale-balanced', label: 'Disputes' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/account/quotes/received', icon: 'fa-file-invoice-dollar', label: 'Quote Requests' },
@@ -35,12 +36,14 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'agro-dealer': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Product' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/disputes', icon: 'fa-scale-balanced', label: 'Disputes' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/account/quotes/received', icon: 'fa-file-invoice-dollar', label: 'Quote Requests' },
@@ -48,23 +51,27 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   'service-provider': [
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Service' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Services' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/disputes', icon: 'fa-scale-balanced', label: 'Disputes' },
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/demands', icon: 'fa-clipboard-list', label: 'Browse Demands' },
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post a Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-check', label: 'My Demands' },
     { href: '/account/verify', icon: 'fa-user-check', label: 'Verify Account' },
+    { href: '/account/payout-account', icon: 'fa-building-columns', label: 'Payout Account' },
     { href: '/onboarding', icon: 'fa-sliders', label: 'Personalize My Experience' },
   ],
   buyer: [
     { href: '/demands/new', icon: 'fa-pen-to-square', label: 'Post Demand' },
     { href: '/demands/mine', icon: 'fa-clipboard-list', label: 'My Demands' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/disputes', icon: 'fa-scale-balanced', label: 'Disputes' },
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/account/quotes', icon: 'fa-file-invoice-dollar', label: 'My Quote Requests' },
     { href: '/cart', icon: 'fa-cart-shopping', label: 'My Cart' },
@@ -75,6 +82,7 @@ const ROLE_LINKS: Record<Role, MenuLink[]> = {
     { href: '/account/post-listing', icon: 'fa-plus-circle', label: 'Post Listing' },
     { href: '/account/my-listings', icon: 'fa-list', label: 'My Listings' },
     { href: '/account/my-orders', icon: 'fa-box', label: 'My Orders' },
+    { href: '/account/disputes', icon: 'fa-scale-balanced', label: 'Disputes' },
     { href: '/account/my-sales', icon: 'fa-coins', label: 'My Sales' },
     { href: '/account/my-bookings', icon: 'fa-calendar-check', label: 'My Bookings' },
     { href: '/account/quotes/received', icon: 'fa-file-invoice-dollar', label: 'Quote Requests' },
@@ -133,6 +141,8 @@ export default function MyAccountPage() {
   const productsQ = useMyProducts();
   const ordersQ = useMyOrders();
   const salesQ = useSalesOrders();
+  // Paid sales come from verified payments on the backend - an order alone is not a sale.
+  const earningsQ = useSellerEarnings(user?.role === 'farmer' || user?.role === 'agro-dealer');
   const demandsQ = useMyDemands();
   const convsQ = useMyConversations();
   const verificationQ = useMyVerificationStatus(Boolean(user));
@@ -160,9 +170,10 @@ export default function MyAccountPage() {
   if (!user) return null;
   const isSupplier = user.role !== 'buyer';
   const unread = myConvs.reduce((s, c) => s + c.unread, 0);
-  const bookingRevenue = myBookings
-    .filter((b) => ['paid', 'in_progress', 'completed'].includes(b.status))
-    .reduce((s, b) => s + b.quotedAmount, 0);
+  // Bookings are not paid through AgroBaba yet, so a booking's quoted amount is not verified
+  // revenue - show completed jobs instead of a money figure the platform can't stand behind.
+  const completedBookings = myBookings.filter((b) => b.status === 'completed').length;
+  const paidSales = earningsQ.data ? earningsQ.data.paidOrderCount : '—';
   const verified = verification?.verified ?? user.verified ?? false;
   const recommendedCount = recommended.length;
   const matchingDemandsCount = matchingDemands.length;
@@ -173,13 +184,13 @@ export default function MyAccountPage() {
   const statsConfig: Record<Role, { icon: string; label: string; value: string | number; color: string }[]> = {
     farmer: [
       { icon: 'fa-list', label: 'Listings', value: myProducts.length, color: 'var(--primary)' },
-      { icon: 'fa-coins', label: 'Total Sales', value: mySales.length, color: 'var(--accent)' },
+      { icon: 'fa-coins', label: 'Paid Sales', value: paidSales, color: 'var(--accent)' },
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--primary)' },
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
     ],
     'agro-dealer': [
       { icon: 'fa-list', label: 'Products', value: myProducts.length, color: 'var(--primary)' },
-      { icon: 'fa-coins', label: 'Total Sales', value: mySales.length, color: 'var(--accent)' },
+      { icon: 'fa-coins', label: 'Paid Sales', value: paidSales, color: 'var(--accent)' },
       { icon: 'fa-box', label: 'Orders', value: myOrders.length, color: 'var(--primary)' },
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
     ],
@@ -187,7 +198,7 @@ export default function MyAccountPage() {
       { icon: 'fa-list', label: 'Services', value: myProducts.length, color: 'var(--primary)' },
       { icon: 'fa-calendar-check', label: 'Bookings', value: myBookings.length, color: 'var(--accent)' },
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--danger)' },
-      { icon: 'fa-naira-sign', label: 'Revenue', value: formatPrice(bookingRevenue), color: 'var(--primary)' },
+      { icon: 'fa-circle-check', label: 'Completed Jobs', value: completedBookings, color: 'var(--primary)' },
     ],
     buyer: [
       { icon: 'fa-clipboard-list', label: 'My Demands', value: myDemands.length, color: 'var(--primary)' },

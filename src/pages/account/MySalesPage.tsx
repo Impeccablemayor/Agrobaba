@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSalesOrders } from '../../hooks/queries/useOrders';
+import { useSalesOrders, useSellerEarnings } from '../../hooks/queries/useOrders';
+import { useMyPayoutAccount } from '../../hooks/queries/useBankAccounts';
+import { sellerPayoutHint } from '../../lib/bankAccounts';
+import { financialStatusLabel } from '../../lib/orders';
 import { useUpdateOrderStatus } from '../../hooks/mutations/useOrderMutations';
 import { formatDate, formatPrice } from '../../lib/format';
 import { PageLoadingSpinner } from '../../components/LoadingSpinner';
 import { CancelOrderButton } from '../../components/CancelOrderButton';
+import { SellerPartActions } from '../../components/SellerPartActions';
 import {
   getMyDeliveryProfile,
   saveMyDeliveryProfile,
@@ -14,6 +18,7 @@ import {
   confirmDelivery,
 } from '../../lib/logistics';
 import { showToast } from '../../lib/toastBus';
+import { describeStage } from '../../lib/fulfilmentRules';
 import type { Order, OrderStatus, SellerDeliveryProfile, Shipment, ShipmentStatus } from '../../types';
 
 type Filter = 'all' | 'delivered';
@@ -23,6 +28,10 @@ export default function MySalesPage() {
   const [filter, setFilter] = useState<Filter>('all');
 
   const { data: sales = [], isLoading: loading } = useSalesOrders();
+  // Money figures come from the backend, which counts only verified payments. An order exists
+  // as soon as a buyer clicks "Place Order" - before paying - so it must never be summed here.
+  const { data: earnings } = useSellerEarnings();
+  const { data: payoutAccount } = useMyPayoutAccount();
   const updateStatusMutation = useUpdateOrderStatus();
 
   // Delivery Profile State
@@ -52,13 +61,22 @@ export default function MySalesPage() {
   const [statusLocation, setStatusLocation] = useState('');
   const [deliveryOtpInput, setDeliveryOtpInput] = useState('');
   const [receiptUrlInput, setReceiptUrlInput] = useState('');
+  // Batch 5: who is carrying the goods when the seller sends them.
+  const [carrierName, setCarrierName] = useState('');
+  const [carrierPhone, setCarrierPhone] = useState('');
+  const [trackingRef, setTrackingRef] = useState('');
   const [submittingStatus, setSubmittingStatus] = useState(false);
+
+  // No saved profile yet (the server returns a default with no id): buyers outside the seller's
+  // own state must use AgroBaba delivery until they set one up.
+  const [deliveryNotSetUp, setDeliveryNotSetUp] = useState(false);
 
   useEffect(() => {
     if (user && user.role !== 'buyer') {
       getMyDeliveryProfile()
         .then((p) => {
           if (p) setProfileForm(p);
+          setDeliveryNotSetUp(!p || p.id == null);
         })
         .catch(() => {});
     }
@@ -93,18 +111,34 @@ export default function MySalesPage() {
   const title = isServiceProvider ? 'My Earnings' : 'My Sales';
   const subtitle = isServiceProvider ? 'Track bookings and earnings from your services.' : 'Manage orders customers have placed for your listings.';
 
-  function getMyEarnings(order: Order) {
-    return order.items.filter((it) => it.sellerId === user!.id).reduce((s, it) => s + it.price * it.quantity, 0);
+  const earningByOrder = new Map((earnings?.orders ?? []).map((e) => [String(e.orderId), e]));
+  /** This seller's items on the order - an order value, not earnings. */
+  /** Delivery fee the buyer already paid online for this seller's lines. */
+  function myDeliveryPaid(order: Order) {
+    return order.items.filter((it) => String(it.sellerId) === String(user!.id)).reduce((s, it) => s + (it.deliveryFee ?? 0), 0);
   }
-
-  const totalEarnings = sales.reduce((s, o) => s + getMyEarnings(o), 0);
+  function myOrderValue(order: Order) {
+    return order.items.filter((it) => String(it.sellerId) === String(user!.id)).reduce((s, it) => s + it.price * it.quantity, 0);
+  }
+  const money = (v: number | null | undefined) => (earnings ? formatPrice(v ?? 0) : '—');
   const toFulfill = sales.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
   const delivered = sales.filter((o) => o.status === 'delivered').length;
 
+  // Batch 8: each kind of money on its own, never one generic "earnings" number.
   const stats = [
-    { icon: 'fa-cart-shopping', label: 'Total Sales', value: sales.length, color: 'var(--primary)' },
-    { icon: 'fa-naira-sign', label: 'Earnings', value: formatPrice(totalEarnings), color: 'var(--success)' },
-    { icon: 'fa-truck', label: 'To Fulfill', value: toFulfill, color: 'var(--accent)' },
+    { icon: 'fa-chart-line', label: 'Total sales (paid orders)', value: money(earnings?.totalSales), color: 'var(--primary)' },
+    { icon: 'fa-hourglass-half', label: 'Pending payment (not earnings yet)', value: money(earnings?.awaitingPayment), color: 'var(--muted)' },
+    { icon: 'fa-lock', label: 'Held (until received and inspected)', value: money(earnings?.held), color: 'var(--accent)' },
+    { icon: 'fa-naira-sign', label: 'Available for payout', value: money(earnings?.availableForPayout), color: 'var(--success)' },
+    { icon: 'fa-paper-plane', label: 'Payout on its way', value: money(earnings?.payoutProcessing), color: 'var(--primary)' },
+    { icon: 'fa-money-bill-transfer', label: 'Paid out', value: money(earnings?.paidOut), color: 'var(--primary)' },
+    { icon: 'fa-triangle-exclamation', label: `Failed payouts${earnings?.failedPayoutCount ? ` (${earnings.failedPayoutCount}, we'll retry)` : ''}`,
+      value: money(earnings?.failedPayouts), color: (earnings?.failedPayouts ?? 0) > 0 ? 'var(--danger)' : 'var(--muted)' },
+    { icon: 'fa-rotate-left', label: 'Refund deductions', value: money(earnings?.refundDeductions), color: 'var(--muted)' },
+    ...((earnings?.recoveryObligations ?? 0) > 0
+      ? [{ icon: 'fa-scale-unbalanced', label: 'Owed back to AgroBaba', value: money(earnings?.recoveryObligations), color: 'var(--danger)' }] : []),
+    { icon: 'fa-cart-shopping', label: 'Paid orders', value: earnings ? earnings.paidOrderCount : '—', color: 'var(--primary)' },
+    { icon: 'fa-truck', label: 'To fulfil', value: toFulfill, color: 'var(--accent)' },
     { icon: 'fa-circle-check', label: 'Delivered', value: delivered, color: 'var(--success)' },
   ];
 
@@ -134,6 +168,7 @@ export default function MySalesPage() {
     setProfileLoading(true);
     try {
       await saveMyDeliveryProfile(profileForm);
+      setDeliveryNotSetUp(false);
       showToast('Delivery configuration saved successfully!', 'success');
       setProfileModalOpen(false);
     } catch (e: any) {
@@ -172,6 +207,9 @@ export default function MySalesPage() {
           status: nextStatus,
           note: statusNote.trim() || undefined,
           location: statusLocation.trim() || undefined,
+          carrierName: carrierName.trim() || undefined,
+          carrierPhone: carrierPhone.trim() || undefined,
+          trackingRef: trackingRef.trim() || undefined,
         });
       }
 
@@ -194,6 +232,9 @@ export default function MySalesPage() {
     setStatusLocation('');
     setDeliveryOtpInput('');
     setReceiptUrlInput('');
+    setCarrierName('');
+    setCarrierPhone('');
+    setTrackingRef('');
     setSelectedShipment(null);
   }
 
@@ -207,6 +248,14 @@ export default function MySalesPage() {
             <li className="breadcrumb-item active">{title}</li>
           </ol>
         </nav>
+
+        {payoutAccount && !payoutAccount.readiness.ready && (
+          <div role="note" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 'var(--radius)', padding: 12, marginBottom: 16, fontSize: 13 }}>
+            <i className="fa-solid fa-building-columns" style={{ marginRight: 6 }}></i>
+            <strong>AgroBaba can&apos;t pay you yet.</strong> {sellerPayoutHint(payoutAccount.readiness)}{' '}
+            <Link to="/account/payout-account">Set up your payout account</Link>
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
           <div>
@@ -225,11 +274,22 @@ export default function MySalesPage() {
           )}
         </div>
 
+        {deliveryNotSetUp && !isServiceProvider && (
+          <div role="note" style={{ margin: '0 0 14px', padding: '10px 12px', borderRadius: 8, background: 'var(--warning-soft)', border: '1px solid #e0a800', fontSize: 12.5 }}>
+            <i className="fa-solid fa-truck-ramp-box" style={{ color: '#a06000', marginRight: 6 }}></i>
+            You haven&apos;t set up delivery yet. Until you do, you deliver only within your own state and buyers
+            elsewhere must choose AgroBaba delivery.{' '}
+            <button type="button" className="btn-link" onClick={() => setProfileModalOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+              Set up delivery
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <PageLoadingSpinner message="Loading your sales…" />
         ) : (
           <>
-          <div className="stats-grid" style={{ marginBottom: 28 }}>
+          <div className="stats-grid" style={{ marginBottom: 12 }}>
           {stats.map((s) => (
             <div className="stat-card" key={s.label}>
               <div className="stat-icon"><i className={`fa-solid ${s.icon}`} style={{ color: s.color }}></i></div>
@@ -238,6 +298,16 @@ export default function MySalesPage() {
             </div>
           ))}
           </div>
+          <p className="earnings-note">
+            <i className="fa-solid fa-shield-halved"></i>{' '}
+            Money counts only after the buyer&apos;s payment is verified. AgroBaba holds it until the buyer
+            confirms delivery and the payment has settled into AgroBaba&apos;s account, then it becomes
+            available for payout and is sent to your bank account.
+            {earnings && <> Amounts shown are after AgroBaba&apos;s {earnings.platformFeePercent}% platform fee.</>} Unpaid orders are not earnings.
+            {earnings && earnings.refunded > 0 && <> Refunded so far: <strong>{formatPrice(earnings.refunded)}</strong>.</>}
+            {earnings && earnings.underReview > 0 && <> Under review by AgroBaba: <strong>{formatPrice(earnings.underReview)}</strong>.</>}
+            {!earnings && ' (Earnings are temporarily unavailable.)'}
+          </p>
 
           <div className="shop-tabs">
             {(['all', 'delivered'] as const).map((f) => (
@@ -262,7 +332,7 @@ export default function MySalesPage() {
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Earnings</th><th>Date</th><th>Fulfillment</th><th>Shipment</th>
+                    <th>#</th><th>Buyer</th><th>Invoice</th><th>Your Amount</th><th>Date</th><th>Fulfillment</th><th>Shipment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -270,11 +340,32 @@ export default function MySalesPage() {
                     <tr key={order.id}>
                       <td>#{i + 1}</td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{order.buyerName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Message buyer for delivery details'}</div>
+                        {/* The server only sends buyer details once the payment is verified. */}
+                        <div style={{ fontWeight: 600 }}>{order.buyerName || 'Buyer'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{order.buyerAddress || 'Buyer and delivery details appear once payment is confirmed'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                          {myDeliveryPaid(order) > 0
+                            ? <>Delivery fee paid online: {formatPrice(myDeliveryPaid(order))}</>
+                            : 'Delivery fee: paid on delivery'}
+                        </div>
                       </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.invoiceNumber}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(getMyEarnings(order))}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{order.vendorOrders?.[0]?.vendorOrderNumber ?? order.invoiceNumber}</td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatPrice(myOrderValue(order))}</div>
+                        {earningByOrder.get(order.id) && (
+                          <span className={`financial-chip fs-${earningByOrder.get(order.id)!.financialStatus.toLowerCase()}`}>
+                            {financialStatusLabel(earningByOrder.get(order.id)!)}
+                          </span>
+                        )}
+                        {order.vendorOrders?.[0]?.fulfilmentStage && (() => {
+                          const d = describeStage(order.vendorOrders[0], 'seller');
+                          return d.label ? (
+                            <div style={{ fontSize: 11, marginTop: 4, maxWidth: 260 }}>
+                              <strong>{d.label}</strong>{d.detail ? <span style={{ color: 'var(--text-secondary)' }}> — {d.detail}</span> : null}
+                            </div>
+                          ) : null;
+                        })()}
+                      </td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>
                         {order.status === 'cancelled' ? (
@@ -310,6 +401,7 @@ export default function MySalesPage() {
                         >
                           <i className="fa-solid fa-truck-fast"></i> Logistics
                         </button>
+                        <SellerPartActions order={order} />
                       </td>
                     </tr>
                   ))}
@@ -463,7 +555,7 @@ export default function MySalesPage() {
                   Logistics & Fulfillment: #{activeOrderForShipment.invoiceNumber}
                 </h3>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  Buyer: <strong>{activeOrderForShipment.buyerName}</strong> • {activeOrderForShipment.buyerAddress}
+                  Buyer: <strong>{activeOrderForShipment.buyerName || 'Buyer'}</strong> • {activeOrderForShipment.buyerAddress || 'Details appear once payment is confirmed'}
                 </span>
               </div>
               <button onClick={() => setActiveOrderForShipment(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--muted)' }}>
@@ -593,6 +685,24 @@ export default function MySalesPage() {
                   <option value="DELIVERY_EXCEPTION">Delivery Exception / Delay</option>
                 </select>
               </div>
+
+              {nextStatus === 'IN_TRANSIT' && selectedShipment.fulfillmentType !== 'AGROBABA_MANAGED' && (
+                <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid var(--border-light)', display: 'grid', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>Who is delivering it?</div>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+                    Required. Add the rider, driver or courier (or &quot;Myself&quot;), and a phone number or tracking reference.
+                  </p>
+                  <input aria-label="Carrier name" type="text" maxLength={120} placeholder="e.g. Musa (rider) / GIG Logistics / Myself"
+                    value={carrierName} onChange={(e) => setCarrierName(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                  <input aria-label="Carrier phone" type="tel" maxLength={30} placeholder="Phone number"
+                    value={carrierPhone} onChange={(e) => setCarrierPhone(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                  <input aria-label="Tracking reference" type="text" maxLength={120} placeholder="Tracking / waybill number (optional if phone given)"
+                    value={trackingRef} onChange={(e) => setTrackingRef(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-mid)', fontSize: 13 }} />
+                </div>
+              )}
 
               {nextStatus === 'DELIVERED' && (
                 <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid var(--border-light)' }}>

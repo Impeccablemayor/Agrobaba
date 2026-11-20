@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const CARDS = [
-  ['fa-shield-halved', 'Secure Escrow', 'Payments are held safely in mock escrow until you confirm delivery — protecting both buyer and seller on every order.'],
+  ['fa-shield-halved', 'Secure Escrow', 'Payments are held securely by AgroBaba until you confirm delivery — protecting both buyer and seller on every order.'],
   ['fa-user-check', 'Verified Badges', 'Trusted farmers, dealers and service providers earn verified badges, so you always know who you’re trading with.'],
   ['fa-bullhorn', 'Post a Demand', 'Can’t find what you need? Post exactly what you’re looking for and let sellers come to you with offers.'],
   ['fa-comments', 'Direct Messaging', 'Chat one-on-one with buyers and sellers to negotiate price, quantity and delivery before you commit.'],

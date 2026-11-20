@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { BankReviewPanel } from '../../components/BankAccountAdmin';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdminVerifications } from '../../hooks/queries/useAdmin';
 import {
@@ -47,6 +48,8 @@ export default function AdminVerificationsPage() {
   const [confirmApprove, setConfirmApprove] = useState<'identity' | 'business' | null>(null);
 
   const { data: pending = [], isLoading: loading, refetch } = useAdminVerifications();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'bank' ? 'bank' : 'identity';
 
   useEffect(() => {
     if (!selectedUserId && pending.length > 0) {
@@ -93,7 +96,12 @@ export default function AdminVerificationsPage() {
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>Identity (Verified Seller) and business/CAC (Registered Business) are reviewed independently.</p>
       </div>
 
-      {pending.length === 0 ? (
+      <div className="status-tabs">
+        <button className={`status-tab ${tab === 'identity' ? 'active' : ''}`} onClick={() => setParams({})}>ID &amp; business</button>
+        <button className={`status-tab ${tab === 'bank' ? 'active' : ''}`} onClick={() => setParams({ tab: 'bank' })}>Payout bank accounts</button>
+      </div>
+
+      {tab === 'bank' ? <BankReviewPanel /> : pending.length === 0 ? (
         <div className="empty-cart">
           <i className="fa-solid fa-user-check"></i>
           <p>No pending verifications right now.</p>
@@ -134,7 +142,6 @@ export default function AdminVerificationsPage() {
                     <Field label={selected.role === 'agro-dealer' ? 'Business Address' : 'Business Address / Area of Operation'} value={selected.businessAddress} />
                   )}
                   {selected.role === 'agro-dealer' && <Field label="Product Categories Sold" value={selected.productCategoriesSold} />}
-                  <Field label="Bank" value={selected.bankName ? `${selected.bankName} — ${selected.bankAccountName} — ${selected.bankAccountNumber}` : null} />
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
                   <DocPreview label="Government ID" value={selected.governmentIdDocument} onZoom={setZoomSrc} />
